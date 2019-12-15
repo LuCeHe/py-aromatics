@@ -22,17 +22,15 @@ class CustomFileStorageObserver(FileStorageObserver):
             self.basedir = os.path.join(self.basedir, run_id)
 
             # and again create the basedir
-            try:
-                pathlib.Path(self.basedir).mkdir(exist_ok=True, parents=True)
-            except: pass
+            pathlib.Path(self.basedir).mkdir(exist_ok=True, parents=True)
 
         return super().started_event(ex_info, command, host_info, start_time, config, meta_info, _id)
 
 
 def CustomExperiment(experiment_name):
     ex = Experiment(experiment_name)
-    # ex.observers.append(FileStorageObserver.create("experiments"))
-    ex.observers.append(CustomFileStorageObserver.create("../experiments"))
+    ex.observers.append(FileStorageObserver.create("experiments"))
+    #ex.observers.append(CustomFileStorageObserver.create("experiments"))
 
     # ex.observers.append(MongoObserver())
     ex.captured_out_filter = apply_backspaces_and_linefeeds
