@@ -22,7 +22,10 @@ class CustomFileStorageObserver(FileStorageObserver):
             self.basedir = os.path.join(self.basedir, run_id)
 
             # and again create the basedir
-            pathlib.Path(self.basedir).mkdir(exist_ok=True, parents=True)
+            try:
+                pathlib.Path(self.basedir).mkdir(exist_ok=True, parents=True)
+            except: pass
+
         return super().started_event(ex_info, command, host_info, start_time, config, meta_info, _id)
 
 
