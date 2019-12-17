@@ -508,7 +508,6 @@ class MockDataGenerator(tf.keras.utils.Sequence):
         # time.sleep(2)
         return X, y
 
-
 class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
     'Generates data for Keras'
 
@@ -530,6 +529,9 @@ class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
         self.START = self.vocabulary.indicesByTokens[self.vocabulary.startToken]
         self.END = self.vocabulary.indicesByTokens[self.vocabulary.endToken]
 
+        if 'val' in self.gzip_filepath:
+            self.X_val, self.y_val = self.__data_generation()
+
     def __count_lines_in_gzip(self):
 
         if self.nb_lines == None:
@@ -541,13 +543,20 @@ class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
 
     def __len__(self):
         'Denotes the number of batches per epoch'
-        return int(np.floor(self.nb_lines / self.batch_size))
+        if 'val' in self.gzip_filepath:
+            n_be = 1
+        else:
+            n_be = int(np.floor(self.nb_lines / self.batch_size))
+        return n_be
 
     def __getitem__(self, index=0):
         'Generate one batch of data'
 
         # Generate data
-        X, y = self.__data_generation()
+        if 'val' in self.gzip_filepath:
+            X, y = self.X_val, self.y_val
+        else:
+            X, y = self.__data_generation()
 
         return X, y
 
@@ -565,8 +574,11 @@ class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
             sentence = line.strip().decode("utf-8")
             indices = [self.PAD, self.START] + self.vocabulary.tokensToIndices(tokenize(sentence)) + [self.END]
             indices = indices[:self.maxlen + 1]
-            list_input.append(indices[:-1])
-            list_output.append(indices[-1])
+
+            l = len(indices)
+            randint = np.random.randint(int(2*l/3), l)
+            list_input.append(indices[:randint])
+            list_output.append(indices[randint])
 
             if i >= self.batch_size - 1: break
 
