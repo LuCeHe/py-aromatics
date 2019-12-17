@@ -556,21 +556,23 @@ class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
         # Initialization
 
         i = 0
+        list_input = []
+        list_output = []
         for line in self.f:
             sentence = line.strip().decode("utf-8")
             indices = [self.PAD, self.START] + self.vocabulary.tokensToIndices(tokenize(sentence)) + [self.END]
+            indices = indices[:self.maxlen + 1]
+            list_input.append(indices[:-1])
+            list_output.append(indices[-1])
 
-            model_input = indices[:, :self.maxlen]
-            model_output = indices[:, self.maxlen, np.newaxis]
+            if i >= self.batch_size - 1: break
 
-            if i >= self.batch_size-1: break
+        X = pad_sequences(list_input,
+                          value=self.PAD,
+                          padding='pre')
 
-        if isinstance(self.vocab_size, int):
-            model_output = to_categorical(model_output, num_classes=self.vocab_size)
+        y = to_categorical(list_output, num_classes=self.vocab_size)
 
-        X = np.random.randint(self.n_classes, size=(self.batch_size, self.maxlen))
-        y = np.zeros(shape=(self.batch_size, self.n_classes))
-        # time.sleep(2)
         return X, y
 
 
