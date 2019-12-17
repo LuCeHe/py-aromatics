@@ -394,7 +394,7 @@ def IndicesToNextStepGenerator(indices_generator, vocabSize=None):
         yield model_input, model_output
 
 
-def GzipToNextStepGenerator_old(gzip_filepath, grammar_filepath, batchSize, maxSentenceLen=None):
+def GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batchSize, maxSentenceLen=None):
     vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
     vocabSize = vocabulary.getMaxVocabularySize()
 
@@ -447,7 +447,7 @@ def CreateGzipOfIndices(gzip_filepath, grammar_filepath):
     return new_filepath
 
 
-def GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batchSize, maxSentenceLen=None):
+def GzipToNextStepGenerator_new(gzip_filepath, grammar_filepath, batchSize, maxSentenceLen=None):
     # TODO: save the data in this format from the beginning, so people that want to test it don't have problems
     if not 'indices' in gzip_filepath:
         gzip_filepath = CreateGzipOfIndices(gzip_filepath, grammar_filepath)
