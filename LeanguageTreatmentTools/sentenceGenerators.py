@@ -340,12 +340,14 @@ class w2n_generator(object):
         return self.vocabulary.indicesToSentences(indices, offset=offset)
 
 
-def generateFromGzip(gzipDatasetFilepath, batchSize):
+def generateFromGzip(gzipDatasetFilepath, batch_size):
+    
+    
     # read last sentence to reinitialize the generator once it's found
     this_gzip = Popen(['gzip', '-dc', gzipDatasetFilepath], stdout=PIPE)
     tail = Popen(['tail', '-1'], stdin=this_gzip.stdout, stdout=PIPE)
     last_sentence = tail.communicate()[0][:-2]
-
+    
     f = gzip.open(gzipDatasetFilepath, 'rb')
 
     while True:
@@ -358,11 +360,10 @@ def generateFromGzip(gzipDatasetFilepath, batchSize):
                 sentences = []
                 f = gzip.open(gzipDatasetFilepath, 'rb')
 
-            if len(sentences) >= batchSize:
+            if len(sentences) >= batch_size:
                 batch = sentences
                 sentences = []
                 yield batch
-
 
 def SentenceToIndicesGenerator(sentence_generator, vocabulary, maxSentenceLen=None):
     PAD = vocabulary.indicesByTokens[vocabulary.padToken]
@@ -372,10 +373,10 @@ def SentenceToIndicesGenerator(sentence_generator, vocabulary, maxSentenceLen=No
         sentences = next(sentence_generator)
         # NOTE: use offset to reserve a place for the masking symbol at
         # zero
-        indices = [[PAD, START] + vocabulary.tokensToIndices(tokenize(sentence)) + [END]
-                   for sentence in sentences]
-
-        padded = pad_sequences([tokens[:maxSentenceLen] for tokens in indices],
+        #indices = [[PAD, START] + vocabulary.tokensToIndices(tokenize(sentence)) + [END]
+        #           for sentence in sentences]
+        indices = [[0,1,2,0,0]]*256
+        padded = pad_sequences(indices,
                                #maxlen=maxSentenceLen,
                                value=PAD,
                                padding='pre')
@@ -387,20 +388,32 @@ def IndicesToNextStepGenerator(indices_generator, vocabSize=None):
         indices = next(indices_generator)
         maxlen = indices.shape[1]
         column = np.random.randint(low=1, high=maxlen)
+        
         model_input = indices[:, :column]
         model_output = indices[:, column, np.newaxis]
+        
         if isinstance(vocabSize, int):
             model_output = to_categorical(model_output, num_classes=vocabSize)
         yield model_input, model_output
 
 
-def GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batchSize, maxSentenceLen=None):
+def MockNextStepGenerator(batch_size, num_classes=11, maxlen=5):
+    
+    while True:
+        
+        batch = np.random.randint(num_classes, size=(batch_size, maxlen))
+        mock_one_hot = np.zeros(shape=(batch_size, num_classes))
+        yield batch, mock_one_hot
+        
+        
+        
+def GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batch_size, maxSentenceLen=None):
     vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
     vocabSize = vocabulary.getMaxVocabularySize()
 
     generatorSentences = generateFromGzip(
         gzipDatasetFilepath=gzip_filepath,
-        batchSize=batchSize
+        batch_size=batch_size
     )
     generatorIndices = SentenceToIndicesGenerator(
         sentence_generator=generatorSentences,
@@ -416,12 +429,12 @@ def GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batchSize, maxSente
         yield generation
 
 
-def GzipToIndicesGenerator(gzip_filepath, grammar_filepath, batchSize):
+def GzipToIndicesGenerator(gzip_filepath, grammar_filepath, batch_size):
     vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
 
     generatorSentences = generateFromGzip(
         gzipDatasetFilepath=gzip_filepath,
-        batchSize=batchSize
+        batch_size=batch_size
     )
     generatorIndices = SentenceToIndicesGenerator(
         sentence_generator=generatorSentences,
@@ -435,8 +448,8 @@ def GzipToIndicesGenerator(gzip_filepath, grammar_filepath, batchSize):
 if __name__ == '__main__':
     grammar_filepath = '../data/simplerREBER_grammar.cfg'
     gzip_filepath = '../data/REBER_biased_train.gz'
-    batchSize = 3
-    generator = GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batchSize)
+    batch_size = 3
+    generator = GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batch_size)
     # check REBER generator
 
     for _ in range(int(1e4)):
