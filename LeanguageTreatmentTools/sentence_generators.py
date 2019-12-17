@@ -29,13 +29,13 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import gzip
-import string
+import gzip, string, time
 from subprocess import Popen, PIPE
 
 import numpy as np
 from nltk import CFG
 from nltk.parse.generate import generate
+import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.utils import to_categorical
 
@@ -469,6 +469,48 @@ def GzipToIndicesGenerator(gzip_filepath, grammar_filepath, batchSize):
         generation = next(generatorIndices)
         yield generation
 
+
+def MockNextStepGenerator(batch_size, num_classes=11, maxlen=5):
+    
+    while True:
+        
+        batch = np.random.randint(num_classes, size=(batch_size, maxlen))
+        mock_one_hot = np.zeros(shape=(batch_size, num_classes))
+        yield batch, mock_one_hot
+        
+     
+     
+     
+
+class MockDataGenerator(tf.keras.utils.Sequence):
+    'Generates data for Keras'
+    def __init__(self, batch_size, n_classes=11, maxlen=5):
+        'Initialization'
+        self.batch_size, self.n_classes, self.maxlen = batch_size, n_classes, maxlen
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return 1000 #int(np.floor(len(self.list_IDs) / self.batch_size))
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+
+        # Generate data
+        X, y = self.__data_generation()
+
+        return X, y
+
+    def on_epoch_end(self):
+        pass
+        
+    def __data_generation(self):
+        'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
+        # Initialization
+        
+        X = np.random.randint(self.n_classes, size=(self.batch_size, self.maxlen))
+        y = np.zeros(shape=(self.batch_size, self.n_classes))
+        #time.sleep(2)
+        return X, y  
 
 if __name__ == '__main__':
     grammar_filepath = '../data/simplerREBER_grammar.cfg'
