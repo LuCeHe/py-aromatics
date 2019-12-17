@@ -29,13 +29,14 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import gzip, string, time
+import gzip
+import string
 from subprocess import Popen, PIPE
 
 import numpy as np
+import tensorflow as tf
 from nltk import CFG
 from nltk.parse.generate import generate
-import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.utils import to_categorical
 
@@ -128,7 +129,7 @@ class c2n_generator(object):
         print(self.vocabulary.indicesByTokens)
         print('')
         # +1 to take into account padding
-        self.vocabSize = len(self.vocabulary.indicesByTokens)
+        self.vocab_size = len(self.vocabulary.indicesByTokens)
         self.startId = self.vocabulary.tokenToIndex(self.vocabulary.endToken)
 
         # self.nltk_generate = generate(self.grammar, n = self.batch_size)
@@ -158,7 +159,7 @@ class c2n_generator(object):
             if not self.categorical:
                 yield in_indices, out_indices
             else:
-                categorical_indices = to_categorical(out_indices, num_classes=self.vocabSize)
+                categorical_indices = to_categorical(out_indices, num_classes=self.vocab_size)
                 yield in_indices, categorical_indices
 
     def indicesToSentences(self, indices, offset=0):
@@ -186,7 +187,7 @@ class next_character_generator(object):
         print(self.vocabulary.indicesByTokens)
         print('')
         # +1 to take into account padding
-        self.vocabSize = len(self.vocabulary.indicesByTokens)
+        self.vocab_size = len(self.vocabulary.indicesByTokens)
         self.startId = self.vocabulary.tokenToIndex(self.vocabulary.endToken)
 
         # self.nltk_generate = generate(self.grammar, n = self.batch_size)
@@ -220,7 +221,7 @@ class next_character_generator(object):
             if not self.categorical:
                 yield in_indices, out_indices
             else:
-                categorical_indices = to_categorical(out_indices, num_classes=self.vocabSize)
+                categorical_indices = to_categorical(out_indices, num_classes=self.vocab_size)
                 yield in_indices, categorical_indices
 
     def indicesToSentences(self, indices, offset=0):
@@ -246,7 +247,7 @@ class next_word_generator(object):
         print(self.vocabulary.indicesByTokens)
         print('')
         # +1 to take into account padding
-        self.vocabSize = len(self.vocabulary.indicesByTokens)
+        self.vocab_size = len(self.vocabulary.indicesByTokens)
         self.startId = self.vocabulary.tokenToIndex(self.vocabulary.endToken)
 
         # self.nltk_generate = generate(self.grammar, n = self.batch_size)
@@ -277,7 +278,7 @@ class next_word_generator(object):
             if not self.categorical:
                 yield in_indices, out_indices
             else:
-                categorical_indices = to_categorical(out_indices, num_classes=self.vocabSize)
+                categorical_indices = to_categorical(out_indices, num_classes=self.vocab_size)
                 yield in_indices, categorical_indices
 
     def indicesToSentences(self, indices, offset=0):
@@ -301,7 +302,7 @@ class w2n_generator(object):
         print(self.vocabulary.indicesByTokens)
         print('')
         # +1 to take into account padding
-        self.vocabSize = len(self.vocabulary.indicesByTokens)
+        self.vocab_size = len(self.vocabulary.indicesByTokens)
         self.startId = self.vocabulary.tokenToIndex(self.vocabulary.endToken)
 
         # self.nltk_generate = generate(self.grammar, n = self.batch_size)
@@ -331,7 +332,7 @@ class w2n_generator(object):
             if not self.categorical:
                 yield in_indices, out_indices
             else:
-                categorical_indices = to_categorical(out_indices, num_classes=self.vocabSize)
+                categorical_indices = to_categorical(out_indices, num_classes=self.vocab_size)
                 yield in_indices, categorical_indices
 
     def indicesToSentences(self, indices, offset=0):
@@ -340,7 +341,7 @@ class w2n_generator(object):
         return self.vocabulary.indicesToSentences(indices, offset=offset)
 
 
-def generateFromGzip(gzipDatasetFilepath, batchSize):
+def generateFromGzip(gzipDatasetFilepath, batch_size):
     # read last sentence to reinitialize the generator once it's found
     this_gzip = Popen(['gzip', '-dc', gzipDatasetFilepath], stdout=PIPE)
     tail = Popen(['tail', '-1'], stdin=this_gzip.stdout, stdout=PIPE)
@@ -358,7 +359,7 @@ def generateFromGzip(gzipDatasetFilepath, batchSize):
                 sentences = []
                 f = gzip.open(gzipDatasetFilepath, 'rb')
 
-            if len(sentences) >= batchSize:
+            if len(sentences) >= batch_size:
                 batch = sentences
                 sentences = []
                 yield batch
@@ -382,25 +383,25 @@ def SentenceToIndicesGenerator(sentence_generator, vocabulary, maxSentenceLen=No
         yield padded
 
 
-def IndicesToNextStepGenerator(indices_generator, vocabSize=None):
+def IndicesToNextStepGenerator(indices_generator, vocab_size=None):
     while True:
         indices = next(indices_generator)
         maxlen = indices.shape[1]
         column = np.random.randint(low=1, high=maxlen)
         model_input = indices[:, :column]
         model_output = indices[:, column, np.newaxis]
-        if isinstance(vocabSize, int):
-            model_output = to_categorical(model_output, num_classes=vocabSize)
+        if isinstance(vocab_size, int):
+            model_output = to_categorical(model_output, num_classes=vocab_size)
         yield model_input, model_output
 
 
-def GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batchSize, maxSentenceLen=None):
+def GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batch_size, maxSentenceLen=None):
     vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
-    vocabSize = vocabulary.getMaxVocabularySize()
+    vocab_size = vocabulary.getMaxVocabularySize()
 
     generatorSentences = generateFromGzip(
         gzipDatasetFilepath=gzip_filepath,
-        batchSize=batchSize
+        batch_size=batch_size
     )
     generatorIndices = SentenceToIndicesGenerator(
         sentence_generator=generatorSentences,
@@ -409,7 +410,7 @@ def GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batchSize, maxSente
     )
     generatorNextStep = IndicesToNextStepGenerator(
         generatorIndices,
-        vocabSize
+        vocab_size
     )
     while True:
         generation = next(generatorNextStep)
@@ -418,7 +419,7 @@ def GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batchSize, maxSente
 
 def CreateGzipOfIndices(gzip_filepath, grammar_filepath):
     vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
-    vocabSize = vocabulary.getMaxVocabularySize()
+    vocab_size = vocabulary.getMaxVocabularySize()
 
     PAD = vocabulary.indicesByTokens[vocabulary.padToken]
     START = vocabulary.indicesByTokens[vocabulary.startToken]
@@ -447,19 +448,18 @@ def CreateGzipOfIndices(gzip_filepath, grammar_filepath):
     return new_filepath
 
 
-def GzipToNextStepGenerator_new(gzip_filepath, grammar_filepath, batchSize, maxSentenceLen=None):
+def GzipToNextStepGenerator_new(gzip_filepath, grammar_filepath, batch_size, maxSentenceLen=None):
     # TODO: save the data in this format from the beginning, so people that want to test it don't have problems
     if not 'indices' in gzip_filepath:
         gzip_filepath = CreateGzipOfIndices(gzip_filepath, grammar_filepath)
 
 
-
-def GzipToIndicesGenerator(gzip_filepath, grammar_filepath, batchSize):
+def GzipToIndicesGenerator(gzip_filepath, grammar_filepath, batch_size):
     vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
 
     generatorSentences = generateFromGzip(
         gzipDatasetFilepath=gzip_filepath,
-        batchSize=batchSize
+        batch_size=batch_size
     )
     generatorIndices = SentenceToIndicesGenerator(
         sentence_generator=generatorSentences,
@@ -471,26 +471,22 @@ def GzipToIndicesGenerator(gzip_filepath, grammar_filepath, batchSize):
 
 
 def MockNextStepGenerator(batch_size, num_classes=11, maxlen=5):
-    
     while True:
-        
         batch = np.random.randint(num_classes, size=(batch_size, maxlen))
         mock_one_hot = np.zeros(shape=(batch_size, num_classes))
         yield batch, mock_one_hot
-        
-     
-     
-     
+
 
 class MockDataGenerator(tf.keras.utils.Sequence):
     'Generates data for Keras'
+
     def __init__(self, batch_size, n_classes=11, maxlen=5):
         'Initialization'
         self.batch_size, self.n_classes, self.maxlen = batch_size, n_classes, maxlen
 
     def __len__(self):
         'Denotes the number of batches per epoch'
-        return 1000 #int(np.floor(len(self.list_IDs) / self.batch_size))
+        return 1000  # int(np.floor(len(self.list_IDs) / self.batch_size))
 
     def __getitem__(self, index):
         'Generate one batch of data'
@@ -502,20 +498,85 @@ class MockDataGenerator(tf.keras.utils.Sequence):
 
     def on_epoch_end(self):
         pass
-        
+
     def __data_generation(self):
-        'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
         # Initialization
-        
+
         X = np.random.randint(self.n_classes, size=(self.batch_size, self.maxlen))
         y = np.zeros(shape=(self.batch_size, self.n_classes))
-        #time.sleep(2)
-        return X, y  
+        # time.sleep(2)
+        return X, y
+
+
+class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
+    'Generates data for Keras'
+
+    def __init__(self, gzip_filepath, grammar_filepath, batch_size, n_classes=11, maxlen=5):
+        'Initialization'
+
+        self.__dict__.update(gzip_filepath=gzip_filepath,
+                             grammar_filepath=grammar_filepath,
+                             batch_size=batch_size,
+                             n_classes=n_classes,
+                             maxlen=maxlen)
+        self.__count_lines_in_gzip()
+        self.on_epoch_end()
+
+        self.vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
+
+        self.PAD = self.vocabulary.indicesByTokens[self.vocabulary.padToken]
+        self.START = self.vocabulary.indicesByTokens[self.vocabulary.startToken]
+        self.END = self.vocabulary.indicesByTokens[self.vocabulary.endToken]
+
+    def __count_lines_in_gzip(self):
+        self.nb_lines = 0
+        f = gzip.open(self.gzip_filepath, 'rb')
+        for line in f:
+            sentence = line.strip().decode("utf-8")
+            self.nb_lines += 1
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(np.floor(self.nb_lines / self.batch_size))
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+
+        # Generate data
+        X, y = self.__data_generation()
+
+        return X, y
+
+    def on_epoch_end(self):
+        self.f = gzip.open(self.gzip_filepath, 'rb')
+
+    def __data_generation(self):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        # Initialization
+
+        i = 0
+        for line in self.f:
+            sentence = line.strip().decode("utf-8")
+            indices = [self.PAD, self.START] + self.vocabulary.tokensToIndices(tokenize(sentence)) + [self.END]
+
+            model_input = indices[:, :self.maxlen]
+            model_output = indices[:, self.maxlen, np.newaxis]
+
+            if i >= self.batch_size-1: break
+
+        if isinstance(self.vocab_size, int):
+            model_output = to_categorical(model_output, num_classes=self.vocab_size)
+
+        X = np.random.randint(self.n_classes, size=(self.batch_size, self.maxlen))
+        y = np.zeros(shape=(self.batch_size, self.n_classes))
+        # time.sleep(2)
+        return X, y
+
 
 if __name__ == '__main__':
     grammar_filepath = '../data/simplerREBER_grammar.cfg'
     gzip_filepath = '../data/REBER_biased_train.gz'
-    batchSize = 3
-    generator = GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batchSize)
+    batch_size = 3
+    generator = GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batch_size)
     # check REBER generator
-

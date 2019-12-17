@@ -77,7 +77,7 @@ def plot_softmax_evolution(softmaxes_list, name='softmaxes'):
     f.savefig(name + ".pdf", bbox_inches='tight')
 
 
-def checkDuringTraining(generator_class, indices_sentences, encoder_model, decoder_model, batchSize, latDim):
+def checkDuringTraining(generator_class, indices_sentences, encoder_model, decoder_model, batch_size, lat_dim):
     # original sentences
     sentences = generator_class.indicesToSentences(indices_sentences)
 
@@ -88,7 +88,7 @@ def checkDuringTraining(generator_class, indices_sentences, encoder_model, decod
     sentences_reconstructed = generator_class.indicesToSentences(indices_reconstructed)
 
     # generated sentences
-    noise = np.random.rand(batchSize, latDim)
+    noise = np.random.rand(batch_size, lat_dim)
     indicess, softmaxes = decoder_model.predict(noise)
     sentences_generated = generator_class.indicesToSentences(indicess)
 
