@@ -512,35 +512,38 @@ class MockDataGenerator(tf.keras.utils.Sequence):
 class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
     'Generates data for Keras'
 
-    def __init__(self, gzip_filepath, grammar_filepath, batch_size, n_classes=11, maxlen=5):
+    def __init__(self, gzip_filepath, grammar_filepath, batch_size, maxlen=5, nb_lines=None):
         'Initialization'
 
         self.__dict__.update(gzip_filepath=gzip_filepath,
                              grammar_filepath=grammar_filepath,
                              batch_size=batch_size,
-                             n_classes=n_classes,
-                             maxlen=maxlen)
+                             maxlen=maxlen,
+                             nb_lines=nb_lines)
         self.__count_lines_in_gzip()
         self.on_epoch_end()
 
         self.vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
+        self.vocab_size = self.vocabulary.getMaxVocabularySize()
 
         self.PAD = self.vocabulary.indicesByTokens[self.vocabulary.padToken]
         self.START = self.vocabulary.indicesByTokens[self.vocabulary.startToken]
         self.END = self.vocabulary.indicesByTokens[self.vocabulary.endToken]
 
     def __count_lines_in_gzip(self):
-        self.nb_lines = 0
-        f = gzip.open(self.gzip_filepath, 'rb')
-        for line in f:
-            sentence = line.strip().decode("utf-8")
-            self.nb_lines += 1
+
+        if self.nb_lines == None:
+            self.nb_lines = 0
+            f = gzip.open(self.gzip_filepath, 'rb')
+            for line in f:
+                _ = line.strip().decode("utf-8")
+                self.nb_lines += 1
 
     def __len__(self):
         'Denotes the number of batches per epoch'
         return int(np.floor(self.nb_lines / self.batch_size))
 
-    def __getitem__(self, index):
+    def __getitem__(self, index=0):
         'Generate one batch of data'
 
         # Generate data
