@@ -546,11 +546,7 @@ class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
 
     def __len__(self):
         'Denotes the number of batches per epoch'
-        if 'val' in self.gzip_filepath:
-            n_be = 1
-        else:
-            n_be = int(np.floor(self.nb_lines / self.batch_size))
-        return n_be
+        return int(np.floor(self.nb_lines / self.batch_size))
 
     def __getitem__(self, index=0):
         'Generate one batch of data'
