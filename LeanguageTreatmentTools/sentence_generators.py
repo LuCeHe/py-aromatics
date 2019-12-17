@@ -573,12 +573,12 @@ class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
             sentence = line.strip().decode("utf-8")
             indices = [self.PAD, self.START] + self.vocabulary.tokensToIndices(tokenize(sentence)) + [self.END]
             indices = indices[:self.maxlen + 1]
-
             l = len(indices)
             randint = np.random.randint(int(2*l/3), l)
             list_input.append(indices[:randint])
-            list_output.append(indices[randint])
+            list_output.append([indices[randint]])
 
+            i += 1
             if i >= self.batch_size - 1: break
 
         X = pad_sequences(list_input,

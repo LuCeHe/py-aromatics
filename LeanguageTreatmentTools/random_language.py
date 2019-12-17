@@ -4,7 +4,7 @@ from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 
 def random_sequences_and_points(batch_size=3,
                                 lat_dim=4,
-                                max_senLen=6,
+                                maxlen=6,
                                 repeated=False,
                                 vocab_size=2,
                                 hyperplane=False):
@@ -13,14 +13,14 @@ def random_sequences_and_points(batch_size=3,
         questions = []
         points = np.random.rand(batch_size, lat_dim)
         for _ in range(batch_size):
-            sentence_length = max_senLen  # np.random.choice(max_senLen)
+            sentence_length = maxlen  # np.random.choice(maxlen)
             randomQ = np.random.choice(vocab_size, sentence_length)  # + 1
             # EOS = (vocab_size+1)*np.ones(1)
             # randomQ = np.concatenate((randomQ, EOS))
             questions.append(randomQ)
     else:
         point = np.random.rand(1, lat_dim)
-        sentence_length = max_senLen  # np.random.choice(max_senLen)
+        sentence_length = maxlen  # np.random.choice(maxlen)
         question = np.random.choice(vocab_size, sentence_length)  # + 1
         question = np.expand_dims(question, axis=0)
         points = np.repeat(point, repeats=[batch_size], axis=0)
