@@ -531,6 +531,9 @@ class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
 
         if 'val' in self.gzip_filepath:
             self.X_val, self.y_val = self.__data_generation()
+            if nb_lines > 5:
+                self.nb_lines == 512
+                self.batch_size == self.nb_lines
 
     def __count_lines_in_gzip(self):
 

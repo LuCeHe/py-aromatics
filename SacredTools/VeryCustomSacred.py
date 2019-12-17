@@ -30,7 +30,7 @@ class CustomFileStorageObserver(FileStorageObserver):
 def CustomExperiment(experiment_name):
     ex = Experiment(experiment_name)
     ex.observers.append(FileStorageObserver.create("experiments"))
-    #ex.observers.append(CustomFileStorageObserver.create("experiments"))
+    ex.observers.append(CustomFileStorageObserver.create("experiments"))
 
     # ex.observers.append(MongoObserver())
     ex.captured_out_filter = apply_backspaces_and_linefeeds
