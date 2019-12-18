@@ -417,7 +417,7 @@ def GzipToNextStepGenerator(gzip_filepath, grammar_filepath, batch_size, maxSent
         yield generation
 
 
-def CreateGzipOfIndices(gzip_filepath, grammar_filepath):
+def create_gzip_of_indices(gzip_filepath, grammar_filepath):
     vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
     vocab_size = vocabulary.getMaxVocabularySize()
 
