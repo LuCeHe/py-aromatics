@@ -343,8 +343,14 @@ class w2n_generator(object):
 
 def generateFromGzip(gzipDatasetFilepath, batch_size):
     # read last sentence to reinitialize the generator once it's found
-    this_gzip = Popen(['gzip', '-dc', gzipDatasetFilepath], stdout=PIPE)
-    tail = Popen(['tail', '-1'], stdin=this_gzip.stdout, stdout=PIPE)
+    print(gzipDatasetFilepath)
+    this_gzip = Popen(['gzip', '-dc', gzipDatasetFilepath],
+                      stdout=PIPE,
+                      shell=True, )
+    tail = Popen(['tail', '-1'],
+                 stdin=this_gzip.stdout,
+                 stdout=PIPE,
+                 shell=True,)
     last_sentence = tail.communicate()[0][:-2]
 
     f = gzip.open(gzipDatasetFilepath, 'rb')
@@ -356,6 +362,7 @@ def generateFromGzip(gzipDatasetFilepath, batch_size):
             sentences.append(sentence)
 
             if sentence == last_sentence:
+                print('hey')
                 sentences = []
                 f = gzip.open(gzipDatasetFilepath, 'rb')
 
@@ -508,6 +515,7 @@ class MockDataGenerator(tf.keras.utils.Sequence):
         # time.sleep(2)
         return X, y
 
+
 class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
     'Generates data for Keras'
 
@@ -574,7 +582,7 @@ class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
             indices = [self.PAD, self.START] + self.vocabulary.tokensToIndices(tokenize(sentence)) + [self.END]
             indices = indices[:self.maxlen + 1]
             l = len(indices)
-            randint = np.random.randint(int(2*l/3), l)
+            randint = np.random.randint(int(2 * l / 3), l)
             list_input.append(indices[:randint])
             list_output.append([indices[randint]])
 
