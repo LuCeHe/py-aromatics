@@ -343,7 +343,6 @@ class w2n_generator(object):
 
 def generateFromGzip(gzipDatasetFilepath, batch_size):
     # read last sentence to reinitialize the generator once it's found
-    print(gzipDatasetFilepath)
     this_gzip = Popen(['gzip', '-dc', gzipDatasetFilepath],
                       stdout=PIPE,
                       shell=True, )
