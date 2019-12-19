@@ -29,15 +29,15 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import sys
-import nltk
-import six
-import numpy as np
 import json
-import random
 import logging
-
+import random
+import sys
 from enum import Enum
+
+import nltk
+import numpy as np
+import six
 from nltk.grammar import Nonterminal, CFG, Production
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,6 @@ class Interpreter(object):
 class NltkParser(Parser):
 
     def __init__(self, grammar):
-
         if not isinstance(grammar, nltk.CFG):
             logger.info('Using grammar file: %s' % (grammar))
             grammar = nltk.data.load('file:' + grammar)
@@ -172,7 +171,6 @@ def addEndTokenToGrammar(grammar, endToken):
 
 
 class Vocabulary(object):
-    
     padToken = '<PAD>'
     startToken = '<START>'
     endToken = '<END>'
@@ -190,7 +188,7 @@ class Vocabulary(object):
             indicesByTokens[token] = i
         self.__dict__.update(tokens=tokens,
                              indicesByTokens=indicesByTokens)
-        
+
         self.padIndex = indicesByTokens[self.padToken]
         self.startIndex = indicesByTokens[self.startToken]
         self.endIndex = indicesByTokens[self.endToken]
@@ -240,15 +238,15 @@ class Vocabulary(object):
 
     def indicesToSentence(self, indices, offset=0):
         return ' '.join(self.indicesToTokens(indices, offset))
-    
+
     def indicesToSentences(self, indices_list, offset=0):
         if type(indices_list).__module__ == 'numpy':
             indices_list = indices_list.tolist()
-            
+
             # unpad:
-            
+
             indices_list = [list(filter((0).__ne__, indices)) for indices in indices_list]
-            
+
         sentences = [self.indicesToSentence(indices, offset) for indices in indices_list]
         return sentences
 
@@ -500,7 +498,7 @@ class GrammarLanguageModel(LanguageModel):
 
     def reset(self):
         self.pos = 0
-        assert(isinstance(self.grammar.start(), Nonterminal))
+        assert (isinstance(self.grammar.start(), Nonterminal))
         label = self.grammar.start().symbol()
         self.start = NonTerminalNode(label)
         self.tree = set([self.start])
@@ -605,5 +603,3 @@ class GrammarLanguageModel(LanguageModel):
             elif n.nodeType == NodeType.terminalgroup:
                 tokens.extend(list(n.startTokens))
         return set(tokens)
-    
-    
