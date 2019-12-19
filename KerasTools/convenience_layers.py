@@ -20,6 +20,17 @@ class ExpandDims(object):
 
         return Lambda(ed, arguments={'axis': self.axis})(inputs)
 
+class Squeeze(object):
+
+    def __init__(self, axis):
+        self.axis = axis
+
+    def __call__(self, inputs):
+        def squeeze(tensor, axis):
+            squeezed = K.squeeze(tensor, axis=axis)
+            return squeezed
+
+        return Lambda(squeeze, arguments={'axis': self.axis})(inputs)
 
 class Slice(object):
 
