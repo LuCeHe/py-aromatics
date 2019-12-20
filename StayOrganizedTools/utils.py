@@ -34,7 +34,7 @@ import time
 from time import strftime, localtime
 
 import numpy as np
-
+import tensorflow as tf
 
 def make_directories(time_string=None):
     experiments_folder = "experiments"
@@ -135,6 +135,14 @@ def collect_information():
                 g.write(line)
                 g.write('\n')
     print(i)
+
+
+def setReproducible(seed):
+    np.random.seed(seed)
+    #tf.random.set_seed(seed)
+    tf.random.set_random_seed(seed)
+
+
 
 
 if __name__ == '__main__':
