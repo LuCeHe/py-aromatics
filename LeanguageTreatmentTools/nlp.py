@@ -276,11 +276,6 @@ class Vocabulary(object):
         grammar = nltk.data.load('file:' + grammarCfg)
         return Vocabulary.fromGrammar(grammar)
 
-    # @staticmethod
-    # def fromOracle():
-    #    oracle = Oracle()
-    #    tokens = oracle.getCompleteVocabulary()
-    #    return Vocabulary(tokens)
 
     @staticmethod
     def fromFile(filename):
