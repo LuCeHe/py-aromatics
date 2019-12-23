@@ -1,6 +1,5 @@
 import tensorflow as tf
 import tensorflow.keras.backend as K
-
 from tensorflow.keras.layers import Input, Embedding, \
     LSTM, Lambda, Dense, Layer
 from tensorflow.keras.models import Model
@@ -20,6 +19,7 @@ class ExpandDims(object):
 
         return Lambda(ed, arguments={'axis': self.axis})(inputs)
 
+
 class Squeeze(object):
 
     def __init__(self, axis):
@@ -32,14 +32,33 @@ class Squeeze(object):
 
         return Lambda(squeeze, arguments={'axis': self.axis})(inputs)
 
-class Slice(object):
+
+class Slice(Layer):
 
     # axis parameter is not functional
-    def __init__(self, axis, initial, final):
+    def __init__(self, axis, initial, final, **kwargs):
         self.axis, self.initial, self.final = axis, initial, final
+        super(Slice, self).__init__(**kwargs)
 
-    def __call__(self, inputs):
-        return Lambda(slice_from_to, arguments={'initial': self.initial, 'final': self.final})(inputs)
+    def build(self, input_shape):
+        super(Slice, self).build(input_shape)
+
+    def call(self, inputs):
+        output = slice_from_to(inputs, self.initial, self.final)
+        return output
+
+
+class RepeatElements(Layer):
+    def __init__(self, n_head, **kwargs):
+        self.n_head = n_head
+        super(RepeatElements, self).__init__(**kwargs)
+
+        def build(self, input_shape):
+            super(RepeatElements, self).build(input_shape)
+
+    def call(self, inputs):
+        repeated = K.repeat_elements(inputs, self.n_head, 0)
+        return repeated
 
 
 class Clip(object):
