@@ -87,7 +87,7 @@ class ReplaceColumn(Layer):
         return new_matrix
 
 
-def predefined_model(vocab_size, emb_dim, units=256):
+def predefined_model(vocab_size, emb_dim, units=128):
     embedding = Embedding(vocab_size, emb_dim, mask_zero='True')
     lstm = LSTM(units, return_sequences=False)
 

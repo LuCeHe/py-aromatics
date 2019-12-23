@@ -126,6 +126,13 @@ class NltkGrammarSampler(object):
 def tokenize(sentence):
     sentence = sentence.replace('  ', ' ')
     tokens = sentence.split(' ')
+
+    if len(tokens) == 1 and tokens[0] == '':
+        tokens = ['the']
+    if tokens[0] == '':
+        tokens = tokens[1:]
+    if tokens[-1] == '':
+        tokens = tokens[:-1]
     return tokens
 
 
@@ -175,7 +182,7 @@ class Vocabulary(object):
     startToken = '<START>'
     endToken = '<END>'
     unkToken = '<UNK>'
-    convenienceTokens = [padToken, startToken, endToken, unkToken]
+    specialTokens = [padToken, startToken, endToken, unkToken]
 
     def __init__(self, tokens):
 
@@ -183,7 +190,7 @@ class Vocabulary(object):
             tokens.remove(Vocabulary.endToken)
 
         indicesByTokens = dict()
-        tokens = Vocabulary.convenienceTokens + sorted(list(tokens))
+        tokens = Vocabulary.specialTokens + sorted(list(tokens))
         for i, token in enumerate(tokens):
             indicesByTokens[token] = i
         self.__dict__.update(tokens=tokens,
@@ -249,6 +256,17 @@ class Vocabulary(object):
 
         sentences = [self.indicesToSentence(indices, offset) for indices in indices_list]
         return sentences
+
+    def removeSpecialTokens(self, tokens):
+        return [token for token in tokens if token not in self.specialTokens]
+
+    def removeFromEnd(self, tokens):
+
+        try:
+            end_location = tokens.index(self.endTokens)
+            tokens = tokens[:end_location+1]
+        except: pass
+        return self.removeSpecialTokens(tokens)
 
     def toFile(self, filename):
         with open(filename, 'w') as f:
