@@ -1,3 +1,5 @@
+import numpy as np
+
 def _invert(x, limits):
     """inverts a value x on a scale from
     limits[0] to limits[1]"""
