@@ -41,7 +41,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.utils import to_categorical
 
 # grammar cannot have recursion!
-from GenericTools.LeanguageTreatmentTools.nlp import Vocabulary, NltkGrammarSampler, tokenize
+from GenericTools.LeanguageTreatmentTools.nlp import Vocabulary, NltkGrammarSampler, tokenize, postprocessSentence
 
 grammar = CFG.fromstring("""
                          S -> NP VP | NP V
@@ -57,6 +57,10 @@ def _basicGenerator(grammar, batch_size=3):
     # sentences = []
     while True:
         yield [[' '.join(sentence)] for sentence in generate(grammar, n=batch_size)]
+
+
+def indicesToOneHot(indices, num_tokens):
+    return np.eye(num_tokens)[indices]
 
 
 def sentencesToCharacters(sentences):
@@ -349,7 +353,7 @@ def generateFromGzip(gzipDatasetFilepath, batch_size):
     tail = Popen(['tail', '-1'],
                  stdin=this_gzip.stdout,
                  stdout=PIPE,
-                 shell=True,)
+                 shell=True, )
     last_sentence = tail.communicate()[0][:-2]
 
     f = gzip.open(gzipDatasetFilepath, 'rb')
@@ -532,9 +536,9 @@ class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
         self.vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
         self.vocab_size = self.vocabulary.getMaxVocabularySize()
 
-        self.PAD = self.vocabulary.indicesByTokens[self.vocabulary.padToken]
-        self.START = self.vocabulary.indicesByTokens[self.vocabulary.startToken]
-        self.END = self.vocabulary.indicesByTokens[self.vocabulary.endToken]
+        self.PAD = self.vocabulary.padIndex
+        self.START = self.vocabulary.startIndex
+        self.END = self.vocabulary.endIndex
 
         if 'val' in self.gzip_filepath:
             self.X_val, self.y_val = self.__data_generation()
@@ -595,6 +599,115 @@ class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
         y = to_categorical(list_output, num_classes=self.vocab_size)
 
         return X, y
+
+
+class BaseGenerator(tf.keras.utils.Sequence):
+    'Generates data for Keras'
+
+    def __init__(self, gzip_filepath, grammar_filepath,
+                 batch_size, maxlen=None, nb_lines=None, reverse_input=True):
+        'Initialization'
+
+        self.__dict__.update(gzip_filepath=gzip_filepath,
+                             grammar_filepath=grammar_filepath,
+                             batch_size=batch_size,
+                             maxlen=maxlen,
+                             nb_lines=nb_lines,
+                             reverse_input=reverse_input)
+        self.__count_lines_in_gzip()
+        self.on_epoch_end()
+
+        self.vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
+        self.vocab_size = self.vocabulary.getMaxVocabularySize()
+
+        self.PAD = self.vocabulary.padIndex
+        self.START = self.vocabulary.startIndex
+        self.END = self.vocabulary.endIndex
+
+        if 'val' in self.gzip_filepath:
+            self.X_val, self.y_val = self.__data_generation()
+            if nb_lines > 5:
+                self.nb_lines == 512
+                self.batch_size == self.nb_lines
+
+    def __count_lines_in_gzip(self):
+
+        if self.nb_lines == None:
+            self.nb_lines = 0
+            f = gzip.open(self.gzip_filepath, 'rb')
+            for line in f:
+                _ = line.strip().decode("utf-8")
+                self.nb_lines += 1
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(np.floor(self.nb_lines / self.batch_size))
+
+    def __getitem__(self, index=0):
+        'Generate one batch of data'
+
+        # Generate data
+        if 'val' in self.gzip_filepath:
+            X, y = self.X_val, self.y_val
+        else:
+            X, y = self.__data_generation()
+
+        return X, y
+
+    def on_epoch_end(self):
+        self.f = gzip.open(self.gzip_filepath, 'rb')
+
+    def __data_generation(self):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        # Initialization
+
+        i = 0
+        list_inidices = []
+        for line in self.f:
+            sentence = line.strip().decode("utf-8")
+            sentences = postprocessSentence(sentence)
+
+            indices = [self.PAD, self.START] + self.vocabulary.tokensToIndices(tokenize(sentence)) + [self.END]
+            indices = indices[:self.maxlen]
+
+            list_inidices.append(indices)
+            i += 1
+            if i >= self.batch_size - 1: break
+
+        indices = list_inidices
+        maxSentenceLen = len(max(indices, key=len))
+
+        if self.reverse_input:
+            # Add a end token to encoder input
+            x_enc = pad_sequences([tokens[::-1] for tokens in indices],
+                                  maxlen=maxSentenceLen,
+                                  value=self.vocabulary.padIndex,
+                                  padding='post')
+            x_enc = np.array(x_enc, dtype=np.int32)
+        else:
+            # Add a end token to encoder input
+            x_enc = pad_sequences([tokens for tokens in indices],
+                                  maxlen=maxSentenceLen,
+                                  value=self.vocabulary.padIndex,
+                                  padding='post')
+            x_enc = np.array(x_enc, dtype=np.int32)
+
+        # Add a end token to decoder input
+        x_dec = pad_sequences([[self.vocabulary.startIndex] + tokens for tokens in indices],
+                              maxlen=maxSentenceLen + 1,
+                              value=self.vocabulary.padIndex,
+                              padding='post')
+        x_dec = np.array(x_dec, dtype=np.int32)
+
+        # Add a end token to decoder input
+        y_dec = pad_sequences([tokens + [self.vocabulary.endIndex] for tokens in indices],
+                              maxlen=maxSentenceLen + 1,
+                              value=self.vocabulary.padIndex,
+                              padding='post')
+        y_dec_oh = np.array(indicesToOneHot(y_dec, self.vocabulary.getMaxVocabularySize()),
+                            dtype=np.float32)
+
+        return [x_enc, x_dec], y_dec_oh
 
 
 if __name__ == '__main__':
