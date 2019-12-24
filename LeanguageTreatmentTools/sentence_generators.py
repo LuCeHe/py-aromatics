@@ -63,6 +63,15 @@ def indicesToOneHot(indices, num_tokens):
     return np.eye(num_tokens)[indices]
 
 
+def getNoisyInput(keep, input_indices):
+    if keep != 1.:
+        assert keep <= 1.
+        assert keep >= 0.
+        keep_matrix = np.random.choice([0, 1], input_indices.shape, p=[1 - keep, keep])
+        input_indices = input_indices * keep_matrix
+    return input_indices
+
+
 def sentencesToCharacters(sentences):
     """
     The input:
@@ -604,33 +613,39 @@ class GzipToNextToken_KerasGenerator(tf.keras.utils.Sequence):
 class BaseGenerator(tf.keras.utils.Sequence):
     'Generates data for Keras'
 
-    def __init__(self, gzip_filepath, grammar_filepath,
-                 batch_size, maxlen=None, nb_lines=None, reverse_input=True):
+    def __init__(self, gzip_filepath, vocabulary,
+                 batch_size, steps_per_epoch=None, maxlen=None, nb_lines=None, reverse_input=True, keep=1.):
         'Initialization'
 
         self.__dict__.update(gzip_filepath=gzip_filepath,
-                             grammar_filepath=grammar_filepath,
+                             vocabulary=vocabulary,
                              batch_size=batch_size,
                              maxlen=maxlen,
                              nb_lines=nb_lines,
-                             reverse_input=reverse_input)
-        self.__count_lines_in_gzip()
+                             reverse_input=reverse_input,
+                             keep=keep)
+        self.count_lines_in_gzip()
         self.on_epoch_end()
 
-        self.vocabulary = Vocabulary.fromGrammarFile(grammar_filepath)
         self.vocab_size = self.vocabulary.getMaxVocabularySize()
 
         self.PAD = self.vocabulary.padIndex
         self.START = self.vocabulary.startIndex
         self.END = self.vocabulary.endIndex
 
+        if steps_per_epoch == 'all':
+            self.steps_per_epoch = int(np.floor(self.nb_lines / self.batch_size))
+        else:
+            self.steps_per_epoch = steps_per_epoch
+
         if 'val' in self.gzip_filepath:
-            self.X_val, self.y_val = self.__data_generation()
-            if nb_lines > 5:
+            self.X_val, self.y_val = self.data_generation()
+            self.steps_per_epoch = 1
+            if not nb_lines == None and nb_lines > 5:
                 self.nb_lines == 512
                 self.batch_size == self.nb_lines
 
-    def __count_lines_in_gzip(self):
+    def count_lines_in_gzip(self):
 
         if self.nb_lines == None:
             self.nb_lines = 0
@@ -641,7 +656,7 @@ class BaseGenerator(tf.keras.utils.Sequence):
 
     def __len__(self):
         'Denotes the number of batches per epoch'
-        return int(np.floor(self.nb_lines / self.batch_size))
+        return self.steps_per_epoch
 
     def __getitem__(self, index=0):
         'Generate one batch of data'
@@ -650,14 +665,14 @@ class BaseGenerator(tf.keras.utils.Sequence):
         if 'val' in self.gzip_filepath:
             X, y = self.X_val, self.y_val
         else:
-            X, y = self.__data_generation()
+            X, y = self.data_generation()
 
         return X, y
 
     def on_epoch_end(self):
         self.f = gzip.open(self.gzip_filepath, 'rb')
 
-    def __data_generation(self):
+    def data_generation(self):
         'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
         # Initialization
 
@@ -665,14 +680,14 @@ class BaseGenerator(tf.keras.utils.Sequence):
         list_inidices = []
         for line in self.f:
             sentence = line.strip().decode("utf-8")
-            sentences = postprocessSentence(sentence)
+            sentence = postprocessSentence(sentence)
 
             indices = [self.PAD, self.START] + self.vocabulary.tokensToIndices(tokenize(sentence)) + [self.END]
             indices = indices[:self.maxlen]
 
             list_inidices.append(indices)
             i += 1
-            if i >= self.batch_size - 1: break
+            if i >= self.batch_size: break
 
         indices = list_inidices
         maxSentenceLen = len(max(indices, key=len))
@@ -708,6 +723,125 @@ class BaseGenerator(tf.keras.utils.Sequence):
                             dtype=np.float32)
 
         return [x_enc, x_dec], y_dec_oh
+
+
+class AeGenerator(BaseGenerator):
+    pass
+
+
+class VaeGenerator(BaseGenerator):
+
+    def __getitem__(self, index=0):
+        'Generate one batch of data'
+
+        # Generate data
+        if 'val' in self.gzip_filepath:
+            X, y = self.X_val, self.y_val
+        else:
+            X, y = self.data_generation()
+
+        return X, [y, y]
+
+
+class TransformerGenerator(BaseGenerator):
+
+    def __init__(self, gzip_filepath, itokens,
+                 batch_size, steps_per_epoch=None, maxlen=None, nb_lines=None, reverse_input=True, keep=1.):
+        'Initialization'
+
+        self.__dict__.update(gzip_filepath=gzip_filepath,
+                             itokens=itokens,
+                             batch_size=batch_size,
+                             maxlen=maxlen,
+                             nb_lines=nb_lines,
+                             reverse_input=reverse_input,
+                             keep=keep)
+        self.count_lines_in_gzip()
+        self.on_epoch_end()
+
+        self.vocab_size = self.itokens.num()
+
+        self.PAD = self.itokens.padid
+        self.START = self.itokens.startid
+        self.END = self.itokens.endid
+
+        if steps_per_epoch == 'all':
+            self.steps_per_epoch = int(np.floor(self.nb_lines / self.batch_size))
+        else:
+            self.steps_per_epoch = steps_per_epoch
+
+        if 'val' in self.gzip_filepath:
+            self.X_val, self.y_val = self.data_generation()
+            self.steps_per_epoch = 1
+            if not nb_lines == None and nb_lines > 5:
+                self.nb_lines == 512
+                self.batch_size == self.nb_lines
+
+    def data_generation(self):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        # Initialization
+
+        i = 0
+        list_indices = []
+        for line in self.f:
+            sentence = line.strip().decode("utf-8")
+            sentence = postprocessSentence(sentence)
+
+            indices = [self.itokens.padid(), self.itokens.startid()] + [self.itokens.id(z) for z in
+                                                                        sentence.split(' ')] + [self.itokens.endid()]
+
+            indices = indices[:self.maxlen]
+
+            list_indices.append(indices)
+            i += 1
+            if i >= self.batch_size: break
+
+        padded = pad_sequences(list_indices,
+                               maxlen=self.maxlen,
+                               value=self.itokens.padid(),
+                               padding='post')
+        input_indices = padded[:, :-1]
+        output_indices = padded[:, 1:]
+
+        input_indices = getNoisyInput(self.keep, input_indices)
+        return [input_indices, output_indices], None
+
+
+class ArielGenerator(BaseGenerator):
+    def data_generation(self):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        # Initialization
+
+        i = 0
+        list_input = []
+        list_output = []
+        for line in self.f:
+            sentence = line.strip().decode("utf-8")
+            sentence = postprocessSentence(sentence)
+
+            indices = [self.PAD, self.START] + self.vocabulary.tokensToIndices(tokenize(sentence)) + [self.END]
+            indices = indices[:self.maxlen]
+
+            length = len(indices)
+            next_token_pos = np.random.randint(length)
+            input_indices = indices[:next_token_pos]
+            next_token = [indices[next_token_pos]]
+
+            list_input.append(input_indices)
+            list_output.append(next_token)
+
+            i += 1
+            if i >= self.batch_size: break
+
+        input_indices = pad_sequences(list_input, maxlen=self.maxlen,
+                                      value=self.vocabulary.padIndex,
+                                      padding='pre')
+        output_indices = np.array(list_output)
+
+        output_indices = to_categorical(output_indices, num_classes=self.vocab_size)
+
+        input_indices = getNoisyInput(self.keep, input_indices)
+        return input_indices, output_indices
 
 
 if __name__ == '__main__':

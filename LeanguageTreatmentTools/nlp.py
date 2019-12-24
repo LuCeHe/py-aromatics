@@ -184,7 +184,7 @@ class Vocabulary(object):
     unkToken = '<UNK>'
     specialTokens = [padToken, startToken, endToken, unkToken]
 
-    def __init__(self, tokens):
+    def __init__(self, tokens, grammar=None):
 
         if Vocabulary.endToken in tokens:
             tokens.remove(Vocabulary.endToken)
@@ -194,7 +194,8 @@ class Vocabulary(object):
         for i, token in enumerate(tokens):
             indicesByTokens[token] = i
         self.__dict__.update(tokens=tokens,
-                             indicesByTokens=indicesByTokens)
+                             indicesByTokens=indicesByTokens,
+                             grammar=grammar)
 
         self.padIndex = indicesByTokens[self.padToken]
         self.startIndex = indicesByTokens[self.startToken]
@@ -287,7 +288,7 @@ class Vocabulary(object):
         tokens = list(set(tokens))
         tokens.sort()
 
-        return Vocabulary(tokens)
+        return Vocabulary(tokens=tokens, grammar=grammar)
 
     @staticmethod
     def fromGrammarFile(grammarCfg):
