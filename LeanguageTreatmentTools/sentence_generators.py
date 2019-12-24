@@ -746,7 +746,7 @@ class VaeGenerator(BaseGenerator):
 class TransformerGenerator(BaseGenerator):
 
     def __init__(self, gzip_filepath, itokens,
-                 batch_size, steps_per_epoch=None, maxlen=None, nb_lines=None, reverse_input=True, keep=1.):
+                 batch_size, steps_per_epoch=None, maxlen=25, nb_lines=None, reverse_input=True, keep=1.):
         'Initialization'
 
         self.__dict__.update(gzip_filepath=gzip_filepath,
