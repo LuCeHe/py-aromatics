@@ -267,7 +267,7 @@ class Vocabulary(object):
             end_location = tokens.index(self.endTokens)
             tokens = tokens[:end_location+1]
         except: pass
-        return self.removeSpecialTokens(tokens)
+        return tokens #self.removeSpecialTokens(tokens)
 
     def toFile(self, filename):
         with open(filename, 'w') as f:
