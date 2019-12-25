@@ -264,10 +264,11 @@ class Vocabulary(object):
     def removeFromEnd(self, tokens):
 
         try:
+            start_location = tokens.index(self.startTokens)
             end_location = tokens.index(self.endTokens)
-            tokens = tokens[:end_location+1]
+            tokens = tokens[start_location+1:end_location+1]
         except: pass
-        return tokens #self.removeSpecialTokens(tokens)
+        return self.removeSpecialTokens(tokens)
 
     def toFile(self, filename):
         with open(filename, 'w') as f:
