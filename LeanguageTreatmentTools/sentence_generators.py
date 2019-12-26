@@ -787,8 +787,7 @@ class TransformerGenerator(BaseGenerator):
             sentence = line.strip().decode("utf-8")
             sentence = postprocessSentence(sentence)
 
-            indices = [self.itokens.padid(), self.itokens.startid()] + [self.itokens.id(z) for z in
-                                                                        sentence.split(' ')] + [self.itokens.endid()]
+            indices = [self.itokens.padid(), self.itokens.startid()] + [self.itokens.id(z) for z in sentence.split(' ')] + [self.itokens.endid()]
 
             indices = indices[:self.maxlen]
 

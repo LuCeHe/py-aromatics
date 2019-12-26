@@ -240,9 +240,15 @@ class Vocabulary(object):
     def sentenceToIndices(self, sentence, offset=0):
         return self.tokensToIndices(tokenize(sentence), offset)
 
+    def sentenceToTokens(self, sentence):
+        return tokenize(sentence)
+
     def sentencesToIndices(self, sentences, offset=0):
         indices = [self.sentenceToIndices(sentence, offset) for sentence in sentences]
         return indices
+
+    def tokensToSentence(self, tokens):
+        return ' '.join(tokens)
 
     def indicesToSentence(self, indices, offset=0):
         return ' '.join(self.indicesToTokens(indices, offset))
@@ -250,9 +256,7 @@ class Vocabulary(object):
     def indicesToSentences(self, indices_list, offset=0):
         if type(indices_list).__module__ == 'numpy':
             indices_list = indices_list.tolist()
-
             # unpad:
-
             indices_list = [list(filter((0).__ne__, indices)) for indices in indices_list]
 
         sentences = [self.indicesToSentence(indices, offset) for indices in indices_list]
@@ -261,14 +265,20 @@ class Vocabulary(object):
     def removeSpecialTokens(self, tokens):
         return [token for token in tokens if token not in self.specialTokens]
 
-    def removeFromEnd(self, tokens):
-
+    def fromStartToEnd(self, tokens):
         try:
-            start_location = tokens.index(self.startTokens)
-            end_location = tokens.index(self.endTokens)
-            tokens = tokens[start_location+1:end_location+1]
+            start_location = tokens.index(self.startToken)
+            end_location = tokens.index(self.endToken)
+            tokens = tokens[start_location+1:end_location]
         except: pass
-        return self.removeSpecialTokens(tokens)
+        try:
+            end_location = tokens.index(self.endToken)
+            tokens = tokens[:end_location]
+        except: pass
+
+        tokens = self.removeSpecialTokens(tokens)
+        return tokens
+
 
     def toFile(self, filename):
         with open(filename, 'w') as f:
