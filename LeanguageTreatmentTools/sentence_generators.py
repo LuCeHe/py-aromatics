@@ -818,7 +818,7 @@ class ArielGenerator(BaseGenerator):
             sentence = line.strip().decode("utf-8")
             sentence = postprocessSentence(sentence)
 
-            indices = [self.PAD, self.START] + self.vocabulary.tokensToIndices(tokenize(sentence)) + [self.END]
+            indices = [self.PAD, self.START] + self.vocabulary.sentenceToIndices(sentence) + [self.END]
             indices = indices[:self.maxlen]
 
             length = len(indices)
@@ -834,7 +834,7 @@ class ArielGenerator(BaseGenerator):
 
         input_indices = pad_sequences(list_input, maxlen=self.maxlen,
                                       value=self.vocabulary.padIndex,
-                                      padding='pre')
+                                      padding='post')
         output_indices = np.array(list_output)
 
         output_indices = to_categorical(output_indices, num_classes=self.vocab_size)
