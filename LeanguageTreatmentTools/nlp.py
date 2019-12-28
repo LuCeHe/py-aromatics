@@ -268,15 +268,18 @@ class Vocabulary(object):
     def fromStartToEnd(self, tokens):
         try:
             start_location = tokens.index(self.startToken)
-            end_location = tokens.index(self.endToken)
+            end_location = tokens.index(self.endToken)            
             tokens = tokens[start_location+1:end_location]
         except: pass
         try:
             end_location = tokens.index(self.endToken)
             tokens = tokens[:end_location]
         except: pass
-
-        tokens = self.removeSpecialTokens(tokens)
+        try:
+            tokens = self.removeSpecialTokens(tokens)
+            q_location = tokens.index('?')
+            tokens = tokens[:q_location+1]
+        except: pass
         return tokens
 
 
