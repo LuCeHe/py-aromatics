@@ -268,20 +268,22 @@ class Vocabulary(object):
     def fromStartToEnd(self, tokens):
         try:
             start_location = tokens.index(self.startToken)
-            end_location = tokens.index(self.endToken)            
-            tokens = tokens[start_location+1:end_location]
-        except: pass
+            end_location = tokens.index(self.endToken)
+            tokens = tokens[start_location + 1:end_location]
+        except:
+            pass
         try:
             end_location = tokens.index(self.endToken)
             tokens = tokens[:end_location]
-        except: pass
+        except:
+            pass
         try:
             tokens = self.removeSpecialTokens(tokens)
             q_location = tokens.index('?')
-            tokens = tokens[:q_location+1]
-        except: pass
+            tokens = tokens[:q_location + 1]
+        except:
+            pass
         return tokens
-
 
     def toFile(self, filename):
         with open(filename, 'w') as f:
@@ -308,7 +310,6 @@ class Vocabulary(object):
     def fromGrammarFile(grammarCfg):
         grammar = nltk.data.load('file:' + grammarCfg)
         return Vocabulary.fromGrammar(grammar)
-
 
     @staticmethod
     def fromFile(filename):
