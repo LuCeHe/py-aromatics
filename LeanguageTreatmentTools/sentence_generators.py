@@ -614,7 +614,7 @@ class BaseGenerator(tf.keras.utils.Sequence):
     'Generates data for Keras'
 
     def __init__(self, gzip_filepath, vocabulary,
-                 batch_size, steps_per_epoch=None, maxlen=None, nb_lines=None, reverse_input=True, keep=1.):
+                 batch_size, steps_per_epoch=None, maxlen=None, nb_lines=None, reverse_input=False, keep=1.):
         'Initialization'
 
         self.__dict__.update(gzip_filepath=gzip_filepath,
@@ -708,18 +708,18 @@ class BaseGenerator(tf.keras.utils.Sequence):
             x_enc = np.array(x_enc, dtype=np.int32)
 
         # Add a end token to decoder input
-        x_dec = pad_sequences([[self.vocabulary.startIndex] + tokens for tokens in indices],
-                              maxlen=maxSentenceLen + 1,
+        x_dec = pad_sequences([[self.vocabulary.padIndex] + tokens for tokens in indices],
+                              maxlen=maxSentenceLen,
                               value=self.vocabulary.padIndex,
                               padding='post')
         x_dec = np.array(x_dec, dtype=np.int32)
 
         # Add a end token to decoder input
-        y_dec = pad_sequences([tokens + [self.vocabulary.endIndex] for tokens in indices],
-                              maxlen=maxSentenceLen + 1,
+        y_dec = pad_sequences([tokens + [self.vocabulary.padIndex] for tokens in indices],
+                              maxlen=maxSentenceLen,
                               value=self.vocabulary.padIndex,
                               padding='post')
-        y_dec_oh = np.array(indicesToOneHot(y_dec, self.vocabulary.getMaxVocabularySize()),
+        y_dec_oh = np.array(indicesToOneHot(y_dec, self.vocab_size),
                             dtype=np.float32)
 
         return [x_enc, x_dec], y_dec_oh
