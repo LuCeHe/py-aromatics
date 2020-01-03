@@ -686,7 +686,6 @@ class BaseGenerator(tf.keras.utils.Sequence):
 
         i = 0
         list_inidices = []
-        list_offsetIndices = []
         for line in self.f:
             sentence = line.strip().decode("utf-8")
             sentence = postprocessSentence(sentence)
@@ -696,25 +695,17 @@ class BaseGenerator(tf.keras.utils.Sequence):
                       [self.END]
             indices = indices[:self.maxlen]
 
-            # TODO: check if you can do it without the offset indices
-            offsetIndices = [self.PAD+1, self.START+1] + \
-                            self.vocabulary.tokensToIndices(tokenize(sentence), offset=1) + \
-                            [self.END+1]
-            offsetIndices = offsetIndices[:self.maxlen]
-
             list_inidices.append(indices)
-            list_offsetIndices.append(offsetIndices)
             i += 1
             if i >= self.batch_size: break
 
         indices = list_inidices
-        offsetIndices = list_offsetIndices
         maxSentenceLen = len(max(indices, key=len))
 
         if self.reverse_input:
             # Add a end token to encoder input
             x_enc = pad_sequences([tokens[::-1]
-                                   for tokens in offsetIndices],
+                                   for tokens in indices],
                                   maxlen=maxSentenceLen,
                                   value=self.vocabulary.padIndex,
                                   padding='post')
@@ -722,7 +713,7 @@ class BaseGenerator(tf.keras.utils.Sequence):
         else:
             # Add a end token to encoder input
             x_enc = pad_sequences([tokens
-                                   for tokens in offsetIndices],
+                                   for tokens in indices],
                                   maxlen=maxSentenceLen,
                                   value=self.vocabulary.padIndex,
                                   padding='post')
@@ -730,8 +721,8 @@ class BaseGenerator(tf.keras.utils.Sequence):
 
         # Add a end token to decoder input
         x_dec = pad_sequences([[self.vocabulary.padIndex] + tokens
-                               for tokens in offsetIndices],
-                              maxlen=maxSentenceLen+1,
+                               for tokens in indices],
+                              maxlen=maxSentenceLen + 1,
                               value=self.vocabulary.padIndex,
                               padding='post')
         x_dec = np.array(x_dec, dtype=np.int32)
@@ -739,7 +730,7 @@ class BaseGenerator(tf.keras.utils.Sequence):
         # Add a end token to decoder input
         y_dec = pad_sequences([tokens + [self.vocabulary.padIndex]
                                for tokens in indices],
-                              maxlen=maxSentenceLen+1,
+                              maxlen=maxSentenceLen + 1,
                               value=self.vocabulary.padIndex,
                               padding='post')
         y_dec_oh = np.array(indicesToOneHot(y_dec, self.vocab_size),
