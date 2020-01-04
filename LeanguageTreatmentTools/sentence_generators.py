@@ -736,6 +736,8 @@ class BaseGenerator(tf.keras.utils.Sequence):
         y_dec_oh = np.array(indicesToOneHot(y_dec, self.vocab_size),
                             dtype=np.float32)
 
+        x_enc = getNoisyInput(self.keep, x_enc)
+        x_dec = getNoisyInput(self.keep, x_dec)
         return [x_enc, x_dec], y_dec_oh
 
 
