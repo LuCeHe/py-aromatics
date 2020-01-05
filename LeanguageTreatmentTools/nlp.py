@@ -28,11 +28,12 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
-
+import gzip
 import json
 import logging
 import random
 import sys
+import re
 from enum import Enum
 
 import nltk
@@ -316,12 +317,38 @@ class Vocabulary(object):
         with open(filename, 'r') as f:
             data = json.load(f)
             tokens = data['tokens']
+        return Vocabulary(tokens)
 
+    @staticmethod
+    def fromGz(data_filepaths):
+        if not isinstance(data_filepaths, list): data_filepaths = [data_filepaths]
+        tokens = []
+        for filepath in data_filepaths:
+            f = gzip.open(filepath, 'rb')
+            for line in f:
+                sentence = line.decode('windows-1252').strip()
+                some_tokens = tokenize(sentence)
+
+                tokens.extend(some_tokens)
+
+        tokens = list(set(tokens))
         return Vocabulary(tokens)
 
     def getMaxVocabularySize(self):
         return len(self.tokens)
 
+def preprocessSentence(sentence):
+    s = sentence
+    s = re.sub('([.,/-:<>\!?{}()])', r' \1 ', s)
+    s = re.sub('\s{2,}', ' ', s)
+    sentence = s
+    sentence = sentence.lower()
+
+    sentence = sentence.replace('-', ' - ')
+    sentence = sentence.replace("\"", "'")
+    sentence = sentence.replace("'", " ' ")
+    sentence = sentence.replace('  ', ' ')
+    return sentence
 
 def postprocessSentence(sentence):
     tokens = tokenize(sentence)

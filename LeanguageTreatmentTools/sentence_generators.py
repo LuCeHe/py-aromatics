@@ -691,7 +691,7 @@ class BaseGenerator(tf.keras.utils.Sequence):
             sentence = postprocessSentence(sentence)
 
             indices = [self.PAD, self.START] + \
-                      self.vocabulary.tokensToIndices(tokenize(sentence)) + \
+                      self.vocabulary.sentenceToIndices(sentence) + \
                       [self.END]
             indices = indices[:self.maxlen]
 
