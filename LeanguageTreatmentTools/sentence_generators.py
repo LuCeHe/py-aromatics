@@ -686,7 +686,7 @@ class BaseGenerator(tf.keras.utils.Sequence):
         i = 0
         list_inidices = []
         for line in self.f:
-            sentence = line.strip().decode('windows-1252')
+            sentence = line.strip().decode('cp437')
             sentence = postprocessSentence(sentence)
 
             indices = [self.PAD, self.START] + \
@@ -767,7 +767,7 @@ class TransformerGenerator(BaseGenerator):
         i = 0
         list_indices = []
         for line in self.f:
-            sentence = line.strip().decode('windows-1252')
+            sentence = line.strip().decode('cp437')
             sentence = postprocessSentence(sentence)
 
             indices = [self.PAD, self.START] + \
@@ -799,7 +799,7 @@ class ArielGenerator(BaseGenerator):
         list_input = []
         list_output = []
         for line in self.f:
-            sentence = line.strip().decode("utf-8")
+            sentence = line.strip().decode('cp437')
             sentence = postprocessSentence(sentence)
 
             indices = [self.PAD, self.START] + self.vocabulary.sentenceToIndices(sentence) + [self.END]
