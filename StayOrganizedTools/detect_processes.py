@@ -59,6 +59,7 @@ def wait_for_free_GPU(GPU):
 
 if __name__ == '__main__':
     wait_for_free_GPU(1)
+    wait_for_free_GPU(0)
 
     
     

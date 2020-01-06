@@ -203,7 +203,9 @@ class Vocabulary(object):
 
     def sort(self):
         self.indicesByTokens = dict()
-        self.tokens = Vocabulary.specialTokens + sorted(list(set(self.tokens)))
+        sorted_tokens = sorted(list(set(self.tokens)))
+        sorted_tokens = [token for token in sorted_tokens if not token in Vocabulary.specialTokens]
+        self.tokens = Vocabulary.specialTokens + sorted_tokens
         for i, token in enumerate(self.tokens):
             self.indicesByTokens[token] = i
 

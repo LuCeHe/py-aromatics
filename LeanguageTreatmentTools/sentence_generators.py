@@ -686,7 +686,7 @@ class BaseGenerator(tf.keras.utils.Sequence):
         i = 0
         list_inidices = []
         for line in self.f:
-            sentence = line.strip().decode("utf-8")
+            sentence = line.strip().decode('windows-1252')
             sentence = postprocessSentence(sentence)
 
             indices = [self.PAD, self.START] + \
@@ -767,7 +767,7 @@ class TransformerGenerator(BaseGenerator):
         i = 0
         list_indices = []
         for line in self.f:
-            sentence = line.strip().decode("utf-8")
+            sentence = line.strip().decode('windows-1252')
             sentence = postprocessSentence(sentence)
 
             indices = [self.PAD, self.START] + \
@@ -778,7 +778,6 @@ class TransformerGenerator(BaseGenerator):
             list_indices.append(indices)
             i += 1
             if i >= self.batch_size: break
-
         padded = pad_sequences(list_indices,
                                maxlen=self.maxlen,
                                value=self.PAD,
