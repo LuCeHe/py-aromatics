@@ -32,8 +32,8 @@ import gzip
 import json
 import logging
 import random
-import sys
 import re
+import sys
 from enum import Enum
 
 import nltk
@@ -337,6 +337,7 @@ class Vocabulary(object):
     def getMaxVocabularySize(self):
         return len(self.tokens)
 
+
 def preprocessSentence(sentence):
     s = sentence
     s = re.sub('([.,/-:<>\!?{}()])', r' \1 ', s)
@@ -349,6 +350,7 @@ def preprocessSentence(sentence):
     sentence = sentence.replace("'", " ' ")
     sentence = sentence.replace('  ', ' ')
     return sentence
+
 
 def postprocessSentence(sentence):
     tokens = tokenize(sentence)

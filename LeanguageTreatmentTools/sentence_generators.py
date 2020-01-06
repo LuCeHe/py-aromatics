@@ -659,7 +659,6 @@ class BaseGenerator(tf.keras.utils.Sequence):
             self.nb_lines = 0
             f = gzip.open(self.gzip_filepath, 'rb')
             for line in f:
-                _ = line.strip().decode("utf-8")
                 self.nb_lines += 1
 
     def __len__(self):
