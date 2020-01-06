@@ -186,22 +186,8 @@ class Vocabulary(object):
     specialTokens = [padToken, startToken, endToken, unkToken]
 
     def __init__(self, tokens, grammar=None):
-
-        if Vocabulary.endToken in tokens:
-            tokens.remove(Vocabulary.endToken)
-
-        indicesByTokens = dict()
-        tokens = Vocabulary.specialTokens + sorted(list(tokens))
-        for i, token in enumerate(tokens):
-            indicesByTokens[token] = i
-        self.__dict__.update(tokens=tokens,
-                             indicesByTokens=indicesByTokens,
-                             grammar=grammar)
-
-        self.padIndex = indicesByTokens[self.padToken]
-        self.startIndex = indicesByTokens[self.startToken]
-        self.endIndex = indicesByTokens[self.endToken]
-        self.unkIndex = indicesByTokens[self.unkToken]
+        self.__dict__.update(tokens=tokens, grammar=grammar)
+        self.sort()
 
     def __eq__(self, other):
         return self.tokens == other.tokens
@@ -216,12 +202,15 @@ class Vocabulary(object):
         return Vocabulary(list(sorted(tokens)))
 
     def sort(self):
-        # NOTE: ignore the end token
-        tokens = sorted(self.tokens[1:])
         self.indicesByTokens = dict()
-        self.tokens = [Vocabulary.endToken] + tokens
+        self.tokens = Vocabulary.specialTokens + sorted(list(set(self.tokens)))
         for i, token in enumerate(self.tokens):
             self.indicesByTokens[token] = i
+
+        self.padIndex = self.indicesByTokens[self.padToken]
+        self.startIndex = self.indicesByTokens[self.startToken]
+        self.endIndex = self.indicesByTokens[self.endToken]
+        self.unkIndex = self.indicesByTokens[self.unkToken]
 
     def indexToToken(self, idx):
         return self.tokens[idx]
@@ -300,11 +289,6 @@ class Vocabulary(object):
             for p in production.rhs():
                 if not isinstance(p, Nonterminal):
                     tokens.append(p)
-
-        # Remove redundant tokens and sort
-        tokens = list(set(tokens))
-        tokens.sort()
-
         return Vocabulary(tokens=tokens, grammar=grammar)
 
     @staticmethod
@@ -328,10 +312,7 @@ class Vocabulary(object):
             for line in f:
                 sentence = line.decode('windows-1252').strip()
                 some_tokens = tokenize(sentence)
-
                 tokens.extend(some_tokens)
-
-        tokens = list(set(tokens))
         return Vocabulary(tokens)
 
     def getMaxVocabularySize(self):
