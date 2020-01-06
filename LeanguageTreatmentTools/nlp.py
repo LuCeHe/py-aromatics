@@ -312,7 +312,7 @@ class Vocabulary(object):
         for filepath in data_filepaths:
             f = gzip.open(filepath, 'rb')
             for line in f:
-                sentence = line.decode('windows-1252').strip()
+                sentence = line.decode('cp437').strip()
                 some_tokens = tokenize(sentence)
                 tokens.extend(some_tokens)
         return Vocabulary(tokens)
