@@ -760,38 +760,6 @@ class VaeGenerator(BaseGenerator):
 
 class TransformerGenerator(BaseGenerator):
 
-    def __init__(self, gzip_filepath, itokens,
-                 batch_size, steps_per_epoch=None, maxlen=25, nb_lines=None, reverse_input=True, keep=1.):
-        'Initialization'
-
-        self.__dict__.update(gzip_filepath=gzip_filepath,
-                             itokens=itokens,
-                             batch_size=batch_size,
-                             maxlen=maxlen,
-                             nb_lines=nb_lines,
-                             reverse_input=reverse_input,
-                             keep=keep)
-        self.count_lines_in_gzip()
-        self.on_epoch_end()
-
-        self.vocab_size = self.itokens.num()
-
-        self.PAD = self.itokens.padid
-        self.START = self.itokens.startid
-        self.END = self.itokens.endid
-
-        if steps_per_epoch == 'all':
-            self.steps_per_epoch = int(np.floor(self.nb_lines / self.batch_size))
-        else:
-            self.steps_per_epoch = steps_per_epoch
-
-        if 'val' in self.gzip_filepath:
-            self.X_val, self.y_val = self.data_generation()
-            self.steps_per_epoch = 1
-            if not nb_lines == None and nb_lines > 5:
-                self.nb_lines == 512
-                self.batch_size == self.nb_lines
-
     def data_generation(self):
         'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
         # Initialization
@@ -802,9 +770,9 @@ class TransformerGenerator(BaseGenerator):
             sentence = line.strip().decode("utf-8")
             sentence = postprocessSentence(sentence)
 
-            indices = [self.itokens.padid(), self.itokens.startid()] + [self.itokens.id(z) for z in
-                                                                        sentence.split(' ')] + [self.itokens.endid()]
-
+            indices = [self.PAD, self.START] + \
+                      self.vocabulary.sentenceToIndices(sentence) + \
+                      [self.END]
             indices = indices[:self.maxlen]
 
             list_indices.append(indices)
@@ -813,7 +781,7 @@ class TransformerGenerator(BaseGenerator):
 
         padded = pad_sequences(list_indices,
                                maxlen=self.maxlen,
-                               value=self.itokens.padid(),
+                               value=self.PAD,
                                padding='post')
         input_indices = padded[:, :-1]
         output_indices = padded[:, 1:]
@@ -823,6 +791,7 @@ class TransformerGenerator(BaseGenerator):
 
 
 class ArielGenerator(BaseGenerator):
+
     def data_generation(self):
         'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
         # Initialization
