@@ -827,6 +827,67 @@ class ArielGenerator(BaseGenerator):
         return input_indices, output_indices
 
 
+class SimpleGenerator(tf.keras.utils.Sequence):
+    'Generates data for Keras'
+
+    def __init__(
+            self,
+            filepath_spikes,
+            filepath_sound,
+            batch_size,
+            steps_per_epoch=None,
+    ):
+        'Initialization'
+
+        self.__dict__.update(filepath_spikes=filepath_spikes,
+                             filepath_sound=filepath_sound,
+                             batch_size=batch_size,
+                             )
+        self.count_lines_in_file()
+        self.on_epoch_end()
+
+        if steps_per_epoch == 'all':
+            self.steps_per_epoch = int(np.floor(self.nb_lines / self.batch_size))
+        else:
+            self.steps_per_epoch = steps_per_epoch
+
+    def count_lines_in_file(self):
+        self.nb_lines = 0
+        f = open(self.filepath, 'rb')
+        for line in f:
+            self.nb_lines += 1
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return self.steps_per_epoch
+
+    def __getitem__(self, index=0):
+        'Generate one batch of data'
+        X, y = self.data_generation()
+
+        return X, y
+
+    def on_epoch_end(self):
+        self.spikes_f = open(self.filepath_spikes, 'rb')
+        self.sound_f = open(self.filepath_sound, 'rb')
+
+    def data_generation(self):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        # Initialization
+
+        i = 0
+        list_spikes = []
+        list_sounds = []
+        for i, (sp, so) in enumerate(zip(self.spikes_f, self.sound_f)):
+            list_spikes.append(sp)
+            list_sounds.append(so)
+            if i >= self.batch_size: break
+
+        spikes_batch = np.array(list_spikes)
+        sounds_batch = np.array(list_sounds)
+        return spikes_batch, sounds_batch
+
+
 if __name__ == '__main__':
     grammar_filepath = '../data/simplerREBER_grammar.cfg'
     gzip_filepath = '../data/REBER_biased_train.gz'
