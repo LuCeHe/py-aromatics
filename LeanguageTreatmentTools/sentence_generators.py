@@ -846,7 +846,7 @@ class SimpleGenerator(tf.keras.utils.Sequence):
         self.count_lines_in_file()
         self.on_epoch_end()
 
-        if steps_per_epoch == 'all':
+        if steps_per_epoch == 'all  ':
             self.steps_per_epoch = int(np.floor(self.nb_lines / self.batch_size))
         else:
             self.steps_per_epoch = steps_per_epoch
