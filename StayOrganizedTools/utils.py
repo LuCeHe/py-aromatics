@@ -33,6 +33,7 @@ import os
 import random
 import time
 from time import strftime, localtime
+import yagmail
 
 import numpy as np
 import tensorflow as tf
@@ -161,7 +162,6 @@ def email_results(
         filepaths_list=['C:/Users/PlasticDiscobolus/work/ariel_tests/main.py',
                         'C:/Users/PlasticDiscobolus/work/ariel_tests/interpolations.py'],
         name_experiment=''):
-    import yagmail
     yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
     contents = [
         "Here the results of the experiment {}".format(name_experiment),
