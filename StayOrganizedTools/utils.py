@@ -30,13 +30,14 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import os
+import random
 import time
 from time import strftime, localtime
 
-import random
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
+
 
 def make_directories(time_string=None):
     experiments_folder = "experiments"
@@ -117,6 +118,7 @@ def timeStructured():
     time_string = time.strftime("%Y-%m-%d-%H-%M-%S", named_tuple)
     return time_string
 
+
 def collect_information():
     f = open('./cout.txt', 'r')
     i = 0
@@ -139,8 +141,6 @@ def collect_information():
     print(i)
 
 
-
-
 def setReproducible(seed=0, disableGpuMemPrealloc=True):
     # Fix the seed of all random number generator
     random.seed(seed)
@@ -156,5 +156,18 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True):
     K.clear_session()
     K.set_session(tf.Session(config=config))
 
+
+def email_results(
+        filepaths_list=['C:/Users/PlasticDiscobolus/work/ariel_tests/main.py',
+                        'C:/Users/PlasticDiscobolus/work/ariel_tests/interpolations.py'],
+        name_experiment=''):
+    import yagmail
+    yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
+    contents = [
+        "Here the results of the experiment {}".format(name_experiment),
+    ] + filepaths_list
+    yag.send(to='manucelotti@gmail.com', contents=contents, subject='The Experiment is [DONE] !')
+
+
 if __name__ == '__main__':
-    collect_information()
+    email_results()
