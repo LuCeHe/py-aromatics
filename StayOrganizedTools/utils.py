@@ -198,4 +198,5 @@ if __name__ == '__main__':
     #email_results()
     folderpath = r'C:\Users\PlasticDiscobolus\work\ariel_tests\experiments\experiment-2020_02_17_at_14_12_03-HQ_embedding_lsnnALIF_20d_2nrl_v9643\text'
     folderpath = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_17_at_09_41_36-HQ_embedding_lsnnALIF_20d_2nrl_v3154/text'
+    folderpath = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_17_at_09_41_36________/1'
     email_folder_content(folderpath)
