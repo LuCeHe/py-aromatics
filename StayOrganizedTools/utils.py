@@ -169,5 +169,32 @@ def email_results(
     yag.send(to='manucelotti@gmail.com', contents=contents, subject='The Experiment is [DONE] !')
 
 
+
+def email_folder_content(folderpath):
+
+    content = os.listdir(folderpath)
+    print('content of the folder:\n')
+    for dir in content:
+        print('  ', dir)
+
+    if input("\n\nare you sure? (y/n)") != "y":
+        exit()
+
+    yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
+    failed = []
+    for dir in content:
+        try:
+            path = os.path.join(folderpath, dir)
+            contents = [path]
+            yag.send(to='manucelotti@gmail.com', contents=contents, subject='The Experiment is [DONE] !')
+        except:
+            failed.append(dir)
+
+    contents = ['among all the experiments\n\n{} \n\nthese failed to be sent: \n\n{}'.format('\n'.join(content), '\n'.join(failed))]
+    yag.send(to='manucelotti@gmail.com', contents=contents, subject='The Experiment is [DONE] !')
+
 if __name__ == '__main__':
-    email_results()
+    #email_results()
+    folderpath = r'C:\Users\PlasticDiscobolus\work\ariel_tests\experiments\experiment-2020_02_17_at_14_12_03-HQ_embedding_lsnnALIF_20d_2nrl_v9643\text'
+    folderpath = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_17_at_09_41_36-HQ_embedding_lsnnALIF_20d_2nrl_v3154/plots'
+    email_folder_content(folderpath)
