@@ -34,6 +34,7 @@ import random
 import time
 from time import strftime, localtime
 import yagmail
+from tqdm import tqdm
 
 import numpy as np
 import tensorflow as tf
@@ -171,7 +172,7 @@ def email_results(
 
 
 def email_folder_content(folderpath):
-
+    random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
     content = os.listdir(folderpath)
     print('content of the folder:\n')
     for dir in content:
@@ -182,19 +183,19 @@ def email_folder_content(folderpath):
 
     yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
     failed = []
-    for dir in content:
+    for dir in tqdm(content):
         try:
             path = os.path.join(folderpath, dir)
             contents = [path]
-            yag.send(to='manucelotti@gmail.com', contents=contents, subject='The Experiment is [DONE] !')
+            yag.send(to='manucelotti@gmail.com', contents=contents, subject=random_string + ' The Experiment is [DONE] !')
         except:
             failed.append(dir)
 
     contents = ['among all the experiments\n\n{} \n\nthese failed to be sent: \n\n{}'.format('\n'.join(content), '\n'.join(failed))]
-    yag.send(to='manucelotti@gmail.com', contents=contents, subject='The Experiment is [DONE] !')
+    yag.send(to='manucelotti@gmail.com', contents=contents, subject=random_string + ' The Experiment is [DONE] !')
 
 if __name__ == '__main__':
     #email_results()
     folderpath = r'C:\Users\PlasticDiscobolus\work\ariel_tests\experiments\experiment-2020_02_17_at_14_12_03-HQ_embedding_lsnnALIF_20d_2nrl_v9643\text'
-    folderpath = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_17_at_09_41_36-HQ_embedding_lsnnALIF_20d_2nrl_v3154/plots'
+    folderpath = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_17_at_09_41_36-HQ_embedding_lsnnALIF_20d_2nrl_v3154/text'
     email_folder_content(folderpath)
