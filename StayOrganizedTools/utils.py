@@ -162,7 +162,8 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True):
 def email_results(
         folders_list=[],
         filepaths_list=[],
-        name_experiment=''):
+        name_experiment='',
+        receiver_email='manucelotti@gmail.com'):
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
     yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
     subject = random_string + ' The Experiment is [DONE] ! ' + name_experiment
@@ -171,8 +172,9 @@ def email_results(
     for filepath in filepaths_list:
         try:
             contents = [filepath]
-            yag.send(to='manucelotti@gmail.com', contents=contents, subject=subject)
-        except: pass
+            yag.send(to=receiver_email, contents=contents, subject=subject)
+        except:
+            pass
 
     # send content of folders
     for folderpath in folders_list:
@@ -182,16 +184,16 @@ def email_results(
             try:
                 path = os.path.join(folderpath, dir)
                 contents = [path]
-                yag.send(to='manucelotti@gmail.com', contents=contents, subject=subject)
+                yag.send(to=receiver_email, contents=contents, subject=subject)
             except:
                 failed.append(dir)
 
         contents = ['among all the files\n\n{} \n\nthese failed to be sent: \n\n{}'.format('\n'.join(content),
-                                                                                                 '\n'.join(failed))]
-        yag.send(to='manucelotti@gmail.com', contents=contents, subject=subject)
+                                                                                           '\n'.join(failed))]
+        yag.send(to=receiver_email, contents=contents, subject=subject)
 
 
-def email_folder_content(folderpath):
+def email_folder_content(folderpath, receiver_email='manucelotti@gmail.com'):
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
     subject = random_string + ' The Experiment is [DONE] !'
 
@@ -209,13 +211,13 @@ def email_folder_content(folderpath):
         try:
             path = os.path.join(folderpath, dir)
             contents = [path]
-            yag.send(to='manucelotti@gmail.com', contents=contents, subject=subject)
+            yag.send(to=receiver_email, contents=contents, subject=subject)
         except:
             failed.append(dir)
 
     contents = ['among all the files\n\n{} \n\nthese failed to be sent: \n\n{}'.format('\n'.join(content),
-                                                                                             '\n'.join(failed))]
-    yag.send(to='manucelotti@gmail.com', contents=contents, subject=subject)
+                                                                                       '\n'.join(failed))]
+    yag.send(to=receiver_email, contents=contents, subject=subject)
 
 
 if __name__ == '__main__':
