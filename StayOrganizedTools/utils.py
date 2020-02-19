@@ -33,12 +33,12 @@ import os
 import random
 import time
 from time import strftime, localtime
-import yagmail
-from tqdm import tqdm
 
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
+import yagmail
+from tqdm import tqdm
 
 
 def make_directories(time_string=None):
@@ -160,19 +160,41 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True):
 
 
 def email_results(
-        filepaths_list=['C:/Users/PlasticDiscobolus/work/ariel_tests/main.py',
-                        'C:/Users/PlasticDiscobolus/work/ariel_tests/interpolations.py'],
+        folders_list=[],
+        filepaths_list=[],
         name_experiment=''):
+    random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
     yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
-    contents = [
-        "Here the results of the experiment {}".format(name_experiment),
-    ] + filepaths_list
-    yag.send(to='manucelotti@gmail.com', contents=contents, subject='The Experiment is [DONE] !')
+    subject = random_string + ' The Experiment is [DONE] ! ' + name_experiment
 
+    # send specific files specified
+    for filepath in filepaths_list:
+        try:
+            contents = [filepath]
+            yag.send(to='manucelotti@gmail.com', contents=contents, subject=subject)
+        except: pass
+
+    # send content of folders
+    for folderpath in folders_list:
+        content = os.listdir(folderpath)
+        failed = []
+        for dir in tqdm(content):
+            try:
+                path = os.path.join(folderpath, dir)
+                contents = [path]
+                yag.send(to='manucelotti@gmail.com', contents=contents, subject=subject)
+            except:
+                failed.append(dir)
+
+        contents = ['among all the files\n\n{} \n\nthese failed to be sent: \n\n{}'.format('\n'.join(content),
+                                                                                                 '\n'.join(failed))]
+        yag.send(to='manucelotti@gmail.com', contents=contents, subject=subject)
 
 
 def email_folder_content(folderpath):
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
+    subject = random_string + ' The Experiment is [DONE] !'
+
     content = os.listdir(folderpath)
     print('content of the folder:\n')
     for dir in content:
@@ -187,15 +209,17 @@ def email_folder_content(folderpath):
         try:
             path = os.path.join(folderpath, dir)
             contents = [path]
-            yag.send(to='manucelotti@gmail.com', contents=contents, subject=random_string + ' The Experiment is [DONE] !')
+            yag.send(to='manucelotti@gmail.com', contents=contents, subject=subject)
         except:
             failed.append(dir)
 
-    contents = ['among all the experiments\n\n{} \n\nthese failed to be sent: \n\n{}'.format('\n'.join(content), '\n'.join(failed))]
-    yag.send(to='manucelotti@gmail.com', contents=contents, subject=random_string + ' The Experiment is [DONE] !')
+    contents = ['among all the files\n\n{} \n\nthese failed to be sent: \n\n{}'.format('\n'.join(content),
+                                                                                             '\n'.join(failed))]
+    yag.send(to='manucelotti@gmail.com', contents=contents, subject=subject)
+
 
 if __name__ == '__main__':
-    #email_results()
+    # email_results()
     folderpath = r'C:\Users\PlasticDiscobolus\work\ariel_tests\experiments\experiment-2020_02_17_at_14_12_03-HQ_embedding_lsnnALIF_20d_2nrl_v9643\text'
     folderpath = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_17_at_09_41_36-HQ_embedding_lsnnALIF_20d_2nrl_v3154/text'
     folderpath = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_17_at_09_41_36________/1'
