@@ -205,8 +205,6 @@ def email_folder_content(folderpath, receiver_email=''):
     if input("\n\nare you sure? (y/n)") != "y":
         exit()
 
-
-
     yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
     failed = []
     for dir in tqdm(content):
@@ -223,7 +221,6 @@ def email_folder_content(folderpath, receiver_email=''):
 
 
 if __name__ == '__main__':
-
     folder_1 = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_18_at_11_01_22________/1'
     folder_2 = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_18_at_11_01_22-HQ_embedding_lsnnALIF_20d_2nrl_v9599/plots'
     folder_3 = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_18_at_11_01_22-HQ_embedding_lsnnALIF_20d_2nrl_v9599/text'
