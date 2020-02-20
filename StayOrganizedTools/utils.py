@@ -205,6 +205,8 @@ def email_folder_content(folderpath, receiver_email=''):
     if input("\n\nare you sure? (y/n)") != "y":
         exit()
 
+
+
     yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
     failed = []
     for dir in tqdm(content):
