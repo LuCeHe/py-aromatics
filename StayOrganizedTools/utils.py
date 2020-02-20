@@ -163,7 +163,7 @@ def email_results(
         folders_list=[],
         filepaths_list=[],
         name_experiment='',
-        receiver_email='manucelotti@gmail.com'):
+        receiver_email=''):
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
     yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
     subject = random_string + ' The Experiment is [DONE] ! ' + name_experiment
@@ -193,7 +193,7 @@ def email_results(
         yag.send(to=receiver_email, contents=contents, subject=subject)
 
 
-def email_folder_content(folderpath, receiver_email='manucelotti@gmail.com'):
+def email_folder_content(folderpath, receiver_email=''):
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
     subject = random_string + ' The Experiment is [DONE] !'
 
@@ -221,8 +221,12 @@ def email_folder_content(folderpath, receiver_email='manucelotti@gmail.com'):
 
 
 if __name__ == '__main__':
-    # email_results()
-    folderpath = r'C:\Users\PlasticDiscobolus\work\ariel_tests\experiments\experiment-2020_02_17_at_14_12_03-HQ_embedding_lsnnALIF_20d_2nrl_v9643\text'
-    folderpath = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_17_at_09_41_36-HQ_embedding_lsnnALIF_20d_2nrl_v3154/text'
-    folderpath = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_17_at_09_41_36________/1'
-    email_folder_content(folderpath)
+
+    folder_1 = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_18_at_11_01_22________/1'
+    folder_2 = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_18_at_11_01_22-HQ_embedding_lsnnALIF_20d_2nrl_v9599/plots'
+    folder_3 = '/home/celottil/work/ariel_tests/experiments/experiment-2020_02_18_at_11_01_22-HQ_embedding_lsnnALIF_20d_2nrl_v9599/text'
+    email_results(
+        folders_list=[folder_1, folder_2, folder_3],
+        filepaths_list=[],
+        name_experiment='',
+        receiver_email='manucelotti@gmail.com')
