@@ -1,3 +1,4 @@
+from segmentation_models.base import Loss
 from tensorflow.keras import backend as K
 import numpy as np
 import tensorflow as tf
@@ -29,3 +30,16 @@ def surface_loss(y_true, y_pred):
                                      Tout=tf.float32)
     multipled = y_pred * y_true_dist_map
     return K.mean(multipled)
+
+
+class SurfaceLoss(Loss):
+
+    def __init__(self):
+        super().__init__(name='surface_loss')
+
+    def __call__(self, gt, pr):
+        y_true_dist_map = tf.py_function(func=calc_dist_map_batch,
+                                         inp=[gt],
+                                         Tout=tf.float32)
+        multipled = pr * y_true_dist_map
+        return K.mean(multipled)

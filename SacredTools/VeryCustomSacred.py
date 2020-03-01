@@ -13,13 +13,14 @@ class CustomFileStorageObserver(FileStorageObserver):
     def started_event(self, ex_info, command, host_info, start_time, config, meta_info, _id):
         if _id is None:
             # create your wanted log dir
-            time_string = strftime("%Y-%m-%d-at-%H:%M:%S", localtime())
+            time_string = strftime("%Y-%m-%d-at-%H-%M-%S", localtime())
             timestamp = "experiment-{}________".format(time_string)
             options = '_'.join(meta_info['options']['UPDATE'])
             run_id = timestamp + options
 
             # update the basedir of the observer
             self.basedir = os.path.join(self.basedir, run_id)
+            self.basedir = os.path.join(ex_info['base_dir'], self.basedir)
 
             # and again create the basedir
             pathlib.Path(self.basedir).mkdir(exist_ok=True, parents=True)
@@ -27,8 +28,8 @@ class CustomFileStorageObserver(FileStorageObserver):
         return super().started_event(ex_info, command, host_info, start_time, config, meta_info, _id)
 
 
-def CustomExperiment(experiment_name):
-    ex = Experiment(experiment_name)
+def CustomExperiment(experiment_name, base_dir=None):
+    ex = Experiment(name=experiment_name, base_dir=base_dir)
     #ex.observers.append(FileStorageObserver.create("experiments"))
     ex.observers.append(CustomFileStorageObserver.create("experiments"))
 
