@@ -38,8 +38,4 @@ class SurfaceLoss(Loss):
         super().__init__(name='surface_loss')
 
     def __call__(self, gt, pr):
-        y_true_dist_map = tf.py_function(func=calc_dist_map_batch,
-                                         inp=[gt],
-                                         Tout=tf.float32)
-        multipled = pr * y_true_dist_map
-        return K.mean(multipled)
+        return surface_loss(gt, pr)
