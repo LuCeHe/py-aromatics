@@ -48,4 +48,8 @@ def CustomExperiment(experiment_name, base_dir=None):
     # attach it to the experiment
     ex.logger = logger
 
+    data_path = os.path.join(base_dir, 'data')
+    if not os.path.isdir(data_path):
+        os.mkdir(data_path)
+
     return ex
