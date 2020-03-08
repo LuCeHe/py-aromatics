@@ -7,6 +7,19 @@ from tensorflow.keras.models import Model
 from GenericTools.TFTools.convenience_operations import slice_from_to, clip_layer, replace_column
 
 
+class AverageOverAxis(Layer):
+    def __init__(self, axis, name='AverageOverAxis', **kwargs):
+        self.axis = axis
+        super(AverageOverAxis, self).__init__(**kwargs, name=name)
+
+    def call(self, inputs):
+        return K.mean(inputs, axis=self.axis)
+
+    def compute_output_shape(self, input_shape):
+        input_shape.pop(self.axis)
+        return tuple(input_shape)
+
+
 class ExpandDims(object):
 
     def __init__(self, axis):
