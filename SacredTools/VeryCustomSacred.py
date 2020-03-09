@@ -1,6 +1,4 @@
-import logging
-import os
-import pathlib
+import logging, os, pathlib, shutil, time
 from time import strftime, localtime
 
 from sacred import Experiment
@@ -48,8 +46,19 @@ def CustomExperiment(experiment_name, base_dir=None):
     # attach it to the experiment
     ex.logger = logger
 
+    # create convenient folders
     data_path = os.path.join(base_dir, 'data')
-    if not os.path.isdir(data_path):
-        os.mkdir(data_path)
+    exp_path = os.path.join(base_dir, 'experiments')
+    tmp_path = os.path.join(base_dir, 'experiments/tmp')
+    for path in [data_path, exp_path, tmp_path]:
+        if not os.path.isdir(data_path):
+            os.mkdir(data_path)
+
+    # FIXME: add attribute to delete tmp file at the end
+    #setattr(ex, 'clean_tmp', remove_folder(tmp_path))
 
     return ex
+
+def remove_folder(folder_path):
+    time.sleep(2)
+    shutil.rmtree(folder_path, ignore_errors=True)
