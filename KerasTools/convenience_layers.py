@@ -7,6 +7,7 @@ from tensorflow.keras.models import Model
 from GenericTools.TFTools.convenience_operations import slice_from_to, clip_layer, replace_column
 
 
+
 class AverageOverAxis(Layer):
     def __init__(self, axis, name='AverageOverAxis', **kwargs):
         self.axis = axis
@@ -16,6 +17,7 @@ class AverageOverAxis(Layer):
         return K.mean(inputs, axis=self.axis)
 
     def compute_output_shape(self, input_shape):
+        input_shape = list(input_shape)
         input_shape.pop(self.axis)
         return tuple(input_shape)
 
@@ -66,12 +68,16 @@ class RepeatElements(Layer):
         self.n_head = n_head
         super(RepeatElements, self).__init__(**kwargs)
 
-        def build(self, input_shape):
-            super(RepeatElements, self).build(input_shape)
+    def build(self, input_shape):
+        super(RepeatElements, self).build(input_shape)
 
     def call(self, inputs):
         repeated = K.repeat_elements(inputs, self.n_head, 0)
         return repeated
+
+    def compute_output_shape(self, input_shape):
+        input_shape[0] = input_shape[0] * self.n_head
+        return input_shape
 
 
 class Clip(object):
