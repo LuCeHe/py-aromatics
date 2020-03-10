@@ -34,7 +34,7 @@ def slice_(x):
 def slice_from_to(x, initial, final):
     # None can be used where initial or final, so
     # [1:] = [1:None]
-    return x[:, initial:final]
+    return x[:, initial:final, ...]
 
 
 def clip_layer(inputs, min_value, max_value):

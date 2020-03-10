@@ -50,7 +50,7 @@ class Squeeze(object):
 
 class Slice(Layer):
 
-    # axis parameter is not functional
+    # FIXME: axis parameter is not functional
     def __init__(self, axis, initial, final, **kwargs):
         self.axis, self.initial, self.final = axis, initial, final
         super(Slice, self).__init__(**kwargs)
