@@ -163,7 +163,8 @@ def email_results(
         folders_list=[],
         filepaths_list=[],
         name_experiment='',
-        receiver_email=''):
+        receiver_emails=[]):
+    if not isinstance(receiver_emails, list): receiver_emails = [receiver_emails]
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
     yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
     subject = random_string + ' The Experiment is [DONE] ! ' + name_experiment
@@ -172,7 +173,8 @@ def email_results(
     for filepath in filepaths_list:
         try:
             contents = [filepath]
-            yag.send(to=receiver_email, contents=contents, subject=subject)
+            for email in receiver_emails:
+                yag.send(to=email, contents=contents, subject=subject)
         except:
             pass
 
@@ -184,13 +186,15 @@ def email_results(
             try:
                 path = os.path.join(folderpath, dir)
                 contents = [path]
-                yag.send(to=receiver_email, contents=contents, subject=subject)
+                for email in receiver_emails:
+                   yag.send(to=email, contents=contents, subject=subject)
             except:
                 failed.append(dir)
 
         contents = ['among all the files\n\n{} \n\nthese failed to be sent: \n\n{}'.format('\n'.join(content),
                                                                                            '\n'.join(failed))]
-        yag.send(to=receiver_email, contents=contents, subject=subject)
+        for email in receiver_emails:
+            yag.send(to=email, contents=contents, subject=subject)
 
 
 def email_folder_content(folderpath, receiver_email=''):
