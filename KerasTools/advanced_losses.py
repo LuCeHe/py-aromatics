@@ -1,8 +1,13 @@
-from segmentation_models.base import Loss
 from tensorflow.keras import backend as K
 import numpy as np
 import tensorflow as tf
 from scipy.ndimage import distance_transform_edt as distance
+
+try:
+    from segmentation_models.base import Loss
+except:
+    from segmentation_models.base.objects import Loss
+
 
 """
 sources:
