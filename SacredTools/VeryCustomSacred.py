@@ -51,8 +51,8 @@ def CustomExperiment(experiment_name, base_dir=None):
     exp_path = os.path.join(base_dir, 'experiments')
     tmp_path = os.path.join(base_dir, 'experiments/tmp')
     for path in [data_path, exp_path, tmp_path]:
-        if not os.path.isdir(data_path):
-            os.mkdir(data_path)
+        if not os.path.isdir(path):
+            os.mkdir(path)
 
     # FIXME: add attribute to delete tmp file at the end
     #setattr(ex, 'clean_tmp', remove_folder(tmp_path))
