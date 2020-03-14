@@ -6,7 +6,7 @@ from scipy.ndimage import distance_transform_edt as distance
 try:
     from segmentation_models.base import Loss
 except:
-    from segmentation_models.base.objects import Loss
+    from segmentation_models.segmentation_models.base import Loss
 
 
 """
