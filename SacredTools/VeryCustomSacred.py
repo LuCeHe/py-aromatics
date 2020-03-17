@@ -62,3 +62,17 @@ def CustomExperiment(experiment_name, base_dir=None):
 def remove_folder(folder_path):
     time.sleep(2)
     shutil.rmtree(folder_path, ignore_errors=True)
+
+
+if __name__ == '__main__':
+    a = [26.2, 37.0, 42.9, 47.5,
+    55.0, 57.9, 58.4, 66.7]
+
+    for f in a:
+        new_f = f/120/1e-9*1e6*5
+        c = 3e8
+        new_lambd = c/new_f
+        new_f = int(10 * new_f*1e-15) / 10
+        new_lambd = int(10 * new_lambd*1e9) / 10
+        #print('{} MHz -> {} Hz'.format(f, new_f))
+        print('{} MHz -> {} pHz = {} nm'.format(f, new_f, new_lambd))
