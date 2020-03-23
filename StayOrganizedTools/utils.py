@@ -29,7 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import os
+import os, logging
 import random
 import time
 from time import strftime, localtime
@@ -39,6 +39,8 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 import yagmail
 from tqdm import tqdm
+
+logger = logging.getLogger('mylogger')
 
 
 def make_directories(time_string=None):
@@ -169,6 +171,7 @@ def email_results(
     yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
     subject = random_string + ' The Experiment is [DONE] ! ' + name_experiment
 
+    logger.info('Sending Results via Email!')
     # send specific files specified
     for filepath in filepaths_list:
         try:
