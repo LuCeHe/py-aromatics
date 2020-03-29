@@ -1,9 +1,12 @@
 import logging, os, pathlib, shutil, time
 from time import strftime, localtime
+import tensorflow as tf
 
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
+
+from GenericTools.StayOrganizedTools.utils import setReproducible
 
 
 class CustomFileStorageObserver(FileStorageObserver):
@@ -26,7 +29,7 @@ class CustomFileStorageObserver(FileStorageObserver):
         return super().started_event(ex_info, command, host_info, start_time, config, meta_info, _id)
 
 
-def CustomExperiment(experiment_name, base_dir=None):
+def CustomExperiment(experiment_name, base_dir=None, GPU=1, seed=1):
     ex = Experiment(name=experiment_name, base_dir=base_dir)
     #ex.observers.append(FileStorageObserver.create("experiments"))
     ex.observers.append(CustomFileStorageObserver.create("experiments"))
@@ -57,6 +60,16 @@ def CustomExperiment(experiment_name, base_dir=None):
     # FIXME: add attribute to delete tmp file at the end
     #setattr(ex, 'clean_tmp', remove_folder(tmp_path))
 
+    # choose GPU
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(GPU)
+    config = tf.compat.v1.ConfigProto()  # tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    sess = tf.compat.v1.Session(config=config)  # tf.Session(config=config)
+
+    # set reproducible
+    if not seed == None:
+        setReproducible(seed)
     return ex
 
 def remove_folder(folder_path):
