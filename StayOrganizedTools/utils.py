@@ -37,7 +37,6 @@ from time import strftime, localtime
 
 import numpy as np
 import tensorflow as tf
-import tensorflow.keras.backend as K
 import yagmail
 from tqdm import tqdm
 
@@ -159,8 +158,8 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True):
         device_count={'CPU': 1})
     if disableGpuMemPrealloc:
         config.gpu_options.allow_growth = True
-    #K.clear_session()
-    #K.set_session(tf.Session(config=config))
+    # K.clear_session()
+    # K.set_session(tf.Session(config=config))
 
 
 def email_results(
