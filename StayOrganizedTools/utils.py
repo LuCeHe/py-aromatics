@@ -150,8 +150,8 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True):
     # Fix the seed of all random number generator
     random.seed(seed)
     np.random.seed(seed)
-    # tf.random.set_seed(seed)
-    tf.random.set_random_seed(seed)
+    tf.random.set_seed(seed)
+    #tf.random.set_random_seed(seed)
 
     config = tf.ConfigProto(intra_op_parallelism_threads=1,
                             inter_op_parallelism_threads=1,
