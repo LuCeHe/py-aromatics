@@ -151,11 +151,12 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True):
     random.seed(seed)
     np.random.seed(seed)
     tf.random.set_seed(seed)
-    #tf.random.set_random_seed(seed)
+    # tf.random.set_random_seed(seed)
 
-    config = tf.ConfigProto(intra_op_parallelism_threads=1,
-                            inter_op_parallelism_threads=1,
-                            device_count={'CPU': 1})
+    config = tf.compat.v1.ConfigProto(
+        intra_op_parallelism_threads=1,
+        inter_op_parallelism_threads=1,
+        device_count={'CPU': 1})
     if disableGpuMemPrealloc:
         config.gpu_options.allow_growth = True
     K.clear_session()
