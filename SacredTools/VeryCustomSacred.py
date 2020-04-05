@@ -6,7 +6,7 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
 
-from GenericTools.StayOrganizedTools.utils import setReproducible
+from GenericTools.StayOrganizedTools.utils_tnsfl_old import setReproducible
 
 
 class CustomFileStorageObserver(FileStorageObserver):
