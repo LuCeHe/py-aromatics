@@ -87,6 +87,6 @@ class GumbelTemperatureAnnealing(tf.keras.callbacks.Callback):
         elif self.epoch == self.epoch_end:
             new_gt = self.min_temperature
 
-        K.set_value(self.gumbel_temperature, new_gt)
+        K.set_value(self.gumbel_temperature, K.constant(new_gt))
 
         # logger.info(" epoch %s, alpha = %s, beta = %s" % (epoch, K.get_value(self.alpha), K.get_value(self.beta)))
