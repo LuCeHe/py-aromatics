@@ -6,7 +6,7 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
 
-from GenericTools.StayOrganizedTools.utils_tnsfl_old import setReproducible
+from GenericTools.StayOrganizedTools.utils import setReproducible
 
 
 class CustomFileStorageObserver(FileStorageObserver):
@@ -26,15 +26,18 @@ class CustomFileStorageObserver(FileStorageObserver):
             # and again create the basedir
             pathlib.Path(self.basedir).mkdir(exist_ok=True, parents=True)
 
+        # create convenient folders for current experiment
+        for relative_path in ['images', 'text']:
+            absolute_path = os.path.join(*[self.basedir, relative_path])
+            os.mkdir(absolute_path)
+
         return super().started_event(ex_info, command, host_info, start_time, config, meta_info, _id)
 
 
 def CustomExperiment(experiment_name, base_dir=None, GPU=1, seed=1):
     ex = Experiment(name=experiment_name, base_dir=base_dir)
-    #ex.observers.append(FileStorageObserver.create("experiments"))
     ex.observers.append(CustomFileStorageObserver.create("experiments"))
 
-    # ex.observers.append(MongoObserver())
     ex.captured_out_filter = apply_backspaces_and_linefeeds
 
     # set up a custom logger
@@ -45,17 +48,13 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=1, seed=1):
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     logger.setLevel('INFO')
-
-    # attach it to the experiment
     ex.logger = logger
 
-    # create convenient folders
-    data_path = os.path.join(base_dir, 'data')
-    exp_path = os.path.join(base_dir, 'experiments')
-    tmp_path = os.path.join(base_dir, 'experiments/tmp')
-    for path in [data_path, exp_path, tmp_path]:
+    # create convenient folders for all experiments
+    for path in ['data', 'experiments', 'experiments/tmp']:
         if not os.path.isdir(path):
-            os.mkdir(path)
+            os.mkdir(os.path.join(base_dir, path))
+
 
     # FIXME: add attribute to delete tmp file at the end
     #setattr(ex, 'clean_tmp', remove_folder(tmp_path))
