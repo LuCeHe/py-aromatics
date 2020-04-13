@@ -167,6 +167,7 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True):
 def email_results(
         folders_list=[],
         filepaths_list=[],
+        text = '',
         name_experiment='',
         receiver_emails=[]):
     if not isinstance(receiver_emails, list): receiver_emails = [receiver_emails]
@@ -176,7 +177,7 @@ def email_results(
 
     logger.info('Sending Results via Email!')
     # send specific files specified
-    for filepath in filepaths_list:
+    for filepath in filepaths_list + [text]:
         try:
             contents = [filepath]
             for email in receiver_emails:
