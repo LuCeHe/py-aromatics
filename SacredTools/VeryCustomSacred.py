@@ -27,7 +27,7 @@ class CustomFileStorageObserver(FileStorageObserver):
             pathlib.Path(self.basedir).mkdir(exist_ok=True, parents=True)
 
         # create convenient folders for current experiment
-        for relative_path in ['images', 'text', 'other_outputs']:
+        for relative_path in ['images', 'text', 'other_outputs', 'trained_models']:
             absolute_path = os.path.join(*[self.basedir, relative_path])
             os.mkdir(absolute_path)
 
