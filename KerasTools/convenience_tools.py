@@ -14,8 +14,8 @@ def plot_history(history, plot_filename, epochs):
         for k, ax in zip(keys, axs):
             # plot training and validation losses
             try:
-                ax.plot(history.history['val ' + k], label='val ' + k)
                 ax.plot(history.history[k], label='train ' + k)
+                ax.plot(history.history['val_' + k], label='val ' + k)
             except:
                 ax.plot(history.history[k], label=k)
             ax.set_ylabel(k)

@@ -169,6 +169,7 @@ def email_results(
         filepaths_list=[],
         text = '',
         name_experiment='',
+        except_files='',
         receiver_emails=[]):
     if not isinstance(receiver_emails, list): receiver_emails = [receiver_emails]
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
@@ -189,14 +190,15 @@ def email_results(
     for folderpath in folders_list:
         content = os.listdir(folderpath)
         failed = []
-        for dir in tqdm(content):
-            try:
-                path = os.path.join(folderpath, dir)
-                contents = [path]
-                for email in receiver_emails:
-                    yag.send(to=email, contents=contents, subject=subject)
-            except:
-                failed.append(dir)
+        for file in tqdm(content):
+            if not except_files in file:
+                try:
+                    path = os.path.join(folderpath, file)
+                    contents = [path]
+                    for email in receiver_emails:
+                        yag.send(to=email, contents=contents, subject=subject)
+                except:
+                    failed.append(file)
 
         contents = ['among all the files\n\n{} \n\nthese failed to be sent: \n\n{}'.format('\n'.join(content),
                                                                                            '\n'.join(failed))]
