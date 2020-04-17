@@ -13,7 +13,9 @@ def plot_history(history, plot_filename, epochs):
         fig.suptitle(plot_filename)
         for k, ax in zip(keys, axs):
             # plot training and validation losses
+
             try:
+                history.history['val_' + k]
                 ax.plot(history.history[k], label='train ' + k)
                 ax.plot(history.history['val_' + k], label='val ' + k)
             except:
