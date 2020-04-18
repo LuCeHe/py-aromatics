@@ -51,7 +51,7 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=1, seed=1):
     ex.logger = logger
 
     # create convenient folders for all experiments
-    for path in ['data', 'experiments', 'experiments/tmp']:
+    for path in ['data', 'experiments']:
         if not os.path.isdir(path):
             os.mkdir(os.path.join(base_dir, path))
 
