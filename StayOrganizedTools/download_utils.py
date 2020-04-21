@@ -32,7 +32,7 @@ if __name__ == '__main__':
         default=None,
         type=str,
         required=True,
-        help="Path where to save content of url",
+        help="path where to save content of url",
     )
     args = parser.parse_args()
     download_url(args.url, args.path)
