@@ -169,7 +169,7 @@ def email_results(
         filepaths_list=[],
         text = '',
         name_experiment='',
-        except_files='',
+        except_files=None,
         receiver_emails=[]):
     if not isinstance(receiver_emails, list): receiver_emails = [receiver_emails]
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
@@ -191,7 +191,7 @@ def email_results(
         content = os.listdir(folderpath)
         failed = []
         for file in tqdm(content):
-            if not except_files in file:
+            if except_files == None or not except_files in file:
                 try:
                     path = os.path.join(folderpath, file)
                     contents = [path]
