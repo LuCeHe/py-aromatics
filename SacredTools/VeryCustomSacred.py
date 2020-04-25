@@ -6,7 +6,7 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
 
-from GenericTools.StayOrganizedTools.utils import setReproducible
+from GenericTools.StayOrganizedTools.utils import setReproducible, timeStructured
 
 
 class CustomFileStorageObserver(FileStorageObserver):
@@ -14,8 +14,8 @@ class CustomFileStorageObserver(FileStorageObserver):
     def started_event(self, ex_info, command, host_info, start_time, config, meta_info, _id):
         if _id is None:
             # create your wanted log dir
-            time_string = strftime("%Y-%m-%d-at-%H-%M-%S", localtime())
-            timestamp = "experiment-{}________".format(time_string)
+            time_string = timeStructured()
+            timestamp = "experiment-{}-{}________".format(time_string, ex_info['name'])
             options = '_'.join(meta_info['options']['UPDATE'])
             run_id = timestamp + options
 
