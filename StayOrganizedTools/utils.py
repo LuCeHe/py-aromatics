@@ -235,8 +235,12 @@ def email_folder_content(folderpath, receiver_email=''):
 
 def Dict2ArgsParser(args_dict):
     parser = argparse.ArgumentParser()
-    args = parser.parse_args()
     for k, v in args_dict.items():
-        setattr(args, k, v)
-
+        if type(v) == bool and v == True:
+            parser.add_argument("--"+k, action="store_true")
+        elif type(v) == bool and v == False:
+            parser.add_argument("--"+k, action="store_false")
+        else:
+            parser.add_argument("--"+k, type=type(v), default=v)
+    args = parser.parse_args()
     return args
