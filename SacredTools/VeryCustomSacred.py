@@ -34,7 +34,7 @@ class CustomFileStorageObserver(FileStorageObserver):
         return super().started_event(ex_info, command, host_info, start_time, config, meta_info, _id)
 
 
-def CustomExperiment(experiment_name, base_dir=None, GPU=1, seed=1):
+def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=1):
     ex = Experiment(name=experiment_name, base_dir=base_dir)
     ex.observers.append(CustomFileStorageObserver("experiments"))
 
@@ -60,16 +60,22 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=1, seed=1):
     #setattr(ex, 'clean_tmp', remove_folder(tmp_path))
 
     # choose GPU
+    if not GPU == None:
+        ChooseGPU(GPU)
+
+
+    # set reproducible
+    if not seed == None:
+        setReproducible(seed)
+    return ex
+
+def ChooseGPU(GPU):
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = str(GPU)
     config = tf.compat.v1.ConfigProto()  # tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.compat.v1.Session(config=config)  # tf.Session(config=config)
 
-    # set reproducible
-    if not seed == None:
-        setReproducible(seed)
-    return ex
 
 def remove_folder(folder_path):
     time.sleep(2)
