@@ -8,7 +8,7 @@ def plot_history(history, plot_filename, epochs):
         keys = history.history.keys()
         keys = [k for k in keys if not 'val' in k]
         fig, axs = plt.subplots(len(keys), figsize=(8, 8), sharex='all',
-                            gridspec_kw={'hspace': 0})
+                                gridspec_kw={'hspace': 0})
 
         fig.suptitle(plot_filename)
         for k, ax in zip(keys, axs):
@@ -25,4 +25,3 @@ def plot_history(history, plot_filename, epochs):
         ax.set_xlabel('epoch')
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         fig.savefig(plot_filename, bbox_inches='tight')
-
