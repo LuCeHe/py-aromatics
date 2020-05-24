@@ -28,16 +28,11 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
-import argparse
-import logging
-import os
-import random
-import time
+import argparse, shutil, logging, os, random, time, yagmail
 from time import strftime, localtime
 
 import numpy as np
 import tensorflow as tf
-import yagmail
 from tqdm import tqdm
 
 logger = logging.getLogger('mylogger')
@@ -244,3 +239,17 @@ def Dict2ArgsParser(args_dict):
             parser.add_argument("--"+k, type=type(v), default=v)
     args = parser.parse_args()
     return args
+
+
+def CompressAndSend(path_folders, email):
+    ds = os.listdir(path_folders)
+    paths = [os.path.join(path_folders, d) for d in ds]
+    for d, path in zip(ds, paths):
+        shutil.make_archive(d, 'zip', path)
+
+    ds = [d for d in os.listdir(path_folders) if '.zip' in d]
+    email_results(
+        filepaths_list=ds,
+        name_experiment=' compressed folders ',
+        receiver_emails=[email])
+
