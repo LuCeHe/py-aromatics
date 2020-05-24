@@ -253,3 +253,7 @@ def CompressAndSend(path_folders, email):
         name_experiment=' compressed folders ',
         receiver_emails=[email])
 
+if __name__ == '__main__':
+    path_folders = '~/projects/def-jrouat/lucacehe/work/stochastic_spiking/experiments'
+    email = 'manucelotti@gmail.com'
+    CompressAndSend(path_folders, email)
