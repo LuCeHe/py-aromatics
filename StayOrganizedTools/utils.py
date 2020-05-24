@@ -254,6 +254,6 @@ def CompressAndSend(path_folders, email):
         receiver_emails=[email])
 
 if __name__ == '__main__':
-    path_folders = 'home/lucacehe/projects/def-jrouat/lucacehe/work/stochastic_spiking/experiments'
+    path_folders = '/home/lucacehe/projects/def-jrouat/lucacehe/work/stochastic_spiking/experiments'
     email = 'manucelotti@gmail.com'
     CompressAndSend(path_folders, email)
