@@ -162,7 +162,7 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True):
 def email_results(
         folders_list=[],
         filepaths_list=[],
-        text = '',
+        text='',
         name_experiment='',
         except_files=None,
         receiver_emails=[]):
@@ -232,11 +232,11 @@ def Dict2ArgsParser(args_dict):
     parser = argparse.ArgumentParser()
     for k, v in args_dict.items():
         if type(v) == bool and v == True:
-            parser.add_argument("--"+k, action="store_true")
+            parser.add_argument("--" + k, action="store_true")
         elif type(v) == bool and v == False:
-            parser.add_argument("--"+k, action="store_false")
+            parser.add_argument("--" + k, action="store_false")
         else:
-            parser.add_argument("--"+k, type=type(v), default=v)
+            parser.add_argument("--" + k, type=type(v), default=v)
     args = parser.parse_args()
     return args
 
@@ -256,18 +256,18 @@ def CompressAndSend(path_folders, email):
 
 def SendFilesWith(container_dir, email_to, files_identifier):
     ds = [d for d in os.listdir(container_dir) if files_identifier in d]
+    print(ds)
     email_results(
         filepaths_list=ds,
-        name_experiment=' compressed folders ',
+        name_experiment=' identified files ',
         receiver_emails=[email_to])
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--container_dir", type=str, default='', help="Where are the files of interest located.")
     parser.add_argument("--email_to", type=str, default='', help="Who should receive them.")
     parser.add_argument("--files_identifier", type=str, default=".zip", help="Which files are you interested in.")
     args = parser.parse_args()
 
-    SendFilesWith(args.container_dir, args.email_to, args.files_identifier)
+    SendFilesWith(container_dir=args.container_dir, email_to=args.email_to, files_identifier=args.files_identifier)
