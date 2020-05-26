@@ -253,7 +253,21 @@ def CompressAndSend(path_folders, email):
         name_experiment=' compressed folders ',
         receiver_emails=[email])
 
+
+def SendFilesWith(container_dir, email_to, files_identifier):
+    ds = [d for d in os.listdir(container_dir) if files_identifier in d]
+    email_results(
+        filepaths_list=ds,
+        name_experiment=' compressed folders ',
+        receiver_emails=[email_to])
+
+
 if __name__ == '__main__':
-    path_folders = '/home/lucacehe/projects/def-jrouat/lucacehe/work/stochastic_spiking/experiments'
-    email = 'manucelotti@gmail.com'
-    CompressAndSend(path_folders, email)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--container_dir", type=str, default='', help="Where are the files of interest located.")
+    parser.add_argument("--email_to", type=str, default='', help="Who should receive them.")
+    parser.add_argument("--files_identifier", type=str, default=".zip", help="Which files are you interested in.")
+    args = parser.parse_args()
+
+    SendFilesWith(args.container_dir, args.email_to, args.files_identifier)
