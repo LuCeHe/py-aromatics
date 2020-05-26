@@ -178,8 +178,8 @@ def email_results(
             contents = [filepath]
             for email in receiver_emails:
                 yag.send(to=email, contents=contents, subject=subject)
-        except:
-            pass
+        except Exception as e:
+            print(e)
 
     # send content of folders
     for folderpath in folders_list:
@@ -192,8 +192,9 @@ def email_results(
                     contents = [path]
                     for email in receiver_emails:
                         yag.send(to=email, contents=contents, subject=subject)
-                except:
+                except Exception as e:
                     failed.append(file)
+                    print(e)
 
         contents = ['among all the files\n\n{} \n\nthese failed to be sent: \n\n{}'.format('\n'.join(content),
                                                                                            '\n'.join(failed))]
@@ -254,9 +255,9 @@ def CompressAndSend(path_folders, email):
         receiver_emails=[email])
 
 
-def SendFilesWith(container_dir, email_to, files_identifier):
+def SendFilesWithIdentifier(container_dir, email_to, files_identifier):
     ds = [d for d in os.listdir(container_dir) if files_identifier in d]
-    print(ds)
+
     email_results(
         filepaths_list=ds,
         name_experiment=' identified files ',
@@ -270,4 +271,5 @@ if __name__ == '__main__':
     parser.add_argument("--files_identifier", type=str, default=".zip", help="Which files are you interested in.")
     args = parser.parse_args()
 
-    SendFilesWith(container_dir=args.container_dir, email_to=args.email_to, files_identifier=args.files_identifier)
+    SendFilesWithIdentifier(container_dir=args.container_dir, email_to=args.email_to,
+                            files_identifier=args.files_identifier)
