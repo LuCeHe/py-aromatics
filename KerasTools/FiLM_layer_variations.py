@@ -11,7 +11,7 @@ from tensorflow.keras.models import *
 
 class FiLM1D(tf.keras.layers.Layer):
 
-    def __init__(self, beta=None, gamma=None, dilation_rate=2, **kwargs):
+    def __init__(self, beta=None, gamma=None, dilation_rate=1, **kwargs):
         self.__dict__.update(dilation_rate=dilation_rate)
         super(FiLM1D, self).__init__(**kwargs)
 
