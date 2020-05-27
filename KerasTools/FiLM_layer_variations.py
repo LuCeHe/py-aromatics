@@ -21,8 +21,8 @@ class FiLM1D(tf.keras.layers.Layer):
 
     def Conv(self, name=''):
         return Sequential([
-            Conv1D(16, 3, dilation_rate=self.dilation_rate),
-            Conv1D(1, 3, dilation_rate=self.dilation_rate)
+            Conv1D(16, 3, padding='same', dilation_rate=self.dilation_rate),
+            Conv1D(1, 3, padding='same', dilation_rate=self.dilation_rate)
         ], name=name)
 
     def __call__(self, inputs):
@@ -36,8 +36,8 @@ class FiLM1D(tf.keras.layers.Layer):
 
 
 if __name__ == '__main__':
-    sound = Input((None, 3))
-    spike = Input((None, 3))
+    sound = Input((300, 3))
+    spike = Input((300, 3))
     filmed_sound = FiLM1D()([sound, spike])
     filmed_spike = FiLM1D()([spike, sound])
 
