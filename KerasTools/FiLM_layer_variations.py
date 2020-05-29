@@ -21,7 +21,7 @@ class FiLM1D(tf.keras.layers.Layer):
 
     def Conv(self, name=''):
         return Sequential([
-            Conv1D(16, 3, padding='same', dilation_rate=self.dilation_rate),
+            #Conv1D(16, 3, padding='same', dilation_rate=self.dilation_rate),
             Conv1D(1, 3, padding='same', dilation_rate=self.dilation_rate)
         ], name=name)
 
