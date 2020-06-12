@@ -116,8 +116,7 @@ class NltkGrammarSampler(object):
 
         except RuntimeError as _error:
             if _error.message == "maximum recursion depth exceeded":
-                raise RuntimeError(
-                    "The grammar has rule(s) that yield infinite recursion!!")
+                raise RuntimeError("The grammar has rule(s) that yield infinite recursion!!")
             else:
                 raise
 
