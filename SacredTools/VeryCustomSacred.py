@@ -29,9 +29,16 @@ class CustomFileStorageObserver(FileStorageObserver):
         # create convenient folders for current experiment
         for relative_path in ['images', 'text', 'other_outputs', 'trained_models']:
             absolute_path = os.path.join(*[self.basedir, relative_path])
+            self.__dict__.update(relative_path=absolute_path)
             os.mkdir(absolute_path)
 
         return super().started_event(ex_info, command, host_info, start_time, config, meta_info, _id)
+
+    def save_comments(self, comments=''):
+        if not comments is '':
+            comments_txt = os.path.join(*[self.basedir, '1', 'comments.txt'])
+            with open(comments_txt, "w") as text_file:
+                text_file.write(comments)
 
 
 def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=1):
@@ -55,19 +62,18 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=1):
         if not os.path.isdir(path):
             os.mkdir(os.path.join(base_dir, path))
 
-
     # FIXME: add attribute to delete tmp file at the end
-    #setattr(ex, 'clean_tmp', remove_folder(tmp_path))
+    # setattr(ex, 'clean_tmp', remove_folder(tmp_path))
 
     # choose GPU
     if not GPU == None:
         ChooseGPU(GPU)
 
-
     # set reproducible
     if not seed == None:
         setReproducible(seed)
     return ex
+
 
 def ChooseGPU(GPU):
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -84,13 +90,13 @@ def remove_folder(folder_path):
 
 if __name__ == '__main__':
     a = [26.2, 37.0, 42.9, 47.5,
-    55.0, 57.9, 58.4, 66.7]
+         55.0, 57.9, 58.4, 66.7]
 
     for f in a:
-        new_f = f/120/1e-9*1e6*5
+        new_f = f / 120 / 1e-9 * 1e6 * 5
         c = 3e8
-        new_lambd = c/new_f
-        new_f = int(10 * new_f*1e-15) / 10
-        new_lambd = int(10 * new_lambd*1e9) / 10
-        #print('{} MHz -> {} Hz'.format(f, new_f))
+        new_lambd = c / new_f
+        new_f = int(10 * new_f * 1e-15) / 10
+        new_lambd = int(10 * new_lambd * 1e9) / 10
+        # print('{} MHz -> {} Hz'.format(f, new_f))
         print('{} MHz -> {} pHz = {} nm'.format(f, new_f, new_lambd))
