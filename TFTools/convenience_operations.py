@@ -55,3 +55,9 @@ def replace_column(matrix, new_column, r):
     old = tf.matmul(tf.stack([old_column], axis=1), index_row)
     new_matrix = (matrix - old) + new
     return new_matrix
+
+
+def log_base_n(x, n=2):
+    numerator = tf.log(x)
+    denominator = tf.log(tf.constant(n, dtype=numerator.dtype))
+    return numerator / denominator
