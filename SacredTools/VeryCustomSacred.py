@@ -59,8 +59,9 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=1):
 
     # create convenient folders for all experiments
     for path in ['data', 'experiments']:
-        if not os.path.isdir(path):
-            os.mkdir(os.path.join(base_dir, path))
+        complete_path = os.path.join(base_dir, path)
+        if not os.path.isdir(complete_path):
+            os.mkdir(complete_path)
 
     # FIXME: add attribute to delete tmp file at the end
     # setattr(ex, 'clean_tmp', remove_folder(tmp_path))
