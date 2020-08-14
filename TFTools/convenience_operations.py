@@ -58,6 +58,6 @@ def replace_column(matrix, new_column, r):
 
 
 def log_base_n(x, n=2):
-    numerator = tf.log(x)
-    denominator = tf.log(tf.constant(n, dtype=numerator.dtype))
+    numerator = tf.math.log(x)
+    denominator = tf.math.log(tf.constant(n, dtype=numerator.dtype))
     return numerator / denominator
