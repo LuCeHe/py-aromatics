@@ -114,8 +114,9 @@ def checkDuringTraining(generator_class, indices_sentences, encoder_model, decod
 
 def timeStructured():
     named_tuple = time.localtime()  # get struct_time
-    time_string = time.strftime("%Y-%m-%d--%H-%M-%S", named_tuple)
-    return time_string
+    time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
+    random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
+    return time_string + random_string
 
 
 def collect_information():
