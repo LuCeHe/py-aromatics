@@ -48,14 +48,17 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=1):
     ex.captured_out_filter = apply_backspaces_and_linefeeds
 
     # set up a custom logger
-    logger = logging.getLogger('mylogger')
-    logger.handlers = []
-    ch = logging.StreamHandler()
-    formatter = logging.Formatter('[%(levelname).1s] %(name)s >> "%(message)s"')
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-    logger.setLevel('INFO')
-    ex.logger = logger
+    #logger = logging.getLogger('mylogger')
+
+    #logger.handlers = []
+    #ch = logging.StreamHandler()
+    #formatter = logging.Formatter('[%(levelname).1s] %(name)s >> "%(message)s"')
+    #ch.setFormatter(formatter)
+    #logger.addHandler(ch)
+    #logger.setLevel('INFO')
+    #logging.basicConfig(level=logging.DEBUG)
+
+    #ex.logger = logger
 
     # create convenient folders for all experiments
     for path in ['data', 'experiments']:
