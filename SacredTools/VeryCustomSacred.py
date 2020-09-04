@@ -79,12 +79,13 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=1):
     return ex
 
 
-def ChooseGPU(GPU):
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(GPU)
-    config = tf.compat.v1.ConfigProto()  # tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    sess = tf.compat.v1.Session(config=config)  # tf.Session(config=config)
+def ChooseGPU(GPU=None):
+    if not GPU is None:
+        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(GPU)
+        config = tf.compat.v1.ConfigProto()  # tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        sess = tf.compat.v1.Session(config=config)  # tf.Session(config=config)
 
 
 def remove_folder(folder_path):
