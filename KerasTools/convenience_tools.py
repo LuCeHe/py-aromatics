@@ -17,7 +17,9 @@ def plot_history(histories, plot_filename, epochs, method_names=None):
 
         fig.suptitle(plot_filename)
 
-        colors = plt.cm.rainbow(np.linspace(0, 1, len(histories)))
+        colors = plt.cm.gist_ncar(np.linspace(0, 1, len(histories)))
+        np.random.shuffle(colors)
+
         lines = []
         for history, c in zip(histories, colors):
             for k, ax in zip(keys, axs):
