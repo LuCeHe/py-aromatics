@@ -3,12 +3,12 @@ import numpy as np
 
 
 class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
-    def __init__(self, val_data, *args, **kwargs):
+    def __init__(self, val_data, track_operation_on, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # here we use test data to calculate the gradients
         self.multiple_inputs = False
-        if isinstance(val_data[0], list):
+        if isinstance(val_data[0], tuple):
             self.multiple_inputs = True
             self.splits = len(val_data[0])
             self._x_batch = []
@@ -25,6 +25,17 @@ class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
         else:
             self._x_batch = tf.convert_to_tensor(val_data[0], dtype=tf.float32)
         self._y_batch = tf.convert_to_tensor(val_data[1], dtype=tf.float32)
+
+        self.track_operation_on = track_operation_on
+
+    def _log_track_operation_on(self, epoch):
+        for v_name, op in self.track_operation_on:
+            try:
+                weights = [v for v in self.model.trainable_weights if v_name in v.name][0]
+                operated_weights = op(weights)
+                tf.summary.scalar("op on {}".format(v_name), operated_weights, step=epoch)
+            except Exception as e:
+                print(e)
 
     def _log_gradients(self, epoch):
         # step = tf.cast(tf.math.floor((epoch + 1) * num_instance / batch_size), dtype=tf.int64)
@@ -51,6 +62,21 @@ class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
 
         writer.flush()
 
+    def _log_single_weights(self, epoch):
+        # step = tf.cast(tf.math.floor((epoch + 1) * num_instance / batch_size), dtype=tf.int64)
+        writer = self._get_writer(self._train_run_name)
+
+        with writer.as_default():
+            for v in self.model.trainable_weights:
+                if len(v.shape) == 2:
+                    for _ in range(10):
+                        i = np.random.choice(v.shape[0])
+                        j = np.random.choice(v.shape[1])
+                        tf.summary.scalar(v.name + "_single_weight_{}_{}".format(i, j),
+                                          v[i, j], step=epoch)
+
+        writer.flush()
+
     def on_epoch_end(self, epoch, logs=None):
         # This function overwrites the on_epoch_end in tf.keras.callbacks.TensorBoard
         # but we do need to run the original on_epoch_end, so here we use the super function.
@@ -58,3 +84,4 @@ class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
 
         if self.histogram_freq and epoch % self.histogram_freq == 0:
             self._log_gradients(epoch)
+            self._log_single_weights(epoch)
