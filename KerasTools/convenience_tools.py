@@ -13,9 +13,8 @@ def plot_history(histories, plot_filename, epochs, method_names=None):
     if epochs > 0:
         keys = histories[0].history.keys()
         keys = [k for k in keys if not 'val' in k]
-        print(keys)
         fig, axs = plt.subplots(len(keys), figsize=(8, 8), sharex='all', gridspec_kw={'hspace': 0})
-        #if not isinstance(axs, list): axs = [axs]
+        axs = axs if type(axs) is np.ndarray else [axs]
 
         fig.suptitle(plot_filename)
 
