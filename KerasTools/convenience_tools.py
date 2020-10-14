@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 
+
 def plot_history(histories, plot_filename, epochs, method_names=None):
     if not isinstance(histories, list): histories = [histories]
 
@@ -12,8 +13,9 @@ def plot_history(histories, plot_filename, epochs, method_names=None):
     if epochs > 0:
         keys = histories[0].history.keys()
         keys = [k for k in keys if not 'val' in k]
-        fig, axs = plt.subplots(len(keys), figsize=(8, 8), sharex='all',
-                                gridspec_kw={'hspace': 0})
+        print(keys)
+        fig, axs = plt.subplots(len(keys), figsize=(8, 8), sharex='all', gridspec_kw={'hspace': 0})
+        #if not isinstance(axs, list): axs = [axs]
 
         fig.suptitle(plot_filename)
 
@@ -35,10 +37,10 @@ def plot_history(histories, plot_filename, epochs, method_names=None):
                     ax.plot(history.history[k], label=k)
                     if method_names is None:
                         ax.legend()
-                ax.set_ylabel(k)
+                ax.set_ylabel(k.replace('_', '\n'))
+
             ax.set_xlabel('epoch')
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-
 
         if not method_names is None:
             ax.legend(lines, method_names)
