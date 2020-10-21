@@ -47,27 +47,11 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=1):
 
     ex.captured_out_filter = apply_backspaces_and_linefeeds
 
-    # set up a custom logger
-    #logger = logging.getLogger('mylogger')
-
-    #logger.handlers = []
-    #ch = logging.StreamHandler()
-    #formatter = logging.Formatter('[%(levelname).1s] %(name)s >> "%(message)s"')
-    #ch.setFormatter(formatter)
-    #logger.addHandler(ch)
-    #logger.setLevel('INFO')
-    #logging.basicConfig(level=logging.DEBUG)
-
-    #ex.logger = logger
-
     # create convenient folders for all experiments
     for path in ['data', 'experiments']:
         complete_path = os.path.join(base_dir, path)
         if not os.path.isdir(complete_path):
             os.mkdir(complete_path)
-
-    # FIXME: add attribute to delete tmp file at the end
-    # setattr(ex, 'clean_tmp', remove_folder(tmp_path))
 
     # choose GPU
     if not GPU == None:
