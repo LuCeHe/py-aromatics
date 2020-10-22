@@ -7,7 +7,6 @@ from tensorflow.keras.models import Model
 from GenericTools.TFTools.convenience_operations import slice_from_to, clip_layer, replace_column
 
 
-
 class AverageOverAxis(Layer):
     def __init__(self, axis, name='AverageOverAxis', **kwargs):
         self.axis = axis
@@ -116,3 +115,25 @@ def predefined_model(vocab_size, emb_dim, units=128):
     softmax = Dense(vocab_size, activation='softmax')(lstm_output)
 
     return Model(inputs=input_question, outputs=softmax)
+
+
+class OneHot(Layer):
+    def __init__(self, n_out, **kwargs):
+        self.n_out = n_out
+        super(OneHot, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        super(OneHot, self).build(input_shape)
+
+    def call(self, inputs):
+        return tf.one_hot(tf.argmax(inputs, axis=-1), depth=self.n_out)
+
+    def compute_output_shape(self, input_shape):
+        output_shape = input_shape
+        output_shape[-1] = self.n_out
+
+        input_shape[0] = input_shape[0] * self.n_head
+        return input_shape
+
+    def get_config(self):
+        return {'n_out': self.n_out}
