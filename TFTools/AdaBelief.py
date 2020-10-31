@@ -2,6 +2,12 @@ import re
 from typing import Optional, Union, Callable, List
 from typeguard import typechecked
 
+from tensorflow.python.eager import context
+from tensorflow.python.framework import ops
+from tensorflow.python.ops import control_flow_ops
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import resource_variable_ops
+from tensorflow.python.ops import state_ops
 import tensorflow as tf
 from tensorflow_addons.utils.types import FloatTensorLike
 
@@ -18,7 +24,7 @@ class AdaBelief(tf.keras.optimizers.Optimizer):
             learning_rate: Union[FloatTensorLike, Callable] = 0.001,
             beta_1: FloatTensorLike = 0.9,
             beta_2: FloatTensorLike = 0.999,
-            epsilon: FloatTensorLike = 1e-6,
+            epsilon: FloatTensorLike = 1e-8,
             weight_decay_rate: FloatTensorLike = 0.0,
             exclude_from_weight_decay: Optional[List[str]] = None,
             name: str = "AdaBelief",
@@ -136,19 +142,15 @@ class AdaBelief(tf.keras.optimizers.Optimizer):
         # m_t = beta1 * m + (1 - beta1) * g_t
         m = self.get_slot(var, "m")
         m_scaled_g_values = grad * coefficients["one_minus_beta_1_t"]
-        explicit_m = m * coefficients["beta_1_t"] + m_scaled_g_values
-        print('m_scaled_g_values: ', m_scaled_g_values.shape)
         m_t = m.assign(m * coefficients["beta_1_t"], use_locking=self._use_locking)
         with tf.control_dependencies([m_t]):
             m_t = self._resource_scatter_add(m, indices, m_scaled_g_values)
 
         # v_t = beta2 * v + (1 - beta2) * (g_t * g_t)
-        print('m_t:               ', m_t.shape)
-        print('grad:              ', grad.shape)
-
         v = self.get_slot(var, "v")
-        gg = (grad - explicit_m) * (grad - explicit_m)
-        v_scaled_g_values = gg * coefficients["one_minus_beta_2_t"]
+        print(m_t)
+        gm2 = tf.square(tf.math.subtract(grad, m))
+        v_scaled_g_values = gm2 * coefficients["one_minus_beta_2_t"]
         v_t = v.assign(v * coefficients["beta_2_t"], use_locking=self._use_locking)
         with tf.control_dependencies([v_t]):
             v_t = self._resource_scatter_add(v, indices, v_scaled_g_values)
@@ -201,40 +203,8 @@ class AdaBelief(tf.keras.optimizers.Optimizer):
 
 
 
-# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-"""AdaBelief for TensorFlow.
-Modified from tensorflow/tensorflow/python/training/adam.py
-"""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from tensorflow.python.eager import context
-from tensorflow.python.framework import ops
-from tensorflow.python.ops import control_flow_ops
-from tensorflow.python.ops import math_ops
-from tensorflow.python.ops import resource_variable_ops
-from tensorflow.python.ops import state_ops
-from tensorflow.python.training import optimizer
-from tensorflow.python.training import training_ops
-from tensorflow.python.util.tf_export import tf_export
-
-
-class AdaBeliefOptimizer(optimizer.Optimizer):
+class AdaBeliefTheirs(tf.keras.optimizers.Optimizer):
     """Optimizer that implements the Adam algorithm.
     References:
     Adam - A Method for Stochastic Optimization:
@@ -243,12 +213,12 @@ class AdaBeliefOptimizer(optimizer.Optimizer):
     """
 
     def __init__(self,
-                 learning_rate=0.001,
-                 beta1=0.9,
-                 beta2=0.999,
-                 epsilon=1e-8,
-                 use_locking=False,
-                 name="AdaBelief", amsgrad=False):
+                 learning_rate: Union[FloatTensorLike, Callable] = 0.001,
+                 beta1: FloatTensorLike = 0.9,
+                 beta2: FloatTensorLike = 0.999,
+                 epsilon: FloatTensorLike = 1e-8,
+                 name="AdaBelief",
+                 **kwargs):
         r"""Construct a new Adam optimizer.
         Initialization:
         $$m_0 := 0 \text{(Initialize initial 1st moment vector)}$$
@@ -296,12 +266,13 @@ class AdaBeliefOptimizer(optimizer.Optimizer):
         different invocations of optimizer functions.
         @end_compatibility
         """
-        super(AdaBeliefOptimizer, self).__init__(use_locking, name)
+
+        super().__init__(name, **kwargs)
         self._lr = learning_rate
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
-        self.amsgrad = amsgrad
+        #self.amsgrad = amsgrad
 
         # Tensor versions of the constructor arguments, created in _prepare().
         self._lr_t = None
@@ -490,5 +461,19 @@ class AdaBeliefOptimizer(optimizer.Optimizer):
             *update_ops + [update_beta1, update_beta2], name=name_scope)
 
 
-class AdaBelief(AdaBeliefOptimizer):
-    pass
+
+    def get_config(self):
+        config = super().get_config()
+        config.update(
+            {
+                "learning_rate": self._serialize_hyperparameter("learning_rate"),
+                "weight_decay_rate": self._serialize_hyperparameter(
+                    "weight_decay_rate"
+                ),
+                "decay": self._serialize_hyperparameter("decay"),
+                "beta1": self._serialize_hyperparameter("beta1"),
+                "beta2": self._serialize_hyperparameter("beta2"),
+                "epsilon": self.epsilon,
+            }
+        )
+        return config
