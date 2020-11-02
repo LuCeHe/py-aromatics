@@ -1,5 +1,7 @@
 import re
 from typing import Optional, Union, Callable, List
+
+from tensorflow_addons.optimizers.weight_decay_optimizers import DecoupledWeightDecayExtension
 from typeguard import typechecked
 
 from tensorflow.python.eager import context
@@ -133,6 +135,7 @@ class AdaBelief(tf.keras.optimizers.Optimizer):
         return var.assign(var_update, use_locking=self._use_locking)
 
     def _resource_apply_sparse(self, grad, var, indices, apply_state=None):
+        # return self._resource_apply_dense(grad, var, apply_state=apply_state)
         # raise NotImplementedError
         var_device, var_dtype = var.device, var.dtype.base_dtype
         coefficients = (apply_state or {}).get(
@@ -141,19 +144,21 @@ class AdaBelief(tf.keras.optimizers.Optimizer):
 
         # m_t = beta1 * m + (1 - beta1) * g_t
         m = self.get_slot(var, "m")
+        v = self.get_slot(var, "v")
         m_scaled_g_values = grad * coefficients["one_minus_beta_1_t"]
         m_t = m.assign(m * coefficients["beta_1_t"], use_locking=self._use_locking)
-        with tf.control_dependencies([m_t]):
+        v_scaled_g_values = (grad - tf.gather(m_t, indices)) ** 2 * coefficients["one_minus_beta_2_t"]
+        v_t = v.assign(v * coefficients["beta_2_t"], use_locking=self._use_locking)
+        with tf.control_dependencies([m_t, v_t]):
             m_t = self._resource_scatter_add(m, indices, m_scaled_g_values)
+            v_t = self._resource_scatter_add(v, indices, v_scaled_g_values)
 
         # v_t = beta2 * v + (1 - beta2) * (g_t * g_t)
-        v = self.get_slot(var, "v")
-        print(m_t)
-        gm2 = tf.square(tf.math.subtract(grad, m))
-        v_scaled_g_values = gm2 * coefficients["one_minus_beta_2_t"]
-        v_t = v.assign(v * coefficients["beta_2_t"], use_locking=self._use_locking)
-        with tf.control_dependencies([v_t]):
-            v_t = self._resource_scatter_add(v, indices, v_scaled_g_values)
+        # gm2 = tf.square(tf.math.subtract(grad, m))
+        # v_scaled_g_values = tf.square(tf.math.subtract(grad, m_t)) * coefficients["one_minus_beta_2_t"]
+
+        # with tf.control_dependencies([v_t]):
+        #     v_t = self._resource_scatter_add(v, indices, v_scaled_g_values)
 
         m_t_hat = m_t / (1.0 - coefficients["beta_1_power"])
         v_t_hat = v_t / (1.0 - coefficients["beta_2_power"])
@@ -200,8 +205,6 @@ class AdaBelief(tf.keras.optimizers.Optimizer):
         if m is not None:
             param_name = m.group(1)
         return param_name
-
-
 
 
 class AdaBeliefTheirs(tf.keras.optimizers.Optimizer):
@@ -272,7 +275,7 @@ class AdaBeliefTheirs(tf.keras.optimizers.Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
-        #self.amsgrad = amsgrad
+        # self.amsgrad = amsgrad
 
         # Tensor versions of the constructor arguments, created in _prepare().
         self._lr_t = None
@@ -459,8 +462,6 @@ class AdaBeliefTheirs(tf.keras.optimizers.Optimizer):
                     beta2_power * self._beta2_t, use_locking=self._use_locking)
         return control_flow_ops.group(
             *update_ops + [update_beta1, update_beta2], name=name_scope)
-
-
 
     def get_config(self):
         config = super().get_config()
