@@ -14,6 +14,7 @@ import tensorflow as tf
 from tensorflow_addons.utils.types import FloatTensorLike
 
 
+
 class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
     """Optimizer that implements the Adabelief.
 
