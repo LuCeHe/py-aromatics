@@ -18,7 +18,12 @@ def IWPJS(model, batch, return_dict=None):
     # define the loss inside here
     with tf.GradientTape(persistent=True) as tape:
         outputs = model(x)
-        l = model.loss(y, outputs)
+        print([l.shape for l in y])
+        print([type(l) for l in y])
+        print([l.shape for l in outputs])
+        #l = model.loss([y, outputs])
+        l = model.compiled_loss(y, outputs)
+        # l = model.losses(y, outputs)
     variables = model.trainable_variables
     parameters_grads = tape.gradient(l, variables)  # (outputs, variables)
     len_p = len(parameters_grads)
