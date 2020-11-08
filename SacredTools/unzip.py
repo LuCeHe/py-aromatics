@@ -9,8 +9,8 @@ CDIR = os.path.dirname(os.path.realpath(__file__))
 def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[]):
     tmp_ds = [os.path.join(*[GEXPERIMENTS, e]) for e in os.listdir(GEXPERIMENTS) if 'zip' in e]
     EXPERIMENTS = GEXPERIMENTS.replace('good_experiments', 'experiments')
-
     if not os.path.isdir(EXPERIMENTS): os.mkdir(EXPERIMENTS)
+
     ds = []
     for d in tmp_ds:
         for t_in in exp_identifiers:
@@ -23,8 +23,6 @@ def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[]):
 
                 if not any_exception:
                     ds += [d]
-
-    print(ds)
 
     for d in tqdm(ds):
         # Create a ZipFile Object and load sample.zip in it
