@@ -18,7 +18,6 @@ def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[]):
                 any_exception = False
                 for t_out in except_identifiers:
                     if t_out in d:
-                        print(t_out)
                         any_exception = True
 
                 if not any_exception:
@@ -26,11 +25,8 @@ def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[]):
 
     for d in tqdm(ds):
         # Create a ZipFile Object and load sample.zip in it
-
         with ZipFile(d, 'r') as zipObj:
-            head, tail = os.path.split(d)
-            tail = tail.replace('.zip', '')
-
+            tail = ''.join([str(i) for i in np.random.choice(9, 5).tolist()])
             destination = os.path.join(*[EXPERIMENTS, tail])
             if not os.path.isdir(destination):
                 os.mkdir(destination)
