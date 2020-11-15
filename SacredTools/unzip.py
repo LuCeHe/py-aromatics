@@ -6,7 +6,7 @@ from tqdm import tqdm
 CDIR = os.path.dirname(os.path.realpath(__file__))
 
 
-def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[]):
+def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[], unzip_what=None):
     tmp_ds = [os.path.join(*[GEXPERIMENTS, e]) for e in os.listdir(GEXPERIMENTS) if 'zip' in e]
     EXPERIMENTS = GEXPERIMENTS.replace('good_experiments', 'experiments')
     if not os.path.isdir(EXPERIMENTS): os.mkdir(EXPERIMENTS)
@@ -26,7 +26,7 @@ def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[]):
     for d in tqdm(ds):
         # Create a ZipFile Object and load sample.zip in it
         with ZipFile(d, 'r') as zipObj:
-            tail = ''.join([str(i) for i in np.random.choice(9, 5).tolist()])
+            tail = 'good_' + ''.join([str(i) for i in np.random.choice(9, 5).tolist()])
             destination = os.path.join(*[EXPERIMENTS, tail])
             if not os.path.isdir(destination):
                 os.mkdir(destination)
@@ -39,6 +39,10 @@ def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[]):
                             zipObj.extract(z, destination)
                         elif 'config' in z.filename:
                             zipObj.extract(z, destination)
+                        if not unzip_what is None:
+                            for string in unzip_what:
+                                if string in z.filename:
+                                    zipObj.extract(z, destination)
                     except Exception as e:
                         print(e)
 
