@@ -23,11 +23,14 @@ def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[], u
                 if not any_exception:
                     ds += [d]
 
+    destinations = []
     for d in tqdm(ds):
         # Create a ZipFile Object and load sample.zip in it
         with ZipFile(d, 'r') as zipObj:
-            tail = 'good_' + ''.join([str(i) for i in np.random.choice(9, 5).tolist()])
+            #tail = 'good_' + ''.join([str(i) for i in np.random.choice(9, 5).tolist()])
+            tail = d.split('\\')[-1].replace('.zip', '')
             destination = os.path.join(*[EXPERIMENTS, tail])
+            destinations.append(destination)
             if not os.path.isdir(destination):
                 os.mkdir(destination)
 
@@ -45,6 +48,7 @@ def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[], u
                                     zipObj.extract(z, destination)
                     except Exception as e:
                         print(e)
+    return destinations
 
 
 def put_together_tensorboards(EXPERIMENTS):
