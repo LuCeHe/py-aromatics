@@ -17,7 +17,8 @@ class CustomFileStorageObserver(FileStorageObserver):
             time_string = timeStructured()
             timestamp = "{}-{}_".format(time_string, ex_info['name'])
             options = '_'.join(meta_info['options']['UPDATE'])
-            run_id = timestamp + options
+            #run_id = timestamp + options
+            run_id = timestamp
 
             # update the basedir of the observer
             self.basedir = os.path.join(self.basedir, run_id)
