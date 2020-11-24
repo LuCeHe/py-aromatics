@@ -111,7 +111,6 @@ def checkDuringTraining(generator_class, indices_sentences, encoder_model, decod
 
     return softmaxes
 
-
 def timeStructured():
     named_tuple = time.localtime()  # get struct_time
     time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
