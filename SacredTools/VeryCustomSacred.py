@@ -14,7 +14,7 @@ class CustomFileStorageObserver(FileStorageObserver):
     def started_event(self, ex_info, command, host_info, start_time, config, meta_info, _id):
         if _id is None:
             # create your wanted log dir
-            time_string = timeStructured()
+            time_string = timeStructured(False)
             timestamp = "{}-{}_".format(time_string, ex_info['name'])
             options = '_'.join(meta_info['options']['UPDATE'])
             #run_id = timestamp + options
