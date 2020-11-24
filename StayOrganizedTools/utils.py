@@ -115,7 +115,8 @@ def checkDuringTraining(generator_class, indices_sentences, encoder_model, decod
 def timeStructured():
     named_tuple = time.localtime()  # get struct_time
     time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
-    random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
+    # random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
+    random_string = str(abs(hash(named_tuple)))[:4]
     return time_string + random_string
 
 
@@ -266,11 +267,4 @@ def SendFilesWithIdentifier(container_dir, email_to, files_identifier):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--container_dir", type=str, default='', help="Where are the files of interest located.")
-    parser.add_argument("--email_to", type=str, default='', help="Who should receive them.")
-    parser.add_argument("--files_identifier", type=str, default=".zip", help="Which files are you interested in.")
-    args = parser.parse_args()
-
-    SendFilesWithIdentifier(container_dir=args.container_dir, email_to=args.email_to,
-                            files_identifier=args.files_identifier)
+    timeStructured()
