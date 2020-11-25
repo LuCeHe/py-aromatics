@@ -5,6 +5,13 @@ EMPIRICAL_MAX = -2.5e2
 EMPIRICAL_MIN = -6.5e6
 
 
+def corrdistintegral_eval_score(upp):
+    def fun(jacob, labels=None):
+        xx = jacob.reshape(jacob.size(0), -1).detach().cpu().numpy()
+        corrs = np.corrcoef(xx)
+        return np.logical_and(corrs < upp, corrs > 0).sum()
+    return fun
+
 def eval_score(jacob, labels=None):
     corrs = np.corrcoef(jacob)
     v = np.linalg.eigvals(corrs)
@@ -52,4 +59,28 @@ def IWPJS(model, batch, return_dict=None):
 
     if not return_dict is None:
         return_dict['score'] = s.real
+    return s.real
+
+
+
+def JS(model, batch, return_dict=None):
+    # inv_weighted_parameters_jacobian_score
+
+    x, y = batch
+    if isinstance(x, tuple):
+        batch_size = x[0].shape[0]
+    else:
+        batch_size = x.shape[0]
+    # define the loss inside here
+    with tf.GradientTape(persistent=True) as tape:
+        #outputs = model(x)
+        #l = model.loss(y, outputs)
+        l = model.evaluate(batch)
+        # l = model.compiled_loss(y, outputs)
+        # l = model.losses(y, outputs)
+
+    jacob = tape.gradient(l, x)  # (outputs, variables)
+
+    jacob = jacob.numpy().reshape(batch_size, -1)
+    s = corrdistintegral_eval_score(0.25)(jacob)
     return s.real
