@@ -17,6 +17,7 @@ class CustomFileStorageObserver(FileStorageObserver):
             time_string = timeStructured(False)
             timestamp = "{}-{}_".format(time_string, ex_info['name'])
             options = '_'.join(meta_info['options']['UPDATE'])
+            self.updated_config = meta_info['options']['UPDATE']
             #run_id = timestamp + options
             run_id = timestamp
 
