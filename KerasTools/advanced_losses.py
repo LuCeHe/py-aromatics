@@ -8,11 +8,11 @@ try:
 except:
     from segmentation_models.segmentation_models.base import Loss
 
-
 """
 sources:
 https://github.com/LIVIAETS/surface-loss/issues/14#issuecomment-546342163
 """
+
 
 def calc_dist_map(seg):
     res = np.zeros_like(seg)
@@ -24,10 +24,12 @@ def calc_dist_map(seg):
 
     return res
 
+
 def calc_dist_map_batch(y_true):
     y_true_numpy = y_true.numpy()
     return np.array([calc_dist_map(y)
                      for y in y_true_numpy]).astype(np.float32)
+
 
 def surface_loss(y_true, y_pred):
     y_true_dist_map = tf.py_function(func=calc_dist_map_batch,
@@ -46,8 +48,6 @@ class SurfaceLoss(Loss):
         return surface_loss(gt, pr)
 
 
-
-
 class SNRLoss(Loss):
 
     def __init__(self, epsilon=1e-5):
@@ -56,6 +56,13 @@ class SNRLoss(Loss):
 
     def __call__(self, gt, pr):
         S = gt
-        N = gt-pr + self.epsilon
+        N = gt - pr + self.epsilon
         SNR = tf.math.truediv(S, N)
         return SNR
+
+
+def iou_coef(y_true, y_pred, smooth=1):
+    intersection = K.sum(K.abs(y_true * y_pred), axis=[1, 2, 3])
+    union = K.sum(y_true, [1, 2, 3]) + K.sum(y_pred, [1, 2, 3]) - intersection
+    iou = K.mean((intersection + smooth) / (union + smooth), axis=0)
+    return iou
