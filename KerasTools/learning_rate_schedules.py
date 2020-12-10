@@ -27,8 +27,8 @@ class AddWarmUpToSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
         self.warmup_steps = warmup_steps
 
     def __call__(self, step):
-        arg1 = step * (self.initial_learning_rate - self.initial_learning_rate * .2) / (
-            self.warmup_steps) + self.initial_learning_rate * .2
+        arg1 = step * (self.initial_learning_rate - self.initial_learning_rate * .0) / (
+            self.warmup_steps) + self.initial_learning_rate * .0
         arg2 = self.scheduler(step)
         warmup_steps = self.warmup_steps * tf.ones_like(step)
         alpha = tf.cast(tf.math.argmin([step, warmup_steps]), tf.float32)
@@ -44,7 +44,7 @@ class AddWarmUpToSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
 
 if __name__ == '__main__':
     d_model = 512
-    total_epochs = 4000
+    total_epochs = 10
     lr = 1e-3
     learning_rate = TransformerLRSchedule(d_model, total_epochs / 5)
     learning_rate = tf.keras.experimental.CosineDecay(lr, decay_steps=int(4 * total_epochs / 5), alpha=.1)
