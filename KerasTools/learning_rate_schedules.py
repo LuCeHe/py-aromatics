@@ -44,7 +44,7 @@ class AddWarmUpToSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
 
 if __name__ == '__main__':
     d_model = 512
-    total_epochs = 10
+    total_epochs = 30*375
     lr = 1e-3
     learning_rate = TransformerLRSchedule(d_model, total_epochs / 5)
     learning_rate = tf.keras.experimental.CosineDecay(lr, decay_steps=int(4 * total_epochs / 5), alpha=.1)
