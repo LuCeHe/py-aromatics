@@ -14,7 +14,7 @@ import tensorflow as tf
 from tensorflow_addons.utils.types import FloatTensorLike
 
 
-class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
+class AdamW(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
     """Optimizer that implements the Adabelief.
 
     See paper [AdaBelief Optimizer: Adapting Stepsizes by the Belief in Observed Gradients](https://arxiv.org/abs/2010.07468).
@@ -31,7 +31,7 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
             weight_decay_rate: FloatTensorLike = 0.0,
             exclude_from_weight_decay: Optional[List[str]] = None,
             remove_nans: Optional[List[str]] = None,
-            name: str = "AdaBelief",
+            name: str = "AdamW",
             **kwargs
     ):
         """Construct a new AdaBelief optimizer.
@@ -126,7 +126,7 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
         m_t = m.assign(m_t, use_locking=self._use_locking)
         # v_t = beta2 * v + (1 - beta2) * (g_t * g_t)
         v = self.get_slot(var, "v")
-        v_scaled_g_values = (grad - m_t) * (grad - m_t) * coefficients["one_minus_beta_2_t"]
+        v_scaled_g_values = (grad) * (grad) * coefficients["one_minus_beta_2_t"]
         v_t = v * coefficients["beta_2_t"] + v_scaled_g_values
         v_t = v.assign(v_t, use_locking=self._use_locking)
 
@@ -158,7 +158,7 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
         v = self.get_slot(var, "v")
         m_scaled_g_values = grad * coefficients["one_minus_beta_1_t"]
         m_t = m.assign(m * coefficients["beta_1_t"], use_locking=self._use_locking)
-        v_scaled_g_values = (grad - tf.gather(m_t, indices)) ** 2 * coefficients["one_minus_beta_2_t"]
+        v_scaled_g_values = (grad) ** 2 * coefficients["one_minus_beta_2_t"]
         v_t = v.assign(v * coefficients["beta_2_t"], use_locking=self._use_locking)
         with tf.control_dependencies([m_t, v_t]):
             m_t = self._resource_scatter_add(m, indices, m_scaled_g_values)
@@ -204,16 +204,6 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
         )
         return config
 
-    def _check_nans(self, param_name, update):
-        """Whether to use L2 weight decay for `param_name`."""
-        if self.exclude_from_weight_decay:
-            for r in self.remove_nans:
-                if re.search(r, param_name) is not None:
-                    print('nan avoided!')
-                    non_nans = 1 - tf.cast(tf.math.is_nan(update), tf.float32)
-                    update = tf.math.multiply_no_nan(update, non_nans)
-        return update
-
     def _do_use_weight_decay(self, param_name):
         """Whether to use L2 weight decay for `param_name`."""
         if self.exclude_from_weight_decay:
@@ -221,6 +211,15 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
                 if re.search(r, param_name) is not None:
                     return False
         return True
+
+    def _check_nans(self, param_name, update):
+        """Whether to use L2 weight decay for `param_name`."""
+        if self.exclude_from_weight_decay:
+            for r in self.remove_nans:
+                if re.search(r, param_name) is not None:
+                    non_nans = 1 - tf.cast(tf.math.is_nan(update), tf.float32)
+                    update = tf.math.multiply_no_nan(update, non_nans)
+        return update
 
     def _get_variable_name(self, param_name):
         """Get the variable name from the tensor name."""
