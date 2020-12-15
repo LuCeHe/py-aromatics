@@ -23,7 +23,7 @@ class TokenAndPositionEmbedding(tf.keras.layers.Layer):
             'maxlen': self.maxlen,
             'vocab_size': self.vocab_size,
             'embeddings_initializer':
-                tf.keras.initializers.serialize(self.embeddings_initializer),
+                tf.keras.initializers.serialize(tf.keras.initializers.get(self.embeddings_initializer)),
             'embed_dim': self.embed_dim,
         }
 
