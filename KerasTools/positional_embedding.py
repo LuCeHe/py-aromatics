@@ -7,9 +7,9 @@ class TokenAndPositionEmbedding(tf.keras.layers.Layer):
         self.maxlen, self.vocab_size, self.embed_dim = maxlen, vocab_size, embed_dim
         self.embeddings_initializer = embeddings_initializer
         self.token_emb = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embed_dim,
-                                                   embeddings_initializer=embeddings_initializer)
+                                                   embeddings_initializer=embeddings_initializer, name='SymbolEmbedding')
         self.pos_emb = tf.keras.layers.Embedding(input_dim=maxlen, output_dim=embed_dim,
-                                                 embeddings_initializer=embeddings_initializer)
+                                                 embeddings_initializer=embeddings_initializer, name='PositionEmbedding')
 
     def call(self, x):
         maxlen = tf.shape(x)[-1]

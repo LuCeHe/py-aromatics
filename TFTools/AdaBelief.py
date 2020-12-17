@@ -186,6 +186,7 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
         var_update = var.assign_sub(
             coefficients["lr_t"] * update, use_locking=self._use_locking
         )
+
         return tf.group(*[var_update, m_t, v_t])
 
     def get_config(self):
@@ -205,13 +206,14 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
         return config
 
     def _check_nans(self, param_name, update):
-        """Whether to use L2 weight decay for `param_name`."""
+        """Remove nans in the update rule."""
         if self.remove_nans:
             for r in self.remove_nans:
                 if re.search(r, param_name) is not None:
                     non_nans = 1 - tf.cast(tf.math.is_nan(update), tf.float32)
                     update = tf.math.multiply_no_nan(update, non_nans)
         return update
+
 
     def _do_use_weight_decay(self, param_name):
         """Whether to use L2 weight decay for `param_name`."""
