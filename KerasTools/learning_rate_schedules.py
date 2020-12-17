@@ -2,6 +2,21 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 
+class DummyConstantSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
+    def __init__(self, initial_learning_rate, ):
+        super(DummyConstantSchedule, self).__init__()
+        self.initial_learning_rate = initial_learning_rate
+
+    def __call__(self, step):
+        return self.initial_learning_rate*tf.ones_like(step)
+
+    def get_config(self):
+        return {
+            "initial_learning_rate": self.initial_learning_rate,
+        }
+
+
+
 class TransformerLRSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
     def __init__(self, d_model, warmup_steps=4000):
         super(TransformerLRSchedule, self).__init__()
@@ -22,7 +37,10 @@ class AddWarmUpToSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
     def __init__(self, scheduler, warmup_steps=4000):
         super(AddWarmUpToSchedule, self).__init__()
 
-        self.initial_learning_rate = scheduler.initial_learning_rate
+        if isinstance(scheduler, float):
+            self.initial_learning_rate = scheduler
+        else:
+            self.initial_learning_rate = scheduler.initial_learning_rate
         self.scheduler = scheduler
         self.warmup_steps = warmup_steps
 
@@ -46,10 +64,14 @@ if __name__ == '__main__':
     d_model = 512
     total_epochs = 30*375
     lr = 1e-3
-    learning_rate = TransformerLRSchedule(d_model, total_epochs / 5)
-    learning_rate = tf.keras.experimental.CosineDecay(lr, decay_steps=int(4 * total_epochs / 5), alpha=.1)
+    learning_rate = DummyConstantSchedule(lr)
+    # learning_rate = TransformerLRSchedule(d_model, total_epochs / 5)
+    # learning_rate = tf.keras.experimental.CosineDecay(lr, decay_steps=int(4 * total_epochs / 5), alpha=.1)
     # learning_rate = tf.keras.experimental.LinearCosineDecay(lr, decay_steps=int(2 * total_epochs / 3), alpha=.5)
-    learning_rate = tf.keras.experimental.CosineDecayRestarts(lr, first_decay_steps=int(total_epochs / 6.5), alpha=.1)
+    # learning_rate = tf.keras.experimental.CosineDecayRestarts(lr, first_decay_steps=int(total_epochs / 6.5), alpha=.1)
+    # learning_rate = tf.keras.experimental.PolynomialDecay(lr, decay_steps=int(2 * total_epochs / 3), alpha=.1)
+    learning_rate = tf.keras.optimizers.schedules.PolynomialDecay(lr, decay_steps=int(2 * total_epochs / 3), end_learning_rate=.1*lr)
+    learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(lr, decay_steps=int(2 * total_epochs / 3), decay_rate=.1*lr)
     learning_rate = AddWarmUpToSchedule(learning_rate, warmup_steps=total_epochs / 6)
 
     plt.plot(learning_rate(tf.range(total_epochs, dtype=tf.float32)))

@@ -206,10 +206,9 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
 
     def _check_nans(self, param_name, update):
         """Whether to use L2 weight decay for `param_name`."""
-        if self.exclude_from_weight_decay:
+        if self.remove_nans:
             for r in self.remove_nans:
                 if re.search(r, param_name) is not None:
-                    print('nan avoided!')
                     non_nans = 1 - tf.cast(tf.math.is_nan(update), tf.float32)
                     update = tf.math.multiply_no_nan(update, non_nans)
         return update
