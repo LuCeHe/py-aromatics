@@ -212,6 +212,10 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
                 if re.search(r, param_name) is not None:
                     non_nans = 1 - tf.cast(tf.math.is_nan(update), tf.float32)
                     update = tf.math.multiply_no_nan(update, non_nans)
+
+        if 'all' in self.remove_nans:
+            non_nans = 1 - tf.cast(tf.math.is_nan(update), tf.float32)
+            update = tf.math.multiply_no_nan(update, non_nans)
         return update
 
 
