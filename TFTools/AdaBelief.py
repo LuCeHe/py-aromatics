@@ -16,6 +16,7 @@ from tensorflow_addons.utils.types import FloatTensorLike
 
 class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
     """Optimizer that implements the Adabelief.
+    The code is written so as to implement Decoupled Weight Decay.
 
     See paper [AdaBelief Optimizer: Adapting Stepsizes by the Belief in Observed Gradients](https://arxiv.org/abs/2010.07468).
     """
@@ -213,9 +214,9 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
                     non_nans = 1 - tf.cast(tf.math.is_nan(update), tf.float32)
                     update = tf.math.multiply_no_nan(update, non_nans)
 
-        if 'all' in self.remove_nans:
-            non_nans = 1 - tf.cast(tf.math.is_nan(update), tf.float32)
-            update = tf.math.multiply_no_nan(update, non_nans)
+            if 'all' in self.remove_nans:
+                non_nans = 1 - tf.cast(tf.math.is_nan(update), tf.float32)
+                update = tf.math.multiply_no_nan(update, non_nans)
         return update
 
 

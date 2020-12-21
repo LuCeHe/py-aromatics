@@ -61,3 +61,23 @@ def log_base_n(x, n=2):
     numerator = tf.math.log(x)
     denominator = tf.math.log(tf.constant(n, dtype=numerator.dtype))
     return numerator / denominator
+
+
+
+def snake(logits, frequency = 1):
+    """Snake activation to learn periodic functions.
+    https://arxiv.org/abs/2006.08195
+
+    original code:
+    https://www.tensorflow.org/addons/api_docs/python/tfa/activations/snake
+    Args:
+        logits: Input tensor.
+        frequency: A scalar, frequency of the periodic part.
+    Returns:
+        Tensor of the same type and shape as `logits`.
+    """
+
+    logits = tf.convert_to_tensor(logits)
+    frequency = tf.cast(frequency, logits.dtype)
+
+    return logits + (1 - tf.cos(2 * frequency * logits)) / (2 * frequency)
