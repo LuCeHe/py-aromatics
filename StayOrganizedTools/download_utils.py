@@ -47,7 +47,7 @@ def download_and_unzip(data_links, destination_dir):
         desitination_name = destination.replace('.zip', '').replace('-v1', '').replace('.tgz', '').replace('.tar', '')
         is_file = os.path.isfile(desitination_name)
         is_folder = os.path.isdir(desitination_name)
-        print(is_folder, is_file)
+
         if not is_folder:
             if not os.path.isfile(destination): download_url(origin, destination)
 
