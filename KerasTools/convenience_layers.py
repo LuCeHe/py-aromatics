@@ -120,13 +120,15 @@ def predefined_model(vocab_size, emb_dim, units=128):
 class OneHot(Layer):
     def __init__(self, n_out, **kwargs):
         self.n_out = n_out
+        kwargs['name'] = 'onehot'
         super(OneHot, self).__init__(**kwargs)
 
     def build(self, input_shape):
         super(OneHot, self).build(input_shape)
 
     def call(self, inputs):
-        return tf.one_hot(tf.argmax(inputs, axis=-1), depth=self.n_out)
+        inputs = tf.cast(inputs, tf.int32)
+        return tf.one_hot(inputs, depth=self.n_out)
 
     def compute_output_shape(self, input_shape):
         output_shape = input_shape
