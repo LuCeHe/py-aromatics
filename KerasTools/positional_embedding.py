@@ -1,10 +1,40 @@
 import tensorflow as tf
+from tensorflow.python.ops import embedding_ops
+from tensorflow.python.ops import math_ops
+from tensorflow.python.distribute import sharded_variable
 
 """
 sources:
 https://github.com/akanyaani/gpt-2-tensorflow2.0/blob/master/layers/embedding_layer.py
 
 """
+
+
+class ZeroMeanEmbedding(tf.keras.layers.Embedding):
+    def __init__(self, name='zero_mean_embedding', **kwargs):
+        super(ZeroMeanEmbedding, self).__init__(name=name, **kwargs)
+
+    # def call(self, x):
+    #     mean_embedding = tf.reduce_mean(self.token_emb.embeddings, axis=-1)
+    #     print('\n\n\n')
+    #     print(mean_embedding.shape)
+    #     self.token_emb.embeddings = self.token_emb.embeddings - mean_embedding
+    #     x = self.token_emb(x)
+    #     return x
+
+
+    def call(self, inputs):
+        dtype = tf.keras.backend.dtype(inputs)
+        if dtype != 'int32' and dtype != 'int64':
+            inputs = math_ops.cast(inputs, 'int32')
+        if isinstance(self.embeddings, sharded_variable.ShardedVariable):
+            mean_embedding = tf.reduce_mean(self.embeddings.variables, axis=0)[None]
+            out = embedding_ops.embedding_lookup_v2(self.embeddings.variables - mean_embedding, inputs)
+        else:
+            mean_embedding = tf.reduce_mean(self.embeddings, axis=0)[None]
+            out = embedding_ops.embedding_lookup_v2(self.embeddings - mean_embedding, inputs)
+        return out
+
 
 class TokenAndPositionEmbedding(tf.keras.layers.Layer):
     def __init__(self, maxlen, vocab_size, embed_dim, embeddings_initializer='uniform',
@@ -13,9 +43,11 @@ class TokenAndPositionEmbedding(tf.keras.layers.Layer):
         self.maxlen, self.vocab_size, self.embed_dim = maxlen, vocab_size, embed_dim
         self.embeddings_initializer = embeddings_initializer
         self.token_emb = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embed_dim,
-                                                   embeddings_initializer=embeddings_initializer, name='SymbolEmbedding')
+                                                   embeddings_initializer=embeddings_initializer,
+                                                   name='SymbolEmbedding')
         self.pos_emb = tf.keras.layers.Embedding(input_dim=maxlen, output_dim=embed_dim,
-                                                 embeddings_initializer=embeddings_initializer, name='PositionEmbedding')
+                                                 embeddings_initializer=embeddings_initializer,
+                                                 name='PositionEmbedding')
 
     def call(self, x):
         maxlen = tf.shape(x)[-1]
@@ -41,6 +73,7 @@ class EmbeddingLayer(tf.keras.layers.Layer):
     """
     originally: https://github.com/akanyaani/gpt-2-tensorflow2.0/blob/master/layers/embedding_layer.py
     """
+
     def __init__(self, vocab_size, embedding_size, initializer=None, stddev=0.01, mean=0.0):
         super(EmbeddingLayer, self).__init__()
         self.vocab_size = vocab_size
