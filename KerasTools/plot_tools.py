@@ -4,7 +4,7 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 
 
-def plot_history(histories, plot_filename, epochs, method_names=None):
+def plot_history(histories, plot_filename, epochs, method_names=None, save=True, show=False):
     if not isinstance(histories, list): histories = [histories]
 
     if not method_names is None:
@@ -44,4 +44,8 @@ def plot_history(histories, plot_filename, epochs, method_names=None):
         if not method_names is None:
             ax.legend(lines, method_names)
 
-        fig.savefig(plot_filename, bbox_inches='tight')
+        if save:
+            fig.savefig(plot_filename, bbox_inches='tight')
+
+        if show:
+            fig.show()
