@@ -161,16 +161,15 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
         m_t = m.assign(m * coefficients["beta_1_t"], use_locking=self._use_locking)
         v_scaled_g_values = (grad - tf.gather(m_t, indices)) ** 2 * coefficients["one_minus_beta_2_t"]
         v_t = v.assign(v * coefficients["beta_2_t"], use_locking=self._use_locking)
-        with tf.control_dependencies([m_t, v_t]):
+        with tf.control_dependencies([m_t]):
             m_t = self._resource_scatter_add(m, indices, m_scaled_g_values)
-            v_t = self._resource_scatter_add(v, indices, v_scaled_g_values)
 
         # v_t = beta2 * v + (1 - beta2) * (g_t * g_t)
         # gm2 = tf.square(tf.math.subtract(grad, m))
         # v_scaled_g_values = tf.square(tf.math.subtract(grad, m_t)) * coefficients["one_minus_beta_2_t"]
 
-        # with tf.control_dependencies([v_t]):
-        #     v_t = self._resource_scatter_add(v, indices, v_scaled_g_values)
+        with tf.control_dependencies([v_t]):
+            v_t = self._resource_scatter_add(v, indices, v_scaled_g_values)
 
         m_t_hat = m_t / (1.0 - coefficients["beta_1_power"])
         v_t_hat = v_t / (1.0 - coefficients["beta_2_power"])
