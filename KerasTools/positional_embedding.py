@@ -75,7 +75,7 @@ class EmbeddingLayer(tf.keras.layers.Layer):
     """
 
     def __init__(self, vocab_size, embedding_size, initializer=None, stddev=0.01, mean=0.0, **kwargs):
-        super(EmbeddingLayer, self).__init__(name='wte')
+        super(EmbeddingLayer, self).__init__(**kwargs)
         self.vocab_size = vocab_size
         self.embedding_size = embedding_size
         self.stddev = stddev
