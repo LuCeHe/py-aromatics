@@ -74,8 +74,8 @@ class EmbeddingLayer(tf.keras.layers.Layer):
     originally: https://github.com/akanyaani/gpt-2-tensorflow2.0/blob/master/layers/embedding_layer.py
     """
 
-    def __init__(self, vocab_size, embedding_size, initializer=None, stddev=0.01, mean=0.0):
-        super(EmbeddingLayer, self).__init__()
+    def __init__(self, vocab_size, embedding_size, initializer=None, stddev=0.01, mean=0.0, **kwargs):
+        super(EmbeddingLayer, self).__init__(name='wte')
         self.vocab_size = vocab_size
         self.embedding_size = embedding_size
         self.stddev = stddev
@@ -86,13 +86,12 @@ class EmbeddingLayer(tf.keras.layers.Layer):
                                                             stddev=self.stddev)
 
     def build(self, input_shape):
-        with tf.name_scope("embedding_weights"):
-            self.embedding_weights = self.add_weight(
-                "weights",
-                shape=[self.vocab_size, self.embedding_size],
-                dtype="float32",
-                initializer=self.initializer
-            )
+        self.embedding_weights = self.add_weight(
+            "weights",
+            shape=[self.vocab_size, self.embedding_size],
+            dtype="float32",
+            initializer=self.initializer
+        )
         super(EmbeddingLayer, self).build(input_shape)
 
     def call(self, inputs, mode="embedding", scale=False):
@@ -129,8 +128,8 @@ class EmbeddingLayer(tf.keras.layers.Layer):
 
 class PositionEmbeddingLayer(tf.keras.layers.Layer):
 
-    def __init__(self, position_seq, pos_embedding_size, trainable=True, stddev=0.02, mean=0.0):
-        super(PositionEmbeddingLayer, self).__init__()
+    def __init__(self, position_seq, pos_embedding_size, trainable=True, stddev=0.02, mean=0.0, **kwargs):
+        super(PositionEmbeddingLayer, self).__init__(**kwargs)
         self.position_seq = position_seq
         self.hidden_size = pos_embedding_size
         self.trainable = trainable
@@ -142,21 +141,20 @@ class PositionEmbeddingLayer(tf.keras.layers.Layer):
                                                      stddev=self.stddev, mean=self.mean)
 
     def call(self, inputs, start=1):
-        with tf.name_scope("pos_embedding"):
-            if self.trainable:
-                batch_size = tf.shape(inputs)[0]
-                batch_seq = tf.shape(inputs)[1]
+        if self.trainable:
+            batch_size = tf.shape(inputs)[0]
+            batch_seq = tf.shape(inputs)[1]
 
-                positions = tf.reshape(tf.tile(tf.range(start, batch_seq + start), [batch_size]),
-                                       [batch_size, batch_seq])
+            positions = tf.reshape(tf.tile(tf.range(start, batch_seq + start), [batch_size]),
+                                   [batch_size, batch_seq])
 
-                positions = tf.cast(positions, tf.int32)
-                position_mask = tf.cast(tf.not_equal(inputs, 0), tf.int32)
-                positions *= position_mask
+            positions = tf.cast(positions, tf.int32)
+            position_mask = tf.cast(tf.not_equal(inputs, 0), tf.int32)
+            positions *= position_mask
 
-                return self.position_embedding(positions)
-            else:
-                return self.get_position_sinusoid(self.position_seq)
+            return self.position_embedding(positions)
+        else:
+            return self.get_position_sinusoid(self.position_seq)
 
     @staticmethod
     def get_position_sinusoid(seq_len, hidden_size, min_timescale=1.0, max_timescale=1.0e4):
