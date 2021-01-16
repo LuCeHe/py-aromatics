@@ -44,7 +44,10 @@ class DataGenerator(tf.compat.v2.keras.utils.Sequence):
         # Return the number of batches of the dataset
         return math.ceil(len(self.indexes) / self.batch_size)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index=None):
+        if index == None:
+            index = np.random.choice(len(self.indexes))
+
         # Generate indexes of the batch
         indexes = self.indexes[index * self.batch_size:
                                (index + 1) * self.batch_size]
@@ -93,6 +96,11 @@ def mnist_preprocessed(sequential=False, generator=False, batch_size=64):
     num_classes = 10
     img_rows, img_cols = 28, 28
 
+    config = lambda x: x
+    config.num_classes = num_classes
+    config.img_rows = img_rows
+    config.img_cols = img_cols
+    config.channels = 1
     # the data, split between train and test sets
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -113,7 +121,8 @@ def mnist_preprocessed(sequential=False, generator=False, batch_size=64):
         test_generator = DataGenerator(x_test, y_test, batch_size=batch_size,
                                        dim=input_shape, n_classes=num_classes,
                                        to_fit=True, shuffle=True)
-        return train_generator, val_generator, test_generator
+
+        return train_generator, val_generator, test_generator, config
 
     else:
 
