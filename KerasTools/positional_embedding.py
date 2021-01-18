@@ -126,7 +126,7 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
 
         return apply(inputs)
 
-    def compute_output_shape(self, input_shape)
+    # def compute_output_shape(self, input_shape)
 
     def get_config(self):
         config = {
