@@ -25,6 +25,7 @@ def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[], u
 
     destinations = []
     for d in tqdm(ds):
+        print(d)
         # Create a ZipFile Object and load sample.zip in it
         with ZipFile(d, 'r') as zipObj:
             #tail = 'good_' + ''.join([str(i) for i in np.random.choice(9, 5).tolist()])

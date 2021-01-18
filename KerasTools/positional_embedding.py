@@ -3,58 +3,130 @@ from tensorflow.python.ops import embedding_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.distribute import sharded_variable
 
+from GenericTools.KerasTools.convenience_layers import OneHot
+
 """
 sources:
-https://github.com/akanyaani/gpt-2-tensorflow2.0/blob/master/layers/embedding_layer.py
-
+    - https://github.com/akanyaani/gpt-2-tensorflow2.0/blob/master/layers/embedding_layer.py
+    - https://arxiv.org/pdf/1702.01417.pdf
 """
 
 
 class ZeroMeanEmbedding(tf.keras.layers.Embedding):
-    def __init__(self, name='zero_mean_embedding', **kwargs):
-        super(ZeroMeanEmbedding, self).__init__(name=name, **kwargs)
-
-    # def call(self, x):
-    #     mean_embedding = tf.reduce_mean(self.token_emb.embeddings, axis=-1)
-    #     print('\n\n\n')
-    #     print(mean_embedding.shape)
-    #     self.token_emb.embeddings = self.token_emb.embeddings - mean_embedding
-    #     x = self.token_emb(x)
-    #     return x
-
 
     def call(self, inputs):
         dtype = tf.keras.backend.dtype(inputs)
         if dtype != 'int32' and dtype != 'int64':
             inputs = math_ops.cast(inputs, 'int32')
+
         if isinstance(self.embeddings, sharded_variable.ShardedVariable):
-            mean_embedding = tf.reduce_mean(self.embeddings.variables, axis=0)[None]
-            out = embedding_ops.embedding_lookup_v2(self.embeddings.variables - mean_embedding, inputs)
+            emb = self.embeddings.variables
         else:
-            mean_embedding = tf.reduce_mean(self.embeddings, axis=0)[None]
-            out = embedding_ops.embedding_lookup_v2(self.embeddings - mean_embedding, inputs)
+            emb = self.embeddings
+
+        mean_embedding = tf.reduce_mean(emb, axis=0)[None]
+        out = embedding_ops.embedding_lookup_v2(emb - mean_embedding, inputs)
+
         return out
 
 
-class TokenAndPositionEmbedding(tf.keras.layers.Layer):
-    def __init__(self, maxlen, vocab_size, embed_dim, embeddings_initializer='uniform',
-                 name='TokenAndPositionEmbedding'):
-        super(TokenAndPositionEmbedding, self).__init__(name=name)
+class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
+    def __init__(self, maxlen, vocab_size, embed_dim, embeddings_initializer='orthogonal',
+                 name='SymbolAndPositionEmbedding',
+                 symbol_embedding='learned',
+                 position_embedding='learned', factorized_dim=None):
+        super(SymbolAndPositionEmbedding, self).__init__(name=name)
+
         self.maxlen, self.vocab_size, self.embed_dim = maxlen, vocab_size, embed_dim
         self.embeddings_initializer = embeddings_initializer
-        self.token_emb = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embed_dim,
-                                                   embeddings_initializer=embeddings_initializer,
-                                                   name='SymbolEmbedding')
-        self.pos_emb = tf.keras.layers.Embedding(input_dim=maxlen, output_dim=embed_dim,
-                                                 embeddings_initializer=embeddings_initializer,
-                                                 name='PositionEmbedding')
+        self.symbol_embedding = symbol_embedding
+        self.position_embedding = position_embedding
+        self.factorized_dim = factorized_dim
 
-    def call(self, x):
-        maxlen = tf.shape(x)[-1]
-        positions = tf.range(start=0, limit=maxlen, delta=1)
-        positions = self.pos_emb(positions)
-        x = self.token_emb(x)
-        return x + positions
+        if not factorized_dim is None:
+            self.fs = tf.keras.layers.Dense(embed_dim)
+            self.fp = tf.keras.layers.Dense(embed_dim)
+            embed_dim = factorized_dim
+        else:
+            self.fs = lambda x: x
+            self.fp = lambda x: x
+
+        if 'learned' in symbol_embedding:
+            self.sym_emb = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embed_dim,
+                                                     embeddings_initializer=embeddings_initializer,
+                                                     name='SymbolEmbedding')
+        elif 'onehot' in symbol_embedding:
+            self.sym_emb = OneHot(vocab_size, name='SymbolEmbedding')
+
+        elif 'zero_mean' in symbol_embedding:
+            self.sym_emb = ZeroMeanEmbedding(input_dim=vocab_size, output_dim=embed_dim,
+                                             embeddings_initializer=embeddings_initializer,
+                                             name='SymbolEmbedding')
+        else:
+            self.sym_emb = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embed_dim,
+                                                     embeddings_initializer=embeddings_initializer,
+                                                     name='SymbolEmbedding')
+
+        if 'learned' in position_embedding:
+            self.pos_emb = tf.keras.layers.Embedding(input_dim=maxlen, output_dim=embed_dim,
+                                                     embeddings_initializer=embeddings_initializer,
+                                                     name='PositionEmbedding')
+        elif 'zero_mean' in position_embedding:
+            self.pos_emb = ZeroMeanEmbedding(input_dim=maxlen, output_dim=embed_dim,
+                                             embeddings_initializer=embeddings_initializer,
+                                             name='PositionEmbedding')
+        elif 'sinusoid' in position_embedding:
+            self.pos_emb = lambda x: get_position_sinusoid(self.position_seq, embed_dim)
+        else:
+            self.pos_emb = lambda x: 0
+
+    def orthogonalizing_loss(self, weights):
+        # inspired by https://arxiv.org/pdf/1702.01417.pdf
+        # encourage std of singular values to be zero
+        s, _, _ = tf.linalg.svd(weights)
+        loss = tf.square(tf.math.reduce_std(s))
+        self.add_loss(loss)
+
+    def embedding(self, inputs):
+        with tf.name_scope("embedding"):
+            seq_len = tf.shape(inputs)[1]
+
+            positions = tf.range(start=0, limit=seq_len, delta=1)
+            positions = self.fp(self.pos_emb(positions))
+            x = self.fs(self.sym_emb(inputs))
+
+            return x + positions
+
+    def projection(self, inputs):
+        with tf.name_scope('output_layer'):
+            batch_size = tf.shape(inputs)[0]
+            seq_len = tf.shape(inputs)[1]
+            print('here!')
+            # print(self.sym_emb.embeddings.variables)
+            print(self.sym_emb.embeddings.shape)
+            logits = tf.matmul(inputs, self.fs(self.sym_emb.embeddings),
+                               transpose_b=True)
+
+            return tf.reshape(logits, [batch_size, seq_len, self.vocab_size])
+
+    def call(self, inputs, mode='embedding'):
+
+        if mode == 'embedding':
+            apply = self.embedding
+        elif mode == 'projection':
+            apply = self.projection
+        else:
+            raise ValueError("mode {} is not valid.".format(mode))
+
+        if 'isotropic' in self.position_embedding:
+            self.orthogonalizing_loss(self.pos_emb.embeddings)
+
+        if 'isotropic' in self.symbol_embedding:
+            self.orthogonalizing_loss(self.sym_emb.embeddings)
+
+        return apply(inputs)
+
+    def compute_output_shape(self, input_shape)
 
     def get_config(self):
         config = {
@@ -63,9 +135,12 @@ class TokenAndPositionEmbedding(tf.keras.layers.Layer):
             'embeddings_initializer':
                 tf.keras.initializers.serialize(tf.keras.initializers.get(self.embeddings_initializer)),
             'embed_dim': self.embed_dim,
+            'symbol_embedding': self.symbol_embedding,
+            'position_embedding': self.position_embedding,
+            'factorized_dim': self.factorized_dim
         }
 
-        base_config = super(TokenAndPositionEmbedding, self).get_config()
+        base_config = super().get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
 
@@ -154,17 +229,18 @@ class PositionEmbeddingLayer(tf.keras.layers.Layer):
 
             return self.position_embedding(positions)
         else:
-            return self.get_position_sinusoid(self.position_seq)
+            return get_position_sinusoid(self.position_seq)
 
-    @staticmethod
-    def get_position_sinusoid(seq_len, hidden_size, min_timescale=1.0, max_timescale=1.0e4):
-        position = tf.cast(tf.range(seq_len), tf.float32)
-        num_timescales = hidden_size // 2
-        log_timescale_increment = (
-                tf.math.log(float(max_timescale) / float(min_timescale)) /
-                (tf.cast(num_timescales, tf.float32) - 1))
-        inv_timescales = min_timescale * tf.exp(
-            tf.cast(tf.range(num_timescales), tf.float32) * -log_timescale_increment)
-        scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales, 0)
-        signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
-        return signal
+
+# @staticmethod
+def get_position_sinusoid(seq_len, hidden_size, min_timescale=1.0, max_timescale=1.0e4):
+    position = tf.cast(tf.range(seq_len), tf.float32)
+    num_timescales = hidden_size // 2
+    log_timescale_increment = (
+            tf.math.log(float(max_timescale) / float(min_timescale)) /
+            (tf.cast(num_timescales, tf.float32) - 1))
+    inv_timescales = min_timescale * tf.exp(
+        tf.cast(tf.range(num_timescales), tf.float32) * -log_timescale_increment)
+    scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales, 0)
+    signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
+    return signal
