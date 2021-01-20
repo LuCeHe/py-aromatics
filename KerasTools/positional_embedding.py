@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.python.ops import embedding_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.distribute import sharded_variable
+import tensorflow.keras.backend as K
 
 from GenericTools.KerasTools.convenience_layers import OneHot
 
@@ -10,7 +11,6 @@ sources:
     - https://github.com/akanyaani/gpt-2-tensorflow2.0/blob/master/layers/embedding_layer.py
     - https://arxiv.org/pdf/1702.01417.pdf
 """
-
 
 
 class TokenAndPositionEmbedding(tf.keras.layers.Layer):
@@ -44,6 +44,26 @@ class TokenAndPositionEmbedding(tf.keras.layers.Layer):
 
         base_config = super(TokenAndPositionEmbedding, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
+
+
+class Isotropic(tf.keras.regularizers.Regularizer):
+    """
+    inspired by https://arxiv.org/pdf/1702.01417.pdf
+        encourage std of singular values to be zero
+    """
+
+    def __init__(self, coef=1.):  # pylint: disable=redefined-outer-name
+        self.coef = K.cast_to_floatx(coef)
+
+    def __call__(self, x):
+        # encourage std of singular values to be zero
+        s, _, _ = tf.linalg.svd(x)
+        loss = tf.square(tf.math.reduce_std(s))
+        return self.coef * loss
+
+    def get_config(self):
+        return {'coef': float(self.coef)}
+
 
 class ZeroMeanEmbedding(tf.keras.layers.Embedding):
 
@@ -84,41 +104,46 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
             self.fs = lambda x: x
             self.fp = lambda x: x
 
+        symbol_regularizer = Isotropic() if 'isotropic' in symbol_embedding else None
         if 'learned' in symbol_embedding:
             self.sym_emb = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embed_dim,
                                                      embeddings_initializer=embeddings_initializer,
+                                                     embeddings_regularizer=symbol_regularizer,
                                                      name='SymbolEmbedding')
+
         elif 'onehot' in symbol_embedding:
             self.sym_emb = OneHot(vocab_size, name='SymbolEmbedding')
 
         elif 'zero_mean' in symbol_embedding:
             self.sym_emb = ZeroMeanEmbedding(input_dim=vocab_size, output_dim=embed_dim,
                                              embeddings_initializer=embeddings_initializer,
+                                             embeddings_regularizer=symbol_regularizer,
                                              name='SymbolEmbedding')
+
         else:
             self.sym_emb = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embed_dim,
                                                      embeddings_initializer=embeddings_initializer,
+                                                     embeddings_regularizer=symbol_regularizer,
                                                      name='SymbolEmbedding')
 
+        position_regularizer = Isotropic() if 'isotropic' in position_embedding else None
         if 'learned' in position_embedding:
             self.pos_emb = tf.keras.layers.Embedding(input_dim=maxlen, output_dim=embed_dim,
                                                      embeddings_initializer=embeddings_initializer,
+                                                     embeddings_regularizer=position_regularizer,
                                                      name='PositionEmbedding')
+
         elif 'zero_mean' in position_embedding:
             self.pos_emb = ZeroMeanEmbedding(input_dim=maxlen, output_dim=embed_dim,
                                              embeddings_initializer=embeddings_initializer,
+                                             embeddings_regularizer=position_regularizer,
                                              name='PositionEmbedding')
+
         elif 'sinusoid' in position_embedding:
             self.pos_emb = lambda x: get_position_sinusoid(self.position_seq, embed_dim)
+
         else:
             self.pos_emb = lambda x: 0
-
-    def orthogonalizing_loss(self, weights):
-        # inspired by https://arxiv.org/pdf/1702.01417.pdf
-        # encourage std of singular values to be zero
-        s, _, _ = tf.linalg.svd(weights)
-        loss = tf.square(tf.math.reduce_std(s))
-        self.add_loss(loss)
 
     def embedding(self, inputs):
         with tf.name_scope("embedding"):
@@ -150,12 +175,6 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
             apply = self.projection
         else:
             raise ValueError("mode {} is not valid.".format(mode))
-
-        if 'isotropic' in self.position_embedding:
-            self.orthogonalizing_loss(self.pos_emb.embeddings)
-
-        if 'isotropic' in self.symbol_embedding:
-            self.orthogonalizing_loss(self.sym_emb.embeddings)
 
         return apply(inputs)
 
