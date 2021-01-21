@@ -66,6 +66,10 @@ class Isotropic(tf.keras.regularizers.Regularizer):
 
 
 class ZeroMeanEmbedding(tf.keras.layers.Embedding):
+    """
+    inspired by https://arxiv.org/pdf/1702.01417.pdf
+        embeddings with mean zero work best
+    """
 
     def call(self, inputs):
         dtype = tf.keras.backend.dtype(inputs)
