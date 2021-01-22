@@ -24,7 +24,7 @@ class DropWord(tf.keras.layers.Layer):
             samples = samples[..., None]
 
         dropped_words = inputs * (1 - mask) + mask * samples
-
+        dropped_words = tf.cast(dropped_words, tf.int32)
         return dropped_words
 
     def get_config(self):
