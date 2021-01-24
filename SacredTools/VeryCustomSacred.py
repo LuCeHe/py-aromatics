@@ -43,7 +43,7 @@ class CustomFileStorageObserver(FileStorageObserver):
                 text_file.write(comments)
 
 
-def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=1):
+def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10):
     ex = Experiment(name=experiment_name, base_dir=base_dir)
     ex.observers.append(CustomFileStorageObserver("experiments"))
 

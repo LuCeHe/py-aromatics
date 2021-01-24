@@ -8,7 +8,10 @@ class DropWord(tf.keras.layers.Layer):
         self.dropword_prob = dropword_prob
         self.vocab_size = vocab_size
 
-    def call(self, inputs):
+    def call(self, inputs, training=None):
+
+        if not training is None:
+            tf.keras.backend.set_learning_phase(training)
         batch_size = tf.shape(inputs)[0]
         seq_len = tf.shape(inputs)[1]
 
@@ -24,6 +27,9 @@ class DropWord(tf.keras.layers.Layer):
             samples = samples[..., None]
 
         dropped_words = inputs * (1 - mask) + mask * samples
+        is_train = tf.cast(tf.keras.backend.learning_phase(), tf.float32)
+
+        dropped_words = is_train * dropped_words + (1 - is_train) * inputs
         dropped_words = tf.cast(dropped_words, tf.int32)
         return dropped_words
 

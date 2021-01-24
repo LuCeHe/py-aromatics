@@ -11,7 +11,11 @@ class SentenceOrderPrediction(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super(SentenceOrderPrediction, self).__init__(**kwargs)
 
-    def call(self, inputs):
+    def call(self, inputs, training=None):
+
+        if not training is None:
+            tf.keras.backend.set_learning_phase(training)
+
         batch_size = tf.shape(inputs)[0]
 
         original_sentences = tf.cast(inputs, dtype=tf.float32)
@@ -25,8 +29,11 @@ class SentenceOrderPrediction(tf.keras.layers.Layer):
 
         if len(tf.shape(inputs)) == 3:
             mask = mask[..., None]
-        sop = inputs * (1 - mask) + (mask * disordered_sentences)
+        sop = original_sentences * (1 - mask) + (mask * disordered_sentences)
 
+        is_train = tf.cast(tf.keras.backend.learning_phase(), tf.float32)
+
+        sop = is_train * sop + (1 - is_train) * original_sentences
         return sop, cat_mask
 
 
@@ -45,6 +52,6 @@ class SOP_loss(tf.keras.layers.Layer):
         sop_loss = tf.keras.losses.CategoricalCrossentropy(
             from_logits=True,
             label_smoothing=.1)(sop_mask, av_sop)
-        self.add_loss(sop_loss)
+        self.add_loss(.01 * sop_loss)
 
         return activity
