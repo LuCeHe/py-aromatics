@@ -4,12 +4,6 @@ from typing import Optional, Union, Callable, List
 from tensorflow_addons.optimizers.weight_decay_optimizers import DecoupledWeightDecayExtension
 from typeguard import typechecked
 
-from tensorflow.python.eager import context
-from tensorflow.python.framework import ops
-from tensorflow.python.ops import control_flow_ops
-from tensorflow.python.ops import math_ops
-from tensorflow.python.ops import resource_variable_ops
-from tensorflow.python.ops import state_ops
 import tensorflow as tf
 from tensorflow_addons.utils.types import FloatTensorLike
 
@@ -32,6 +26,7 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
             weight_decay_rate: FloatTensorLike = 0.0,
             exclude_from_weight_decay: Optional[List[str]] = None,
             remove_nans: Optional[List[str]] = None,
+            remove_mean=False,
             name: str = "AdaBelief",
             **kwargs
     ):
@@ -83,6 +78,9 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
         self.epsilon = epsilon or tf.backend_config.epsilon()
         self.exclude_from_weight_decay = exclude_from_weight_decay
         self.remove_nans = remove_nans
+        self.remove_mean = remove_mean
+
+        assert self.remove_mean in [False, 0, 1]
 
     def _create_slots(self, var_list):
         # Create slots for the first and second moments.
@@ -144,6 +142,13 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
         update = self._check_nans(var_name, update)
 
         var_update = var - coefficients["lr_t"] * update
+
+        if not self.remove_mean == False and len(tf.shape(var)) == 2:
+            print('here')
+            mean = tf.reduce_mean(var, axis=self.remove_mean)
+            mean = tf.expand_dims(mean, axis=self.remove_mean)
+            var_update = var - mean
+
         return var.assign(var_update, use_locking=self._use_locking)
 
     def _resource_apply_sparse(self, grad, var, indices, apply_state=None):
@@ -187,6 +192,11 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
             coefficients["lr_t"] * update, use_locking=self._use_locking
         )
 
+        if not self.remove_mean == False and len(tf.shape(var)) == 2:
+            print('here')
+            mean = tf.reduce_mean(var, axis=self.remove_mean)
+            mean = tf.expand_dims(mean, axis=self.remove_mean)
+            var_update = var.assign_sub(mean, use_locking=self._use_locking)
         return tf.group(*[var_update, m_t, v_t])
 
     def get_config(self):
@@ -217,7 +227,6 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
                 non_nans = 1 - tf.cast(tf.math.is_nan(update), tf.float32)
                 update = tf.math.multiply_no_nan(update, non_nans)
         return update
-
 
     def _do_use_weight_decay(self, param_name):
         """Whether to use L2 weight decay for `param_name`."""
