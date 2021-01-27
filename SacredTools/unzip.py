@@ -6,10 +6,9 @@ from tqdm import tqdm
 CDIR = os.path.dirname(os.path.realpath(__file__))
 
 
-def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[], unzip_what=None):
-    tmp_ds = [os.path.join(*[GEXPERIMENTS, e]) for e in os.listdir(GEXPERIMENTS) if 'zip' in e]
-    EXPERIMENTS = GEXPERIMENTS.replace('good_experiments', 'experiments')
-    if not os.path.isdir(EXPERIMENTS): os.mkdir(EXPERIMENTS)
+def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_identifiers=[], unzip_what=None):
+    tmp_ds = [os.path.join(*[exp_origin, e]) for e in os.listdir(exp_origin) if 'zip' in e]
+    if not os.path.isdir(exp_destination): os.mkdir(exp_destination)
 
     ds = []
     for d in tmp_ds:
@@ -31,7 +30,7 @@ def unzip_good_exps(GEXPERIMENTS, exp_identifiers=[''], except_identifiers=[], u
         with ZipFile(d, 'r') as zipObj:
             #tail = 'good_' + ''.join([str(i) for i in np.random.choice(9, 5).tolist()])
             tail = d.split('\\')[-1].replace('.zip', '')
-            destination = os.path.join(*[EXPERIMENTS, tail])
+            destination = os.path.join(*[exp_destination, tail])
             destinations.append(destination)
             if not os.path.isdir(destination):
                 os.mkdir(destination)
