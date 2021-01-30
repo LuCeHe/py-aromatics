@@ -144,7 +144,7 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
                                              name='PositionEmbedding')
 
         elif 'sinusoid' in position_embedding:
-            self.pos_emb = lambda x: get_position_sinusoid(self.position_seq, embed_dim)
+            self.pos_emb = lambda x: get_position_sinusoid(self.maxlen, embed_dim)
 
         else:
             self.pos_emb = lambda x: 0
