@@ -52,7 +52,7 @@ class Isotropic(tf.keras.regularizers.Regularizer):
         encourage std of singular values to be zero
     """
 
-    def __init__(self, coef=1.):  # pylint: disable=redefined-outer-name
+    def __init__(self, coef=10.):  # pylint: disable=redefined-outer-name
         self.coef = K.cast_to_floatx(coef)
 
     def __call__(self, x):
