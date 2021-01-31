@@ -102,7 +102,10 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
 
         if not factorized_dim is None:
             self.fs = tf.keras.layers.Dense(embed_dim)
-            self.fp = tf.keras.layers.Dense(embed_dim)
+            if not position_embedding == 'None':
+                self.fp = tf.keras.layers.Dense(embed_dim)
+            else:
+                self.fp = lambda x: x
             embed_dim = factorized_dim
         else:
             self.fs = lambda x: x
