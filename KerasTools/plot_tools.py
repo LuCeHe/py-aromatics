@@ -24,6 +24,8 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
         lines = []
         for history, c in zip(histories, colors):
             for k, ax in zip(keys, axs):
+                ax.set_facecolor('gray')
+
                 # plot training and validation losses
 
                 try:
