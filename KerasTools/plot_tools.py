@@ -4,7 +4,7 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 
 
-def plot_history(histories, plot_filename, epochs, method_names=None, save=True, show=False):
+def plot_history(histories, plot_filename, epochs, method_names=None, save=True, show=False, bkg_color='white'):
     if not isinstance(histories, list): histories = [histories]
 
     if not method_names is None:
@@ -24,7 +24,7 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
         lines = []
         for history, c in zip(histories, colors):
             for k, ax in zip(keys, axs):
-                ax.set_facecolor('gray')
+                ax.set_facecolor(bkg_color)
 
                 # plot training and validation losses
 
