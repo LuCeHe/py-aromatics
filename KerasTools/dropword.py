@@ -9,9 +9,11 @@ class DropWord(tf.keras.layers.Layer):
         self.vocab_size = vocab_size
 
     def call(self, inputs, training=None):
+        inputs = tf.cast(inputs, tf.float32)
 
         if not training is None:
             tf.keras.backend.set_learning_phase(training)
+
         batch_size = tf.shape(inputs)[0]
         seq_len = tf.shape(inputs)[1]
 
