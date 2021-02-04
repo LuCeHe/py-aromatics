@@ -19,9 +19,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 parser = argparse.ArgumentParser()
 parser.add_argument("--max_seq_length", type=int, default=64)
 parser.add_argument(
-    "--dataset",
-    choices=["wikitext-2", "wikitext-103", "wikipedia", "bookcorpus", "wikibooks", "c4", 'squad'],
-    default=dataset
+    "--dataset", default=dataset,
+    choices=["wikitext-2", "wikitext-103", "wikipedia", "bookcorpus", "wikibooks", "c4", 'squad', 'openwebtext'],
 )
 
 parser.add_argument("--data_split", choices=["train", "validation", "test"], default='train')
@@ -98,7 +97,6 @@ print(dset.column_names)
 print("Loaded dataset:", dset, dset[0])
 assert dset.column_names == [text_column_name], "Dataset should have exactly one 'text' column"
 
-print("Filtering empty lines")
 dset = dset.filter(
     lambda ex: len(ex[text_column_name]) > 0,
     cache_file_name=os.path.join(args.cache_dir, FILTER_CACHE),
@@ -122,12 +120,13 @@ dset = dset.map(
     load_from_cache_file=True,
 )
 
-print("Filtered empty lines:", dset, dset[0])
+print("Tokenized:", dset, dset[0])
 print("                     ", dset[1])
 max_seq_length = args.max_seq_length
 
+preprocessing_batch_size = 1500  # 300000
 
-preprocessing_batch_size = 1500 #300000
+
 def group_texts(examples):
     # Concatenate all texts.
     # concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
@@ -149,6 +148,7 @@ def group_texts(examples):
     }
     return result
 
+
 # batch_size
 # writer_batch_size
 dset = dset.map(
@@ -160,7 +160,7 @@ dset = dset.map(
     # load_from_cache_file=not data_args.overwrite_cache,
 )
 
-print("Filtered empty lines:", dset, dset[0])
+print("Grouped as LM:", dset, dset[0])
 print("                     ", dset[1])
 
 elapsed = time.perf_counter() - start_time
