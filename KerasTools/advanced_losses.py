@@ -66,3 +66,27 @@ def iou_coef(y_true, y_pred, smooth=1):
     union = K.sum(y_true, [1, 2, 3]) + K.sum(y_pred, [1, 2, 3]) - intersection
     iou = K.mean((intersection + smooth) / (union + smooth), axis=0)
     return iou
+
+
+
+def mode_accuracy(y_true, y_pred):
+    true = tf.cast(tf.argmax(tf.reduce_sum(y_true, axis=1), axis=1), tf.float32)
+    pred = tf.cast(tf.argmax(tf.reduce_sum(y_pred, axis=1), axis=1), tf.float32)
+    equal = tf.cast(tf.math.equal(pred, true), tf.float32)
+    acc = tf.reduce_mean(equal)
+    return acc
+
+
+def zeros_categorical_accuracy(y_true, y_pred):
+    n_tot = tf.reduce_sum(y_true, axis=[1, 2])
+    depth = tf.shape(y_true)[-1]
+    new_t = y_true * tf.one_hot(tf.math.argmax(y_pred, axis=2), depth=depth)
+    n_right = tf.reduce_sum(new_t, axis=[1, 2])
+    return n_right / n_tot
+
+
+def bpc(y_true, y_pred):
+    mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
+    bits_per_character = mean_xent / np.log(2)
+    return bits_per_character
+

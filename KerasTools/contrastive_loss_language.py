@@ -15,23 +15,26 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
         seq_len = tf.shape(probs)[1]
         vocab_size = tf.shape(probs)[2]
 
-        input_words = tf.one_hot(tf.cast(tf.squeeze(input_words, axis=-1), tf.int32), vocab_size)
+        if self.coef_disorder>0:
+            input_words = tf.one_hot(tf.cast(tf.squeeze(input_words, axis=-1), tf.int32), vocab_size)
 
-        original_sentences = tf.cast(input_words, dtype=tf.float32)
-        splits = tf.split(original_sentences, 2, axis=1)
-        disordered_sentences = tf.concat([splits[1], splits[0]], axis=1)
+            original_sentences = tf.cast(input_words, dtype=tf.float32)
+            splits = tf.split(original_sentences, 2, axis=1)
+            disordered_sentences = tf.concat([splits[1], splits[0]], axis=1)
 
-        cl_d = - self.coef_disorder * tf.keras.losses.CategoricalCrossentropy()(disordered_sentences, probs)
-        self.add_loss(cl_d)
-        self.add_metric(cl_d, name='contrastive_disorder', aggregation='mean')
+            cl_d = - self.coef_disorder * tf.keras.losses.CategoricalCrossentropy()(disordered_sentences, probs)
+            self.add_loss(cl_d)
+            self.add_metric(cl_d, name='contrastive_disorder', aggregation='mean')
 
-        p = tf.tile((1 / vocab_size)[None, None], [batch_size, vocab_size])
-        ps = tf.random.categorical(tf.math.log(p), seq_len)
-        random_words = tf.one_hot(ps, vocab_size)
 
-        cl_r = - self.coef_random * tf.keras.losses.CategoricalCrossentropy()(random_words, probs)
-        self.add_loss(cl_r)
-        self.add_metric(cl_r, name='contrastive_random', aggregation='mean')
+        if self.coef_random>0:
+            p = tf.tile((1 / vocab_size)[None, None], [batch_size, vocab_size])
+            ps = tf.random.categorical(tf.math.log(p), seq_len)
+            random_words = tf.one_hot(ps, vocab_size)
+
+            cl_r = - self.coef_random * tf.keras.losses.CategoricalCrossentropy()(random_words, probs)
+            self.add_loss(cl_r)
+            self.add_metric(cl_r, name='contrastive_random', aggregation='mean')
 
         return probs
 
