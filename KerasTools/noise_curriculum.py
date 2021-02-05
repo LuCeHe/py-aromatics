@@ -30,9 +30,9 @@ class NoiseSchedule(tf.keras.callbacks.Callback):
         self.stddev = stddev
 
     def on_epoch_begin(self, epoch, logs=None):
-        if epoch < self.epochs / 2 - 1:
+        if epoch < self.epochs / 4 - 1 or epoch > 3*self.epochs / 4 - 1:
             tf.keras.backend.set_value(self.stddev, 0.)
         else:
             # 0 to .6
             portion = (2 * (epoch + 1) / self.epochs - 1)
-            tf.keras.backend.set_value(self.stddev, .6 * portion)
+            tf.keras.backend.set_value(self.stddev, .4 * portion)
