@@ -3,11 +3,6 @@ import numpy as np
 import tensorflow as tf
 from scipy.ndimage import distance_transform_edt as distance
 
-try:
-    from segmentation_models.base import Loss
-except:
-    from segmentation_models.segmentation_models.base import Loss
-
 """
 sources:
 https://github.com/LIVIAETS/surface-loss/issues/14#issuecomment-546342163
@@ -39,34 +34,11 @@ def surface_loss(y_true, y_pred):
     return K.mean(multipled)
 
 
-class SurfaceLoss(Loss):
-
-    def __init__(self):
-        super().__init__(name='surface_loss')
-
-    def __call__(self, gt, pr):
-        return surface_loss(gt, pr)
-
-
-class SNRLoss(Loss):
-
-    def __init__(self, epsilon=1e-5):
-        super().__init__(name='snr_loss')
-        self.epsilon = epsilon
-
-    def __call__(self, gt, pr):
-        S = gt
-        N = gt - pr + self.epsilon
-        SNR = tf.math.truediv(S, N)
-        return SNR
-
-
 def iou_coef(y_true, y_pred, smooth=1):
     intersection = K.sum(K.abs(y_true * y_pred), axis=[1, 2, 3])
     union = K.sum(y_true, [1, 2, 3]) + K.sum(y_pred, [1, 2, 3]) - intersection
     iou = K.mean((intersection + smooth) / (union + smooth), axis=0)
     return iou
-
 
 
 def mode_accuracy(y_true, y_pred):
@@ -89,4 +61,3 @@ def bpc(y_true, y_pred):
     mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
     bits_per_character = mean_xent / np.log(2)
     return bits_per_character
-
