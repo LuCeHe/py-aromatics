@@ -18,7 +18,7 @@ class StochasticDepth(tf.keras.layers.Layer):
 
         skip_prob = tf.cast(self.skip_prob, tf.float32)
         p = tf.tile([[skip_prob, 1 - skip_prob]], [batch_size, 1])
-        mask = tf.cast(tf.random.categorical(tf.math.log(p), 1), dtype=tf.float32)[..., None]
+        mask = tf.cast(tf.random.categorical(tf.math.log(p), 1), dtype=tf.float32) #[..., None]
 
         choice = layer_output * mask + layer_input * (1 - mask)
         return choice
