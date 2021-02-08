@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Input, Embedding, \
     LSTM, Lambda, Dense, Layer
 from tensorflow.keras.models import Model
 
-from GenericTools.TFTools.convenience_operations import slice_from_to, clip_layer, replace_column
+from GenericTools.KerasTools.convenience_operations import slice_from_to, clip_layer, replace_column
 
 
 class AverageOverAxis(Layer):

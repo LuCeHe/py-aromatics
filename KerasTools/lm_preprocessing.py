@@ -5,163 +5,189 @@ https://github.com/huggingface/transformers/blob/master/examples/language-modeli
 
 """
 
-import argparse, multiprocessing, os, time
+import argparse, multiprocessing, os, time, shutil
 import datasets as nlp
 from transformers import GPT2Tokenizer
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
-dataset = 'squad'
-DATAPATH = os.path.abspath(os.path.join(CDIR, '..', 'data', dataset))
 
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--max_seq_length", type=int, default=64)
-parser.add_argument(
-    "--dataset", default=dataset,
-    choices=["wikitext-2", "wikitext-103", "wikipedia", "bookcorpus", "wikibooks", "c4", 'squad', 'openwebtext'],
-)
+def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_seq_length, preprocessing_num_workers):
+    import time
+    dataset_path = os.path.join(datapath, dataset)
+    setpath = os.path.join(dataset_path, data_split)
+    set_tokenized_path = os.path.join(dataset_path, 'tokenized_{}_{}'.format(data_split, max_seq_length))
 
-parser.add_argument("--data_split", choices=["train", "validation", "test"], default='train')
-parser.add_argument("--cache_dir", default=DATAPATH)
-parser.add_argument("--shards", type=int, default=1)
-parser.add_argument("--processes", type=int, default=1)  # 64 processes is a sweet spot on p3dn
-parser.add_argument("--skip_load_from_cache_file", action="store_true")
-parser.add_argument("--preprocessing_num_workers", type=int, default=1)
+    start_time = time.perf_counter()
 
-args = parser.parse_args()
+    text_column_name = 'text'
 
-SETPATH = os.path.join(DATAPATH, args.data_split)
+    # if not already tokenized
+    if not os.path.isdir(set_tokenized_path):
+        print("\nLoading dataset...")
 
-FILTER_CACHE = "filterlines.arrow"
-NEWLINES_CACHE = "replacenewlines.arrow"
-SENTENCES_CACHE = "sentences.arrow"
-PRETOKENIZED_SENTENCES_CACHE = "pretokenized_sentences.arrow"
-EXAMPLES_CACHE = f"examples_{args.max_seq_length}seq.arrow"
-EXAMPLE_IDS_CACHE = f"example_ids_{args.max_seq_length}seq.arrow"
+        # if not already downloaded
+        if not os.path.isdir(setpath):
+            os.makedirs(setpath, exist_ok=True)
 
-load_from_cache_file = not args.skip_load_from_cache_file
+            print(f"Loading dataset: {dataset}")
+            if dataset.startswith("wikitext"):
+                dset = nlp.load_dataset(
+                    "wikitext", f"{dataset}-raw-v1", split=data_split, cache_dir=setpath
+                )
 
-assert (
-        args.dataset in args.cache_dir
-), "Dataset name should be part of the directory name, don't mix datasets!"
+            elif dataset == "wikipedia":
+                dset = nlp.load_dataset("wikipedia", "20200501.en", split=data_split, cache_dir=setpath)
+                dset.remove_columns_("title")  # only keep the text
 
-start_time = time.perf_counter()
+            elif dataset == "bookcorpus":
 
-text_column_name = 'text'
-if not os.path.isdir(SETPATH):
-    os.makedirs(SETPATH, exist_ok=True)
+                dset = nlp.load_dataset("bookcorpus", split=data_split, cache_dir=setpath)
+                dset.remove_columns_("title")  # only keep the text
 
-    print(f"Loading dataset: {args.dataset}")
-    if args.dataset.startswith("wikitext"):
-        dset = nlp.load_dataset(
-            "wikitext", f"{args.dataset}-raw-v1", split=args.data_split, cache_dir=SETPATH
+            elif dataset == "wikibooks":
+
+                bookcorpus = nlp.load_dataset("bookcorpus", split="train", cache_dir=setpath)
+                wiki = nlp.load_dataset("wikipedia", "20200501.en", split="train", cache_dir=setpath)
+                wiki.remove_columns_("title")  # only keep the text
+                assert bookcorpus.features.type == wiki.features.type
+                dset = nlp.concatenate_datasets([bookcorpus, wiki])
+
+            elif dataset == "c4":
+                dset = nlp.load_dataset("c4", "en", cache_dir=setpath)
+                # assert False, "This dataset must be preprocessed beforehand"
+
+            elif dataset == "squad":
+                dset = nlp.load_dataset(dataset, split=data_split, cache_dir=setpath)
+                dset.remove_columns_(["title", 'answers', 'id', 'question', ])
+                dset.rename_column_('context', 'text')
+
+            elif dataset == "lambada":
+                dset = nlp.load_dataset(dataset, split=data_split, cache_dir=setpath)
+                dset.remove_columns_(['domain', ])
+
+            elif dataset == "openwebtext":
+                dset = nlp.load_dataset(dataset, split=data_split, cache_dir=setpath)
+                print(dset.column_names)
+                # dset.remove_columns_(["title", 'answers', 'id', 'question', ])
+                # dset.rename_column_('context', 'text')
+            else:
+                dset = nlp.load_dataset(dataset, split=data_split, cache_dir=setpath)
+                print(dset.column_names)
+                print(dset[0])
+                # raise NotImplementedError
+
+            dset.save_to_disk(setpath)
+        else:
+            dset = nlp.load_from_disk(setpath)
+            print(dset[0])
+            print(dset.column_names)
+
+        print(dset.column_names)
+
+        print("\nLoaded dataset:")
+        print("                     ", dset)
+        print("                     ", dset[0])
+        print("                     ", dset[1])
+        assert dset.column_names == [text_column_name], "Dataset should have exactly one 'text' column"
+
+        dset = dset.filter(
+            lambda ex: len(ex[text_column_name]) > 0,
+        )
+        print("\nFiltered empty lines:")
+        print("                     ", dset)
+        print("                     ", dset[0])
+        print("                     ", dset[1])
+
+        # tokenizer = BertTokenizerFast.from_pretrained("bert-base-uncased")
+        tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+
+        print("\nTokenizing dataset...")
+
+        def tokenize_function(examples):
+            return tokenizer(examples[text_column_name], return_special_tokens_mask=True)
+
+        dset = dset.map(
+            tokenize_function,
+            batched=True,
+            num_proc=preprocessing_num_workers,
+            remove_columns=["text"]
         )
 
-    elif args.dataset == "wikipedia":
-        dset = nlp.load_dataset("wikipedia", "20200501.en", split=args.data_split, cache_dir=SETPATH)
-        dset.remove_columns_("title")  # only keep the text
+        del tokenizer
+        print("\nTokenized:")
+        print("                     ", dset)
+        print("                     ", dset[0])
+        print("                     ", dset[1])
 
-    elif args.dataset == "bookcorpus":
+        preprocessing_batch_size = 1500  # 300000
 
-        dset = nlp.load_dataset("bookcorpus", split=args.data_split, cache_dir=SETPATH)
-        dset.remove_columns_("title")  # only keep the text
+        print("\nStructure for Language Modeling...")
 
-    elif args.dataset == "wikibooks":
+        def group_texts(examples):
+            # Concatenate all texts.
+            concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
+            total_length = len(concatenated_examples['input_ids'])
 
-        bookcorpus = nlp.load_dataset("bookcorpus", split="train", cache_dir=SETPATH)
-        wiki = nlp.load_dataset("wikipedia", "20200501.en", split="train", cache_dir=SETPATH)
-        wiki.remove_columns_("title")  # only keep the text
-        assert bookcorpus.features.type == wiki.features.type
-        dset = nlp.concatenate_datasets([bookcorpus, wiki])
+            # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
+            # customize this part to your needs.
+            total_length = (total_length // max_seq_length) * max_seq_length
 
-    elif args.dataset == "c4":
-        dset = nlp.load_dataset("c4", "en", cache_dir=SETPATH)
-        # assert False, "This dataset must be preprocessed beforehand"
+            # Split by chunks of max_len.
+            result = {
+                k: [t[i: i + max_seq_length] for i in range(0, total_length, max_seq_length)]
+                for k, t in concatenated_examples.items()
+            }
+            return result
 
-    elif args.dataset == "squad":
-        dset = nlp.load_dataset(args.dataset, split=args.data_split, cache_dir=SETPATH)
-        dset.remove_columns_(["title", 'answers', 'id', 'question', ])
-        dset.rename_column_('context', 'text')
+        dset = dset.map(
+            group_texts,
+            batch_size=preprocessing_batch_size,
+            writer_batch_size=preprocessing_batch_size,
+            batched=True,
+            num_proc=preprocessing_num_workers,
+        )
 
+        dset.save_to_disk(set_tokenized_path)
     else:
-        raise NotImplementedError
+        dset = nlp.load_from_disk(set_tokenized_path)
 
-    dset.save_to_disk(SETPATH)
-else:
-    dset = nlp.load_from_disk(SETPATH)
+    print("\nGrouped as LM:")
+    print("                     ", dset)
+    print("                     ", dset[0])
+    print("                     ", dset[1])
 
-print(dset.column_names)
+    elapsed = time.perf_counter() - start_time
+    print(f"\nTotal processing time: {elapsed:.3f} seconds")
 
-print("Loaded dataset:", dset, dset[0])
-assert dset.column_names == [text_column_name], "Dataset should have exactly one 'text' column"
-
-dset = dset.filter(
-    lambda ex: len(ex[text_column_name]) > 0,
-    cache_file_name=os.path.join(args.cache_dir, FILTER_CACHE),
-    load_from_cache_file=load_from_cache_file,
-)
-print("Filtered empty lines:", dset, dset[0])
-print("                     ", dset[1])
-
-# tokenizer = BertTokenizerFast.from_pretrained("bert-base-uncased")
-tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-
-
-def tokenize_function(examples):
-    return tokenizer(examples[text_column_name], return_special_tokens_mask=True)
+    del dset
+    time.sleep(2)
+    ds = [d for d in os.listdir(dataset_path) if not 'tokenized' in d]
+    print(ds)
+    for d in ds:
+        d_path = os.path.join(dataset_path, d)
+        if os.path.isfile(d_path):
+            os.remove(d_path)
+        else:
+            shutil.rmtree(d_path)
 
 
-dset = dset.map(
-    tokenize_function,
-    batched=True,
-    num_proc=args.preprocessing_num_workers,
-    load_from_cache_file=True,
-)
+if __name__ == '__main__':
+    dataset = 'squad'
+    DATAPATH = os.path.abspath(os.path.join(CDIR, '..', 'data'))
 
-print("Tokenized:", dset, dset[0])
-print("                     ", dset[1])
-max_seq_length = args.max_seq_length
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset", default=dataset,
+        choices=["wikitext-2", "wikitext-103", "wikipedia", "bookcorpus", "wikibooks", "c4", 'squad', 'openwebtext',
+                 'lambada'],
+    )
+    parser.add_argument("--datapath", default=DATAPATH)
+    parser.add_argument("--data_split", choices=["train", "validation", "test"], default='validation')
+    parser.add_argument("--max_seq_length", type=int, default=1024)
+    parser.add_argument("--preprocessing_num_workers", type=int, default=1)
 
-preprocessing_batch_size = 1500  # 300000
+    args = parser.parse_args()
 
-
-def group_texts(examples):
-    # Concatenate all texts.
-    # concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
-    # print(examples['input_ids'])
-    concatenated_examples = {'input_ids': sum(examples['input_ids'], [])}
-    total_length = len(concatenated_examples['input_ids'])
-    print('\nhere')
-    print(total_length)
-
-    # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
-    # customize this part to your needs.
-    total_length = (total_length // max_seq_length) * max_seq_length
-    print(total_length)
-
-    # Split by chunks of max_len.
-    result = {
-        k: [t[i: i + max_seq_length] for i in range(0, total_length, max_seq_length)][:preprocessing_batch_size]
-        for k, t in concatenated_examples.items()
-    }
-    return result
-
-
-# batch_size
-# writer_batch_size
-dset = dset.map(
-    group_texts,
-    batch_size=preprocessing_batch_size,
-    writer_batch_size=preprocessing_batch_size,
-    batched=True,
-    num_proc=args.preprocessing_num_workers,
-    # load_from_cache_file=not data_args.overwrite_cache,
-)
-
-print("Grouped as LM:", dset, dset[0])
-print("                     ", dset[1])
-
-elapsed = time.perf_counter() - start_time
-print(f"Total processing time: {elapsed:.3f} seconds")
+    text_to_language_modeling_tokenization(args.datapath, args.dataset, args.data_split, args.max_seq_length,
+                                           args.preprocessing_num_workers)
