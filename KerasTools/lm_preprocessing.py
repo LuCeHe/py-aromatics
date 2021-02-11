@@ -1,9 +1,9 @@
-"""
+'''
 sources:
 https://raw.githubusercontent.com/jarednielsen/deep-learning-models/nlp/models/nlp/common/preprocess.py
 https://github.com/huggingface/transformers/blob/master/examples/language-modeling/run_mlm.py
 
-"""
+'''
 
 import argparse, multiprocessing, os, time, shutil
 import datasets as nlp
@@ -24,52 +24,52 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
 
     # if not already tokenized
     if not os.path.isdir(set_tokenized_path):
-        print("\nLoading dataset...")
+        print('\nLoading dataset...')
 
         # if not already downloaded
         if not os.path.isdir(setpath):
             os.makedirs(setpath, exist_ok=True)
 
-            print(f"Loading dataset: {dataset}")
-            if dataset.startswith("wikitext"):
+            print(f'Loading dataset: {dataset}')
+            if dataset.startswith('wikitext'):
                 dset = nlp.load_dataset(
-                    "wikitext", f"{dataset}-raw-v1", split=data_split, cache_dir=setpath
+                    'wikitext', f'{dataset}-raw-v1', split=data_split, cache_dir=setpath
                 )
 
-            elif dataset == "wikipedia":
-                dset = nlp.load_dataset("wikipedia", "20200501.en", split=data_split, cache_dir=setpath)
-                dset.remove_columns_("title")  # only keep the text
+            elif dataset == 'wikipedia':
+                dset = nlp.load_dataset('wikipedia', '20200501.en', split=data_split, cache_dir=setpath)
+                dset.remove_columns_('title')  # only keep the text
 
-            elif dataset == "bookcorpus":
+            elif dataset == 'bookcorpus':
 
-                dset = nlp.load_dataset("bookcorpus", split=data_split, cache_dir=setpath)
-                dset.remove_columns_("title")  # only keep the text
+                dset = nlp.load_dataset('bookcorpus', split=data_split, cache_dir=setpath)
+                dset.remove_columns_('title')  # only keep the text
 
-            elif dataset == "wikibooks":
+            elif dataset == 'wikibooks':
 
-                bookcorpus = nlp.load_dataset("bookcorpus", split="train", cache_dir=setpath)
-                wiki = nlp.load_dataset("wikipedia", "20200501.en", split="train", cache_dir=setpath)
-                wiki.remove_columns_("title")  # only keep the text
+                bookcorpus = nlp.load_dataset('bookcorpus', split='train', cache_dir=setpath)
+                wiki = nlp.load_dataset('wikipedia', '20200501.en', split='train', cache_dir=setpath)
+                wiki.remove_columns_('title')  # only keep the text
                 assert bookcorpus.features.type == wiki.features.type
                 dset = nlp.concatenate_datasets([bookcorpus, wiki])
 
-            elif dataset == "c4":
-                dset = nlp.load_dataset("c4", "en", cache_dir=setpath)
-                # assert False, "This dataset must be preprocessed beforehand"
+            elif dataset == 'c4':
+                dset = nlp.load_dataset('c4', 'en', cache_dir=setpath)
+                # assert False, 'This dataset must be preprocessed beforehand'
 
-            elif dataset == "squad":
+            elif dataset == 'squad':
                 dset = nlp.load_dataset(dataset, split=data_split, cache_dir=setpath)
-                dset.remove_columns_(["title", 'answers', 'id', 'question', ])
+                dset.remove_columns_(['title', 'answers', 'id', 'question', ])
                 dset.rename_column_('context', 'text')
 
-            elif dataset == "lambada":
+            elif dataset == 'lambada':
                 dset = nlp.load_dataset(dataset, split=data_split, cache_dir=setpath)
                 dset.remove_columns_(['domain', ])
 
-            elif dataset == "openwebtext":
+            elif dataset == 'openwebtext':
                 dset = nlp.load_dataset(dataset, split=data_split, cache_dir=setpath)
                 print(dset.column_names)
-                # dset.remove_columns_(["title", 'answers', 'id', 'question', ])
+                # dset.remove_columns_(['title', 'answers', 'id', 'question', ])
                 # dset.rename_column_('context', 'text')
             else:
                 dset = nlp.load_dataset(dataset, split=data_split, cache_dir=setpath)
@@ -85,24 +85,24 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
 
         print(dset.column_names)
 
-        print("\nLoaded dataset:")
-        print("                     ", dset)
-        print("                     ", dset[0])
-        print("                     ", dset[1])
-        assert dset.column_names == [text_column_name], "Dataset should have exactly one 'text' column"
+        print('\nLoaded dataset:')
+        print('                     ', dset)
+        print('                     ', dset[0])
+        print('                     ', dset[1])
+        assert dset.column_names == [text_column_name], 'Dataset should have exactly one 'text' column'
 
         dset = dset.filter(
             lambda ex: len(ex[text_column_name]) > 0,
         )
-        print("\nFiltered empty lines:")
-        print("                     ", dset)
-        print("                     ", dset[0])
-        print("                     ", dset[1])
+        print('\nFiltered empty lines:')
+        print('                     ', dset)
+        print('                     ', dset[0])
+        print('                     ', dset[1])
 
-        # tokenizer = BertTokenizerFast.from_pretrained("bert-base-uncased")
+        # tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
         tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
 
-        print("\nTokenizing dataset...")
+        print('\nTokenizing dataset...')
 
         def tokenize_function(examples):
             return tokenizer(examples[text_column_name], return_special_tokens_mask=True)
@@ -111,18 +111,18 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
             tokenize_function,
             batched=True,
             num_proc=preprocessing_num_workers,
-            remove_columns=["text"]
+            remove_columns=['text']
         )
 
         del tokenizer
-        print("\nTokenized:")
-        print("                     ", dset)
-        print("                     ", dset[0])
-        print("                     ", dset[1])
+        print('\nTokenized:')
+        print('                     ', dset)
+        print('                     ', dset[0])
+        print('                     ', dset[1])
 
         preprocessing_batch_size = 1500  # 300000
 
-        print("\nStructure for Language Modeling...")
+        print('\nStructure for Language Modeling...')
 
         def group_texts(examples):
             # Concatenate all texts.
@@ -152,13 +152,13 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
     else:
         dset = nlp.load_from_disk(set_tokenized_path)
 
-    print("\nGrouped as LM:")
-    print("                     ", dset)
-    print("                     ", dset[0])
-    print("                     ", dset[1])
+    print('\nGrouped as LM:')
+    print('                     ', dset)
+    print('                     ', dset[0])
+    print('                     ', dset[1])
 
     elapsed = time.perf_counter() - start_time
-    print(f"\nTotal processing time: {elapsed:.3f} seconds")
+    print(f'\nTotal processing time: {elapsed:.3f} seconds')
 
     del dset
     time.sleep(2)
@@ -178,14 +178,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--dataset", default=dataset,
-        choices=["wikitext-2", "wikitext-103", "wikipedia", "bookcorpus", "wikibooks", "c4", 'squad', 'openwebtext',
+        '--dataset', default=dataset,
+        choices=['wikitext-2', 'wikitext-103', 'wikipedia', 'bookcorpus', 'wikibooks', 'c4', 'squad', 'openwebtext',
                  'lambada'],
     )
-    parser.add_argument("--datapath", default=DATAPATH)
-    parser.add_argument("--data_split", choices=["train", "validation", "test"], default='validation')
-    parser.add_argument("--max_seq_length", type=int, default=1024)
-    parser.add_argument("--preprocessing_num_workers", type=int, default=1)
+    parser.add_argument('--datapath', default=DATAPATH)
+    parser.add_argument('--data_split', choices=['train', 'validation', 'test'], default='validation')
+    parser.add_argument('--max_seq_length', type=int, default=1024)
+    parser.add_argument('--preprocessing_num_workers', type=int, default=1)
 
     args = parser.parse_args()
 
