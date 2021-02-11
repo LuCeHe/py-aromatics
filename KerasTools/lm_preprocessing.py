@@ -89,7 +89,7 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
         print('                     ', dset)
         print('                     ', dset[0])
         print('                     ', dset[1])
-        assert dset.column_names == [text_column_name], 'Dataset should have exactly one 'text' column'
+        assert dset.column_names == [text_column_name], "Dataset should have exactly one 'text' column"
 
         dset = dset.filter(
             lambda ex: len(ex[text_column_name]) > 0,
