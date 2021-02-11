@@ -4,7 +4,7 @@ from tensorflow.python.ops import math_ops
 from tensorflow.python.distribute import sharded_variable
 import tensorflow.keras.backend as K
 
-from GenericTools.KerasTools.convenience_layers import OneHot
+from GenericTools.KerasTools.esoteric_layers.convenience_layers import OneHot
 
 """
 sources:
