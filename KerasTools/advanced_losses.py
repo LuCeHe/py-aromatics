@@ -61,3 +61,9 @@ def bpc(y_true, y_pred):
     mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
     bits_per_character = mean_xent / np.log(2)
     return bits_per_character
+
+
+def perplexity(y_true, y_pred):
+    mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
+    p = tf.exp(mean_xent)
+    return p

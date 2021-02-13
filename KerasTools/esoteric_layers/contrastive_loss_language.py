@@ -5,8 +5,8 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
 
     def __init__(self, coef_disorder=.1, coef_random=.1, loss=tf.keras.losses.CategoricalCrossentropy(), **kwargs):
         super().__init__(**kwargs)
-        self.coef_disorder = coef_disorder
-        self.coef_random = coef_random
+        self.initial_coef_disorder = coef_disorder
+        self.initial_coef_random = coef_random
 
         if hasattr(loss, 'name'):
             loss.name = loss.name
@@ -17,6 +17,18 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
 
         self.loss = loss
 
+    def build(self, input_shape):
+        self.coef_disorder = self.add_weight(name='coef_disorder',
+                                             shape=(),
+                                             initializer=tf.keras.initializers.Constant(self.initial_coef_disorder),
+                                             trainable=False)
+
+        self.coef_random = self.add_weight(name='coef_random',
+                                           shape=(),
+                                           initializer=tf.keras.initializers.Constant(self.initial_coef_random),
+                                           trainable=False)
+
+        self.built = True
 
     def call(self, inputs, training=None):
         input_words, probs = inputs
@@ -46,7 +58,7 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
                 random_words = tf.one_hot(ps, vocab_size)
             else:
                 std = tf.math.reduce_std(input_words)
-                random_words = std*tf.random.normal(shape=tf.shape(probs))
+                random_words = std * tf.random.normal(shape=tf.shape(probs))
 
             cl_r = - self.coef_random * self.loss(random_words, probs)
             self.add_loss(cl_r)
@@ -56,8 +68,8 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
 
     def get_config(self):
         config = {
-            'coef_random': self.coef_random,
-            'coef_disorder': self.coef_disorder,
+            'coef_random': self.initial_coef_random,
+            'coef_disorder': self.initial_coef_disorder,
             'loss': self.loss
         }
 
