@@ -28,6 +28,7 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
             remove_nans: Optional[List[str]] = None,
             remove_mean=False,
             name: str = "AdaBelief",
+            weight_noise = None,
             **kwargs
     ):
         """Construct a new AdaBelief optimizer.
@@ -79,8 +80,16 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
         self.exclude_from_weight_decay = exclude_from_weight_decay
         self.remove_nans = remove_nans
         self.remove_mean = remove_mean
+        self.weight_noise = self._select_noise_type(weight_noise)
 
         assert self.remove_mean in [False, 0, 1]
+
+    def _select_noise_type(self, weight_noise):
+        if weight_noise is None:
+            return lambda x: 0
+        else:
+            return lambda x: weight_noise*tf.random.uniform(x)
+
 
     def _create_slots(self, var_list):
         # Create slots for the first and second moments.
@@ -149,6 +158,7 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
             mean = tf.expand_dims(mean, axis=self.remove_mean)
             var_update = var - mean
 
+        var_update += self.weight_noise(var.shape)
         return var.assign(var_update, use_locking=self._use_locking)
 
     def _resource_apply_sparse(self, grad, var, indices, apply_state=None):
@@ -197,6 +207,9 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
             mean = tf.reduce_mean(var, axis=self.remove_mean)
             mean = tf.expand_dims(mean, axis=self.remove_mean)
             var_update = var.assign_sub(mean, use_locking=self._use_locking)
+
+        var_update += self.weight_noise(var.shape)
+
         return tf.group(*[var_update, m_t, v_t])
 
     def get_config(self):
