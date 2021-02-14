@@ -208,7 +208,7 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
             mean = tf.expand_dims(mean, axis=self.remove_mean)
             var_update = var.assign_sub(mean, use_locking=self._use_locking)
 
-        var_update += self.weight_noise(var.shape)
+        var_update = var_update + self.weight_noise(var.shape)
 
         return tf.group(*[var_update, m_t, v_t])
 

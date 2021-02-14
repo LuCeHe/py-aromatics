@@ -352,6 +352,7 @@ if __name__ == '__main__':
     o, = performer([x, x, x], mask=None, head_mask=None, output_attentions=False)
 
     print(o.shape)
+    # print(o)
     print("Non recurrent took {}s".format(time.time() - start_time))
     # ---------------------------------------------------
     tf.random.set_seed(0)
@@ -368,4 +369,5 @@ if __name__ == '__main__':
     # o, = performer(x, x, x, mask=None, head_mask=None, output_attentions=False)
 
     print(o.shape)
+    # print(o)
     print("Recurrent took {}s".format(time.time() - start_time))
