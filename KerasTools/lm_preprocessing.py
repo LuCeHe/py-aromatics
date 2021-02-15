@@ -42,7 +42,6 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
 
             elif dataset == 'bookcorpus':
                 dset = nlp.load_dataset('bookcorpus', split=data_split, cache_dir=setpath)
-                # dset.remove_columns_('title')  # only keep the text
 
             elif dataset == 'wikibooks':
 
@@ -90,16 +89,16 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
         print('                     ', dset[1])
         assert dset.column_names == [text_column_name], "Dataset should have exactly one 'text' column"
 
-        dset = dset.filter(
-            lambda ex: len(ex[text_column_name]) > 0,
-            keep_in_memory=True,
-            load_from_cache_file=False,
-            num_proc=preprocessing_num_workers,
-        )
-        print('\nFiltered empty lines:')
-        print('                     ', dset)
-        print('                     ', dset[0])
-        print('                     ', dset[1])
+        # dset = dset.filter(
+        #     lambda ex: len(ex[text_column_name]) > 0,
+        #     keep_in_memory=True,
+        #     load_from_cache_file=True,
+        #     num_proc=preprocessing_num_workers,
+        # )
+        # print('\nFiltered empty lines:')
+        # print('                     ', dset)
+        # print('                     ', dset[0])
+        # print('                     ', dset[1])
 
         # tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
         tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
