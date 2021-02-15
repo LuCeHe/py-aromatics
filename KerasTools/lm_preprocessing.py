@@ -93,6 +93,7 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
         dset = dset.filter(
             lambda ex: len(ex[text_column_name]) > 0,
             keep_in_memory=True,
+            load_from_cache_file=False,
             num_proc=preprocessing_num_workers,
         )
         print('\nFiltered empty lines:')
