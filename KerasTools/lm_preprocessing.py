@@ -23,7 +23,7 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
     text_column_name = 'text'
 
     # if not already tokenized
-    if not os.path.isdir(set_tokenized_path):
+    if True: #not os.path.isdir(set_tokenized_path):
         print('\nLoading dataset...')
 
         # if not already downloaded
