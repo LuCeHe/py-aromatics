@@ -75,7 +75,7 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
                 print(dset[0])
                 # raise NotImplementedError
 
-            # dset.save_to_disk(setpath)
+            dset.save_to_disk(setpath)
         else:
             dset = nlp.load_from_disk(setpath)
             print(dset[0])
