@@ -41,7 +41,7 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
                 dset.remove_columns_('title')  # only keep the text
 
             elif dataset == 'bookcorpus':
-                dset = nlp.load_dataset('bookcorpus', split=data_split, cache_dir=setpath)
+                dset = nlp.load_dataset('bookcorpus', split=data_split, cache_dir=setpath, ignore_verifications=True)
 
             elif dataset == 'wikibooks':
 
