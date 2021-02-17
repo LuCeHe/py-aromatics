@@ -25,7 +25,6 @@ class AnnealingCallback(Callback):
                     if va in weight.name:
                         self.annealing_weights.append(weight)
 
-        print(self.annealing_weights)
 
     def on_epoch_begin(self, epoch, logs=None):
 

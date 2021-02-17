@@ -66,21 +66,33 @@ def IWPJS(model, batch, return_dict=None):
 def JS(model, batch, return_dict=None):
     # inv_weighted_parameters_jacobian_score
 
-    x, y = batch
+    x = batch[0]
     if isinstance(x, tuple):
         batch_size = x[0].shape[0]
     else:
         batch_size = x.shape[0]
-    # define the loss inside here
+
+    inp = [tf.Variable(b, dtype=tf.float32, name=mi.name[:-4]) for b, mi in zip(batch[0], model.inputs)]
+    print([i.name for i in inp])
+    print(len(inp))
+    print(model.inputs)
+    print()
+    exit
     with tf.GradientTape(persistent=True) as tape:
-        #outputs = model(x)
+        outputs = model(batch)
+        # print(outputs)
+        l = tf.keras.losses.CategoricalCrossentropy()(outputs, batch[0][-1])
+        print(l)
         #l = model.loss(y, outputs)
-        l = model.evaluate(batch)
+
+
+        # l = model.evaluate(batch)
         # l = model.compiled_loss(y, outputs)
         # l = model.losses(y, outputs)
 
-    jacob = tape.gradient(l, x)  # (outputs, variables)
+    jacob = tape.gradient(l, model.inputs)  # (outputs, variables)
 
+    print(jacob)
     jacob = jacob.numpy().reshape(batch_size, -1)
     s = corrdistintegral_eval_score(0.25)(jacob)
     return s.real

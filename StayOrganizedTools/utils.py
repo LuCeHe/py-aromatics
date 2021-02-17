@@ -180,6 +180,19 @@ def Dict2ArgsParser(args_dict):
     return args
 
 
+def move_mouse():
+    import pyautogui, keyboard
+
+    i = 0
+    while True:
+        i += 1
+        print((-1)**i*1, (-1)**(i+1)*1)
+        # pyautogui.moveTo((-1)**i*.01, (-1)**(i+1)*.01, duration=1)
+        # pyautogui.moveTo(1, 1, duration=1)
+        pyautogui.moveRel((-1)**i*100, (-1)**(i+1)*100, duration=1)
+        if keyboard.is_pressed('q'):  # if key 'q' is pressed
+            print('You Pressed A Key!')
+            break  # finishing the loop
 
 if __name__ == '__main__':
-    timeStructured()
+    move_mouse()
