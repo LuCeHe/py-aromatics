@@ -15,8 +15,8 @@ sources:
 
 class TokenAndPositionEmbedding(tf.keras.layers.Layer):
     def __init__(self, maxlen, vocab_size, embed_dim, embeddings_initializer='uniform',
-                 name='TokenAndPositionEmbedding'):
-        super(TokenAndPositionEmbedding, self).__init__(name=name)
+                 name='TokenAndPositionEmbedding', **kwargs):
+        super().__init__(name=name,**kwargs)
         self.maxlen, self.vocab_size, self.embed_dim = maxlen, vocab_size, embed_dim
         self.embeddings_initializer = embeddings_initializer
         self.token_emb = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embed_dim,
@@ -26,11 +26,11 @@ class TokenAndPositionEmbedding(tf.keras.layers.Layer):
                                                  embeddings_initializer=embeddings_initializer,
                                                  name='PositionEmbedding')
 
-    def call(self, x):
-        maxlen = tf.shape(x)[-1]
+    def call(self, inputs):
+        maxlen = tf.shape(inputs)[-1]
         positions = tf.range(start=0, limit=maxlen, delta=1)
         positions = self.pos_emb(positions)
-        x = self.token_emb(x)
+        x = self.token_emb(inputs)
         return x + positions
 
     def get_config(self):
@@ -91,7 +91,7 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
     def __init__(self, maxlen, vocab_size, embed_dim, embeddings_initializer='orthogonal',
                  name='SymbolAndPositionEmbedding',
                  symbol_embedding='zero_mean',
-                 position_embedding=None, factorized_dim=None):
+                 position_embedding=[None], factorized_dim=None):
         super(SymbolAndPositionEmbedding, self).__init__(name=name)
 
         self.maxlen, self.vocab_size, self.embed_dim = maxlen, vocab_size, embed_dim
@@ -303,3 +303,21 @@ def get_position_sinusoid(seq_len, hidden_size, min_timescale=1.0, max_timescale
     scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales, 0)
     signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
     return signal
+
+
+if __name__ == '__main__':
+    import numpy as np
+    vb = 100
+    bs, sl, dm = 2, 3, 4
+    emb = SymbolAndPositionEmbedding(maxlen=sl, vocab_size=vb, embed_dim=dm)
+    il = tf.keras.layers.Input((sl, ))
+    x = emb(il, mode='embedding')
+    x = tf.keras.layers.Dense(2)(x)
+    x = tf.keras.layers.Dense(dm)(x)
+    out = emb(x, mode='projection')
+    model = tf.keras.models.Model(il, out)
+
+    model.summary()
+
+    batch = np.random.choice(vb, )
+    prediction
