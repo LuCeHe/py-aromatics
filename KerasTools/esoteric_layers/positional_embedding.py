@@ -91,7 +91,7 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
     def __init__(self, maxlen, vocab_size, embed_dim, embeddings_initializer='orthogonal',
                  name='SymbolAndPositionEmbedding',
                  symbol_embedding='zero_mean',
-                 position_embedding=[None], factorized_dim=None):
+                 position_embedding='None', factorized_dim=None):
         super(SymbolAndPositionEmbedding, self).__init__(name=name)
 
         self.maxlen, self.vocab_size, self.embed_dim = maxlen, vocab_size, embed_dim
@@ -102,7 +102,7 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
 
         if not factorized_dim is None:
             self.fs = tf.keras.layers.Dense(embed_dim)
-            if not position_embedding == 'None':
+            if not position_embedding in ['None', None, [None]]:
                 self.fp = tf.keras.layers.Dense(embed_dim)
             else:
                 self.fp = lambda x: x
@@ -166,9 +166,6 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
         with tf.name_scope('output_layer'):
             batch_size = tf.shape(inputs)[0]
             seq_len = tf.shape(inputs)[1]
-            print('here!')
-            # print(self.sym_emb.embeddings.variables)
-            print(self.sym_emb.embeddings.shape)
             logits = tf.matmul(inputs, self.fs(self.sym_emb.embeddings),
                                transpose_b=True)
 
@@ -309,7 +306,8 @@ if __name__ == '__main__':
     import numpy as np
     vb = 100
     bs, sl, dm = 2, 3, 4
-    emb = SymbolAndPositionEmbedding(maxlen=sl, vocab_size=vb, embed_dim=dm)
+    factorized_dim = 5
+    emb = SymbolAndPositionEmbedding(maxlen=sl, vocab_size=vb, embed_dim=dm, factorized_dim=factorized_dim)
     il = tf.keras.layers.Input((sl, ))
     x = emb(il, mode='embedding')
     x = tf.keras.layers.Dense(2)(x)
@@ -319,5 +317,6 @@ if __name__ == '__main__':
 
     model.summary()
 
-    batch = np.random.choice(vb, )
-    prediction
+    batch = np.random.choice(vb, size=(bs, sl, ))
+    prediction = model.predict(batch)
+    print(prediction.shape)
