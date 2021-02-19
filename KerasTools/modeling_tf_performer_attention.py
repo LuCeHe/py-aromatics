@@ -28,7 +28,7 @@ def resolve_enum(enum_class, value):
 class TFPerformerAttention(tf.keras.layers.Layer):
     def __init__(self, config: Optional[Union[dict, PerformerAttentionConfig]] = None, **kwargs):
         super().__init__(name=kwargs.pop('name', None), dtype=kwargs.pop('dtype', None))
-
+        self.config = config
         if isinstance(config, dict):
             config = PerformerAttentionConfig(**config)
         else:
@@ -113,8 +113,8 @@ class TFPerformerAttention(tf.keras.layers.Layer):
 
         def shape(x):
             """ separate heads """
-            new_shape = tf.concat((x.shape[:-1], tf.constant([self.num_heads, dim_per_head])), axis=0)
-            return tf.transpose(tf.reshape(x, new_shape), perm=[0, 2, 1, 3])
+            r = tf.reshape(x, (-1, tf.shape(x)[1], self.num_heads, dim_per_head))
+            return tf.transpose(r, perm=[0, 2, 1, 3])
 
         if self.use_linear_layers:
             query, key, value = (getattr(self, name)(x) for name, x in
@@ -247,8 +247,7 @@ class TFPerformerAttention(tf.keras.layers.Layer):
             context = context * head_mask
 
         x = tf.transpose(context, perm=[0, 2, 1, 3])  # [...seq_len, num_heads, dim_per_head]
-        new_last_dim = x.shape[-2] * x.shape[-1]
-        context = tf.reshape(x, list(x.shape[:-2]) + [new_last_dim])  # (bs, q_length, dim)
+        context = tf.reshape(x, (-1, tf.shape(x)[1], self.d_model))  # (bs, q_length, dim)
 
         if self.use_linear_layers and len(self.linear_layer_names) > 3:
             context = getattr(self, self.linear_layer_names[3])(context)  # (bs, q_length, dim)
@@ -260,10 +259,11 @@ class TFPerformerAttention(tf.keras.layers.Layer):
 
     def _generate_feature_matrix(self, batch_size):
         dim_per_head = self.d_model // self.num_heads
-        num_rows = self.num_random_features or round(dim_per_head * math.log(dim_per_head))
+        num_rows = int(self.num_random_features or round(dim_per_head * math.log(dim_per_head)))
         batch = batch_size if self.use_thick_features else 1
 
         if not self.use_orthogonal_features:
+            print(batch, num_rows, dim_per_head)
             final_tensor = tf.random.normal((batch, num_rows, dim_per_head))
         else:
             total_num_blocks = int(math.ceil(num_rows / dim_per_head))
@@ -307,6 +307,13 @@ class TFPerformerAttention(tf.keras.layers.Layer):
             # Keep track of how many forward passes we do before we redraw again
             else:
                 self.calls_since_last_redraw += 1
+
+
+    def get_config(self):
+        config = {
+            'config': self.config.to_dict(),
+        }
+        return dict(list(super().get_config().items()) + list(config.items()))
 
 
 def _get_orthogonal_block(batch, size):
