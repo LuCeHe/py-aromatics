@@ -153,7 +153,6 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
         var_update = var - coefficients["lr_t"] * update
 
         if not self.remove_mean == False and len(tf.shape(var)) == 2:
-            print('here')
             mean = tf.reduce_mean(var, axis=self.remove_mean)
             mean = tf.expand_dims(mean, axis=self.remove_mean)
             var_update = var - mean
@@ -203,7 +202,6 @@ class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
         )
 
         if not self.remove_mean == False and len(tf.shape(var)) == 2:
-            print('here')
             mean = tf.reduce_mean(var, axis=self.remove_mean)
             mean = tf.expand_dims(mean, axis=self.remove_mean)
             var_update = var.assign_sub(mean, use_locking=self._use_locking)
