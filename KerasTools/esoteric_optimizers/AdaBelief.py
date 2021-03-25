@@ -6,9 +6,10 @@ from typeguard import typechecked
 
 import tensorflow as tf
 from tensorflow_addons.utils.types import FloatTensorLike
+from tensorflow.python.keras.optimizer_v2 import optimizer_v2
 
 
-class AdaBelief(DecoupledWeightDecayExtension, tf.keras.optimizers.Optimizer):
+class AdaBelief(DecoupledWeightDecayExtension, optimizer_v2.OptimizerV2):
     """Optimizer that implements the Adabelief.
     The code is written so as to implement Decoupled Weight Decay.
 
