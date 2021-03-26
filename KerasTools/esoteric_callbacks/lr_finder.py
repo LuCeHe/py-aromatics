@@ -9,6 +9,8 @@ import tensorflow.keras.backend as K
 import numpy as np
 import matplotlib.pyplot as plt
 
+from GenericTools.StayOrganizedTools.utils import timeStructured
+
 
 class LRFinder(Callback):
     def __init__(self, min_lr, max_lr, mom=0.9, stop_multiplier=None,
@@ -19,7 +21,8 @@ class LRFinder(Callback):
         self.reload_weights = reload_weights
         self.batches_lr_update = batches_lr_update
         self.path_tmp = os.path.join(path_tmp, 'tmp.hdf5')
-        self.path_plot = os.path.join(path_tmp, 'loss_vs_lr.png')
+        time = timeStructured()
+        self.path_plot = os.path.join(path_tmp, '{}loss_vs_lr.png'.format(time))
         if stop_multiplier is None:
             self.stop_multiplier = -20 * self.mom / 3 + 10  # 4 if mom=0.9
             # 10 if mom=0
