@@ -7,6 +7,7 @@ import os
 import tarfile
 from zipfile import ZipFile
 
+
 class DownloadProgressBar(tqdm):
     def update_to(self, b=1, bsize=1, tsize=None):
         if tsize is not None:
@@ -32,8 +33,6 @@ class ProgressFileObject(io.FileIO):
             sys.stdout.write("Decompress progress: {}% \r".format(percentage))
             sys.stdout.flush()
         return io.FileIO.read(self, size)
-
-
 
 
 def download_and_unzip(data_links, destination_dir):
@@ -69,8 +68,11 @@ def download_and_unzip(data_links, destination_dir):
                 with ZipFile(destination, 'r') as zipObj:
                     # Extract all the contents of zip file in different directory
                     zipObj.extractall(destination_dir)
+        try:
+            os.remove(destination)
+        except Exception as e:
+            print(e)
 
-            # os.remove(destination)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
