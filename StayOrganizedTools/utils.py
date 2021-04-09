@@ -112,13 +112,16 @@ def checkDuringTraining(generator_class, indices_sentences, encoder_model, decod
     return softmaxes
 
 
+def get_random_string():
+    return ''.join([str(r) for r in np.random.choice(10, 4)])
+
 def timeStructured(random_string=True, seconds=False):
     named_tuple = time.localtime()  # get struct_time
     time_string = time.strftime("%Y-%m-%d--%H-%M-%S-", named_tuple)
     if random_string:
-        random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
+        # random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
         # random_string = str(abs(hash(named_tuple)))[:4]
-        time_string += '-' + random_string
+        time_string += '-' + get_random_string()
 
     if seconds:
         return time_string, time.time()
