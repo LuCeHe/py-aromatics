@@ -154,6 +154,7 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True):
     # Fix the seed of all random number generator
     random.seed(seed)
     np.random.seed(seed)
+    print(np.random.rand())
     if tf.__version__[0] == '2':
         tf.random.set_seed(seed)
     else:

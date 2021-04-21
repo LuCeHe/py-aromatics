@@ -60,7 +60,7 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10):
         ChooseGPU(GPU)
 
     # set reproducible
-    if not seed == None:
+    if not seed is None:
         setReproducible(seed)
     return ex
 

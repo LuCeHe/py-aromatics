@@ -1,8 +1,9 @@
 import tensorflow as tf
 import numpy as np
+from tensorflow.python.ops import summary_ops_v2
 
 
-class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
+class GradientTensorBoard(tf.keras.callbacks.TensorBoard):
     def __init__(self, val_data, track_operation_on, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -80,8 +81,36 @@ class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
     def on_epoch_end(self, epoch, logs=None):
         # This function overwrites the on_epoch_end in tf.keras.callbacks.TensorBoard
         # but we do need to run the original on_epoch_end, so here we use the super function.
-        super(ExtendedTensorBoard, self).on_epoch_end(epoch, logs=logs)
+        super().on_epoch_end(epoch, logs=logs)
 
         if self.histogram_freq and epoch % self.histogram_freq == 0:
             self._log_gradients(epoch)
             self._log_single_weights(epoch)
+
+
+class IndividualWeightsTensorBoard(tf.keras.callbacks.TensorBoard):
+
+    def _log_weights(self, epoch):
+        """Logs the weights of the Model to TensorBoard."""
+        if epoch == 0:
+            self.dict_scalar_locations = {}
+        with self._train_writer.as_default():
+            with summary_ops_v2.always_record_summaries():
+                for layer in self.model.layers:
+                    for weight in layer.weights:
+                        weight_name = weight.name.replace(':', '_')
+                        summary_ops_v2.histogram(weight_name, weight, step=epoch)
+
+                        # I add these 3 lines to record some of the weights individually
+                        for i in range(3):
+                            scalar_name = '{}_{}'.format(weight.name.replace(':', '_'), i)
+                            if epoch == 0:
+                                c = [np.random.choice(ax) for ax in weight.shape]
+                                self.dict_scalar_locations[scalar_name] = c
+                            else:
+                                c = self.dict_scalar_locations[scalar_name]
+                            summary_ops_v2.scalar(scalar_name, weight[c], step=epoch)
+
+                        if self.write_images:
+                            self._log_weight_as_image(weight, weight_name, epoch)
+                self._train_writer.flush()
