@@ -102,7 +102,7 @@ class IndividualWeightsTensorBoard(tf.keras.callbacks.TensorBoard):
                         summary_ops_v2.histogram(weight_name, weight, step=epoch)
 
                         # I add these 3 lines to record some of the weights individually
-                        for i in range(3):
+                        for i in range(5):
                             scalar_name = '{}_{}'.format(weight.name.replace(':', '_'), i)
                             if epoch == 0:
                                 c = [np.random.choice(ax) for ax in weight.shape]
@@ -110,6 +110,8 @@ class IndividualWeightsTensorBoard(tf.keras.callbacks.TensorBoard):
                             else:
                                 c = self.dict_scalar_locations[scalar_name]
                             summary_ops_v2.scalar(scalar_name, weight[c], step=epoch)
+                            # summary_ops_v2.add_summary(scalar_name, weight[c], step=epoch)
+                            # summary_ops_v2.scalar(weight.name, weight[c], step=epoch)
 
                         if self.write_images:
                             self._log_weight_as_image(weight, weight_name, epoch)
