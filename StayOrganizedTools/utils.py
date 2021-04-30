@@ -115,6 +115,7 @@ def checkDuringTraining(generator_class, indices_sentences, encoder_model, decod
 def get_random_string():
     return ''.join([str(r) for r in np.random.choice(10, 4)])
 
+
 def timeStructured(random_string=True, seconds=False):
     named_tuple = time.localtime()  # get struct_time
     time_string = time.strftime("%Y-%m-%d--%H-%M-%S-", named_tuple)
@@ -170,7 +171,6 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True):
     # K.set_session(tf.Session(config=config))
 
 
-
 def Dict2ArgsParser(args_dict):
     parser = argparse.ArgumentParser()
     for k, v in args_dict.items():
@@ -190,13 +190,14 @@ def move_mouse():
     i = 0
     while True:
         i += 1
-        print((-1)**i*1, (-1)**(i+1)*1)
+        print((-1) ** i * 1, (-1) ** (i + 1) * 1)
         # pyautogui.moveTo((-1)**i*.01, (-1)**(i+1)*.01, duration=1)
         # pyautogui.moveTo(1, 1, duration=1)
-        pyautogui.moveRel((-1)**i*100, (-1)**(i+1)*100, duration=1)
+        pyautogui.moveRel((-1) ** i * 100, (-1) ** (i + 1) * 100, duration=1)
         if keyboard.is_pressed('q'):  # if key 'q' is pressed
             print('You Pressed A Key!')
             break  # finishing the loop
+
 
 if __name__ == '__main__':
     move_mouse()
