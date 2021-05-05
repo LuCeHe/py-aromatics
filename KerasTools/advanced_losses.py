@@ -63,6 +63,26 @@ def bpc(y_true, y_pred):
     return bits_per_character
 
 
+def bound_a(y_true, y_pred):
+    mse = tf.keras.losses.MSE(y_true, y_pred)
+    bound = (mse - 1) / 2
+    return bound
+
+
+def bound_b(y_true, y_pred):
+    mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_pred, y_true)
+    mse = tf.keras.losses.MSE(y_true, y_pred)
+    bound = mse - mean_xent
+    return bound
+
+
+def bound_c(y_true, y_pred):
+    mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_true)
+    mse = tf.keras.losses.MSE(y_true, y_pred)
+    bound = mse - mean_xent
+    return bound
+
+
 def perplexity(y_true, y_pred):
     mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
     p = tf.exp(mean_xent)
