@@ -59,7 +59,25 @@ def zeros_categorical_accuracy(y_true, y_pred):
 
 def bpc(y_true, y_pred):
     mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
-    bits_per_character = mean_xent / np.log(2)
+    bits_per_character = mean_xent / tf.math.log(2.)
+    return bits_per_character
+
+
+def bpc_2(y_true, y_pred):
+    bits_per_character = -tf.reduce_sum(y_true * tf.math.log(y_pred), axis=[2]) / tf.math.log(2.)
+    bits_per_character = tf.math.reduce_max(tf.math.reduce_max(bits_per_character, axis=1), axis=0)
+    return bits_per_character
+
+
+def entropy_data(y_true, y_pred):
+    bits_per_character = -tf.reduce_sum(y_true * tf.math.log(y_true + 1e-8), axis=[2]) / tf.math.log(2.)
+    bits_per_character = tf.math.reduce_max(tf.math.reduce_max(bits_per_character, axis=1), axis=0)
+    return bits_per_character
+
+
+def entropy_model(y_true, y_pred):
+    bits_per_character = -tf.reduce_sum(y_pred * tf.math.log(y_pred), axis=[2]) / tf.math.log(2.)
+    bits_per_character = tf.math.reduce_max(tf.math.reduce_max(bits_per_character, axis=1), axis=0)
     return bits_per_character
 
 
