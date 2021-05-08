@@ -23,7 +23,8 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
             keys = [k for k in keys if k in metrics_to_show]
 
         n_columns = len(column_id) if not len(column_id) == 0 else 1
-        fig, axs = plt.subplots(len(keys), n_columns, figsize=(20, 5), gridspec_kw={'hspace': 0})
+        figsize = (20, 5) if n_columns > 1 else (5, 20)
+        fig, axs = plt.subplots(len(keys), n_columns, figsize=figsize, gridspec_kw={'hspace': 0})
         axs = axs if type(axs) is np.ndarray else [axs]
 
         # fig.suptitle(plot_filename)
@@ -64,6 +65,8 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
 
             ax.set_xlabel('epoch')
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+        fig.align_ylabels(axs[:, 0] if n_columns > 1 else axs[:])
 
         if not method_names is None:
             # ax.legend(lines, method_names)

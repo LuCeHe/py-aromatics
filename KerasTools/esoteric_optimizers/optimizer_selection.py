@@ -35,7 +35,7 @@ def select_optimizer(optimizer_name, lr_schedule, total_steps, lr, weight_decay,
         optimizer = AdaBelief(learning_rate=learning_rate, weight_decay=weight_decay, clipnorm=clipnorm,
                               exclude_from_weight_decay=['embedding'], remove_nans=['all'], weight_noise=.075)
     elif optimizer_name == 'SGD':
-        optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
+        optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate, clipnorm=clipnorm, momentum=0.99)
     else:
         raise NotImplementedError
 
