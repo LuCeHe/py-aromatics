@@ -12,6 +12,7 @@ def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_id
 
     ds = []
     for d in tmp_ds:
+        print(d)
         for t_in in exp_identifiers:
             if t_in in d:
                 any_exception = False
