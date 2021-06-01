@@ -178,15 +178,28 @@ def addEndTokenToGrammar(grammar, endToken):
 
 
 class Vocabulary(object):
-    padToken = '<PAD>'
-    startToken = '<START>'
-    endToken = '<END>'
-    unkToken = '<UNK>'
-    specialTokens = [padToken, startToken, endToken, unkToken]
 
-    def __init__(self, tokens, grammar=None):
+    def __init__(self, tokens, grammar=None, special_tokens=True):
         self.__dict__.update(tokens=tokens, grammar=grammar)
-        self.sort()
+        if special_tokens is True:
+            self.padToken = '<PAD>'
+            self.startToken = '<START>'
+            self.endToken = '<END>'
+            self.unkToken = '<UNK>'
+            self.specialTokens = [self.padToken, self.startToken, self.endToken, self.unkToken]
+            self.sort()
+
+        elif isinstance(special_tokens, str):
+            self.padToken = special_tokens
+            self.startToken = special_tokens
+            self.endToken = special_tokens
+            self.unkToken = special_tokens
+            self.specialTokens = []
+
+        else:
+            raise NotImplementedError
+
+        self.construct_dict()
 
     def __eq__(self, other):
         return self.tokens == other.tokens
@@ -200,11 +213,9 @@ class Vocabulary(object):
         tokens.update(other.tokens[1:])
         return Vocabulary(list(sorted(tokens)))
 
-    def sort(self):
+    def construct_dict(self):
         self.indicesByTokens = dict()
-        sorted_tokens = sorted(list(set(self.tokens)))
-        sorted_tokens = [token for token in sorted_tokens if not token in Vocabulary.specialTokens]
-        self.tokens = Vocabulary.specialTokens + sorted_tokens
+
         for i, token in enumerate(self.tokens):
             self.indicesByTokens[token] = i
 
@@ -212,6 +223,11 @@ class Vocabulary(object):
         self.startIndex = self.indicesByTokens[self.startToken]
         self.endIndex = self.indicesByTokens[self.endToken]
         self.unkIndex = self.indicesByTokens[self.unkToken]
+
+    def sort(self):
+        sorted_tokens = sorted(list(set(self.tokens)))
+        sorted_tokens = [token for token in sorted_tokens if not token in self.specialTokens]
+        self.tokens = self.specialTokens + sorted_tokens
 
     def indexToToken(self, idx):
         return self.tokens[idx]

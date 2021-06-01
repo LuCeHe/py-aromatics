@@ -62,6 +62,9 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10):
     # set reproducible
     if not seed is None:
         setReproducible(seed)
+    else:
+        import numpy as np
+        print(np.random.rand())
     return ex
 
 
