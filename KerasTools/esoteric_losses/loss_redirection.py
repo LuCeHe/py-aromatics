@@ -5,7 +5,6 @@ import tensorflow as tf
 
 def get_loss(loss_name):
     if 'categorical_crossentropy' in loss_name:
-        loss = 'categorical_crossentropy'
         loss = tf.keras.losses.CategoricalCrossentropy(
             from_logits=False,
             label_smoothing=0.1,

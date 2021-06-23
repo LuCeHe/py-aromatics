@@ -32,7 +32,7 @@ class DropWord(tf.keras.layers.Layer):
         is_train = tf.cast(tf.keras.backend.learning_phase(), tf.float32)
 
         dropped_words = is_train * dropped_words + (1 - is_train) * inputs
-        dropped_words = tf.cast(dropped_words, tf.int32)
+        # dropped_words = tf.cast(dropped_words, tf.int32)
         return dropped_words
 
     def get_config(self):

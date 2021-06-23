@@ -122,11 +122,12 @@ def collect_information():
     print(i)
 
 
-def setReproducible(seed=0, disableGpuMemPrealloc=True):
+def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True):
     # Fix the seed of all random number generator
     random.seed(seed)
     np.random.seed(seed)
-    print(np.random.rand())
+    if prove_seed:
+        print(np.random.rand())
     if tf.__version__[0] == '2':
         tf.random.set_seed(seed)
     else:

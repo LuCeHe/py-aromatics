@@ -44,7 +44,11 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
             else:
                 original_sentences = output_words #input_words
 
-            splits = tf.split(original_sentences, 2, axis=1)
+            time_steps = tf.shape(original_sentences)[1]
+            half_time = tf.cast(time_steps / 2, tf.int32)
+            splits = tf.split(original_sentences, [half_time, time_steps - half_time], axis=1)
+
+            # splits = tf.split(original_sentences, 2, axis=1)
             disordered_sentences = tf.concat([splits[1], splits[0]], axis=1)
 
             cl_d = - self.coef_disorder * self.loss(disordered_sentences, probs)
