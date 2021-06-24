@@ -43,8 +43,8 @@ class CustomFileStorageObserver(FileStorageObserver):
                 text_file.write(comments)
 
 
-def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10):
-    ex = Experiment(name=experiment_name, base_dir=base_dir)
+def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10, ingredients=[]):
+    ex = Experiment(name=experiment_name, base_dir=base_dir, ingredients=ingredients)
     ex.observers.append(CustomFileStorageObserver("experiments"))
 
     ex.captured_out_filter = apply_backspaces_and_linefeeds
