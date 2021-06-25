@@ -33,7 +33,7 @@ class GlorotOrthogonal(tf.keras.initializers.Orthogonal):
             scale /= max(1., (fan_in + fan_out) / 2.)
 
         self.gain = math.sqrt(scale)
-        super().__call__(**kwargs)
+        return super().__call__(shape, dtype, **kwargs)
 
     def get_config(self):
         return {'gain': self.gain, 'seed': self.seed, 'mode': self.mode}
@@ -120,7 +120,7 @@ class GlorotCauchyOrthogonal(CauchyOrthogonal):
             scale /= max(1., (fan_in + fan_out) / 2.)
 
         self.gain = math.sqrt(scale)
-        super().__call__(**kwargs)
+        return super().__call__(shape, dtype, **kwargs)
 
     def get_config(self):
         return {'gain': self.gain, 'seed': self.seed, 'mode': self.mode}
