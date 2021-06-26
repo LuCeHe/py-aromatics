@@ -40,6 +40,27 @@ class GlorotOrthogonal(tf.keras.initializers.Orthogonal):
         return {'gain': self.gain, 'seed': self.seed, 'mode': self.mode}
 
 
+def orthogonalize(initial_initializer):
+    shape = initial_initializer.shape
+
+    num_rows = 1
+    for dim in shape[:-1]:
+        num_rows *= dim
+    num_cols = shape[-1]
+    flat_shape = (max(num_cols, num_rows), min(num_cols, num_rows))
+
+    a = array_ops.reshape(initial_initializer, flat_shape)
+    # Compute the qr factorization
+    q, r = gen_linalg_ops.qr(a, full_matrices=False)
+    # Make Q uniform
+    d = array_ops.tensor_diag_part(r)
+    q *= math_ops.sign(d)
+    if num_rows < num_cols:
+        q = array_ops.matrix_transpose(q)
+    orthogonal_initializer = array_ops.reshape(q, shape)
+    return orthogonal_initializer
+
+
 class CauchyOrthogonal(tf.keras.initializers.Initializer):
     """
 
@@ -58,43 +79,13 @@ class CauchyOrthogonal(tf.keras.initializers.Initializer):
         self._random_generator = _RandomGenerator(seed)
 
     def __call__(self, shape, dtype=None, **kwargs):
-        """Returns a tensor object initialized to an orthogonal matrix.
-
-        Args:
-          shape: Shape of the tensor.
-          dtype: Optional dtype of the tensor. Only floating point types are
-            supported. If not specified, `tf.keras.backend.floatx()` is used,
-           which default to `float32` unless you configured it otherwise
-           (via `tf.keras.backend.set_floatx(float_dtype)`)
-          **kwargs: Additional keyword arguments.
-        """
-        _validate_kwargs(self.__class__.__name__, kwargs, support_partition=False)
-        dtype = _assert_float_dtype(_get_dtype(dtype))
-        # Check the shape
-        if len(shape) < 2:
-            raise ValueError('The tensor to initialize must be '
-                             'at least two-dimensional')
-        # Flatten the input shape with the last dimension remaining
-        # its original shape so it works for conv2d
-        num_rows = 1
-        for dim in shape[:-1]:
-            num_rows *= dim
-        num_cols = shape[-1]
-        flat_shape = (max(num_cols, num_rows), min(num_cols, num_rows))
-
         # Generate a random matrix
         # original: a = self._random_generator.random_normal(flat_shape, dtype=dtype)
         dist = tfd.Cauchy(loc=0., scale=1.)
-        a = dist.sample(flat_shape) / 5
+        initial_initializer = dist.sample(shape) / 5
 
-        # Compute the qr factorization
-        q, r = gen_linalg_ops.qr(a, full_matrices=False)
-        # Make Q uniform
-        d = array_ops.tensor_diag_part(r)
-        q *= math_ops.sign(d)
-        if num_rows < num_cols:
-            q = array_ops.matrix_transpose(q)
-        return self.gain * array_ops.reshape(q, shape)
+        orhogonal_cauchy = orthogonalize(initial_initializer)
+        return self.gain * orhogonal_cauchy
 
     def get_config(self):
         return {'gain': self.gain, 'seed': self.seed}
@@ -193,8 +184,8 @@ class MoreVarianceScaling(VarianceScaling):
             # Get 3 samples, returning a 3 x 2 tensor.
             samples = dist.sample(shape)
             flip = 2 * np.random.choice(2, shape) - 1
-            samples = samples * flip #/ 10
-            stddev = 2*math.sqrt(scale)
+            samples = samples * flip  # / 10
+            stddev = 2 * math.sqrt(scale)
             return stddev * samples
 
         elif self.distribution == 'untruncated_normal':
