@@ -186,15 +186,16 @@ class MoreVarianceScaling(VarianceScaling):
             return tf.math.tanh(normal)
 
         elif self.distribution == 'bi_gamma':
+            # FIXME: without multiplying stddev at the end had very good results
             import numpy as np
             dist = tfd.Gamma(concentration=3.0, rate=2.0)
 
             # Get 3 samples, returning a 3 x 2 tensor.
             samples = dist.sample(shape)
             flip = 2 * np.random.choice(2, shape) - 1
-            samples = samples * flip / 10
-
-            return samples
+            samples = samples * flip #/ 10
+            stddev = 2*math.sqrt(scale)
+            return stddev * samples
 
         elif self.distribution == 'untruncated_normal':
             stddev = math.sqrt(scale)
