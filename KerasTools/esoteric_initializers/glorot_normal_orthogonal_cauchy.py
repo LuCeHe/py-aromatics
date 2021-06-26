@@ -138,58 +138,30 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
 
 
 class GlorotTanh(MoreVarianceScalingAndOrthogonal):
-    def __init__(self, seed=None):
-        super().__init__(
-            scale=1.0,
-            mode='fan_avg',
-            distribution='tanh_normal',
-            seed=seed)
+    def __init__(self, scale=1.0, mode='fan_avg', distribution='tanh_normal', seed=None):
+        super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed)
 
 
 class BiGamma(MoreVarianceScalingAndOrthogonal):
-    def __init__(self, seed=None):
-        super().__init__(
-            scale=1.0,
-            mode='fan_avg',
-            distribution='bi_gamma',
-            seed=seed)
+    def __init__(self, scale=1.0, mode='fan_avg', distribution='bi_gamma', seed=None):
+        super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed)
 
 
 class BiGammaOrthogonal(MoreVarianceScalingAndOrthogonal):
-    def __init__(self, seed=None):
-        super().__init__(
-            scale=1.0,
-            mode='fan_avg',
-            distribution='bi_gamma',
-            orthogonalize=True,
-            seed=seed)
+    def __init__(self, scale=1.0, mode='fan_avg', distribution='bi_gamma', orthogonalize=True, seed=None):
+        super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed, orthogonalize=orthogonalize)
 
 
 class GlorotCauchyOrthogonal(MoreVarianceScalingAndOrthogonal):
-    def __init__(self, seed=None):
-        super().__init__(
-            scale=1.0,
-            mode='fan_avg',
-            distribution='cauchy',
-            orthogonalize=True,
-            seed=seed)
+    def __init__(self, scale=1.0, seed=None):
+        super().__init__(scale=scale, mode='fan_avg', distribution='cauchy', orthogonalize=True, seed=seed)
 
 
 class CauchyOrthogonal(MoreVarianceScalingAndOrthogonal):
-    def __init__(self, seed=None):
-        super().__init__(
-            scale=1.0,
-            mode='no_fan',
-            distribution='cauchy',
-            orthogonalize=True,
-            seed=seed)
+    def __init__(self, scale=1.0, mode='no_fan', distribution='cauchy', orthogonalize=True, seed=None):
+        super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed, orthogonalize=orthogonalize)
 
 
 class GlorotOrthogonal(MoreVarianceScalingAndOrthogonal):
-    def __init__(self, seed=None):
-        super().__init__(
-            scale=1.0,
-            mode='fan_avg',
-            distribution='uniform',
-            orthogonalize=True,
-            seed=seed)
+    def __init__(self, scale=1.0,            mode='fan_avg',            distribution='uniform',            orthogonalize=True,seed=None):
+        super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed, orthogonalize=orthogonalize)
