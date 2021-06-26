@@ -31,7 +31,7 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
 
         # colors = plt.cm.gist_ncar(np.linspace(0, 1, len(histories)))
         if colors is None:
-            cm = plt.get_cmap('Reds')
+            cm = plt.get_cmap('tab20')  #Reds
             colors = cm(np.linspace(1, 0, len(histories)))
             np.random.shuffle(colors)
 
@@ -40,7 +40,6 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
         if method_names is None:
             method_names = [None] * len(histories)
         for history, c, m in zip(histories, colors, method_names):
-            print(m)
             for i, k in enumerate(keys):
 
                 column = [x in m for x in column_id].index(True) if column_id else 0
@@ -69,8 +68,8 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
         fig.align_ylabels(axs[:, 0] if n_columns > 1 else axs[:])
 
         if not method_names is None:
-            # ax.legend(lines, method_names)
-            pass
+            ax.legend(lines, method_names)
+            # pass
 
         if save:
             fig.savefig(plot_filename, bbox_inches='tight')

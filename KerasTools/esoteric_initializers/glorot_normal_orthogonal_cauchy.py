@@ -13,33 +13,6 @@ tfd = tfp.distributions
 _PARTITION_SHAPE = 'partition_shape'
 
 
-class GlorotOrthogonal(tf.keras.initializers.Orthogonal):
-
-    def __init__(self, gain=1.0, seed=None, mode='fan_avg'):
-        self.fixed_gain = gain
-        self.gain = gain
-        self.seed = seed
-        self.mode = mode
-        self._random_generator = _RandomGenerator(seed)
-
-    def __call__(self, shape, dtype=None, **kwargs):
-        fan_in, fan_out = _compute_fans(shape)
-
-        scale = self.fixed_gain
-        if self.mode == 'fan_in':
-            scale /= max(1., fan_in)
-        elif self.mode == 'fan_out':
-            scale /= max(1., fan_out)
-        else:
-            scale /= max(1., (fan_in + fan_out) / 2.)
-
-        self.gain = math.sqrt(scale)
-        return super().__call__(shape, dtype, **kwargs)
-
-    def get_config(self):
-        return {'gain': self.gain, 'seed': self.seed, 'mode': self.mode}
-
-
 def orthogonalize(initial_initializer):
     shape = initial_initializer.shape
 
@@ -61,83 +34,38 @@ def orthogonalize(initial_initializer):
     return orthogonal_initializer
 
 
-class CauchyOrthogonal(tf.keras.initializers.Initializer):
-    """
-
-    Small modification over the Orthogonal initializer with a Cauchy distribution instead of a Gaussian one
-
-    Args:
-      gain: multiplicative factor to apply to the orthogonal matrix
-      seed: A Python integer. An initializer created with a given seed will
-        always produce the same random tensor for a given shape and dtype.
-
-    """
-
-    def __init__(self, gain=1.0, seed=None):
-        self.gain = gain
-        self.seed = seed
-        self._random_generator = _RandomGenerator(seed)
-
-    def __call__(self, shape, dtype=None, **kwargs):
-        # Generate a random matrix
-        # original: a = self._random_generator.random_normal(flat_shape, dtype=dtype)
-        dist = tfd.Cauchy(loc=0., scale=1.)
-        initial_initializer = dist.sample(shape) / 5
-
-        orhogonal_cauchy = orthogonalize(initial_initializer)
-        return self.gain * orhogonal_cauchy
+class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
 
     def get_config(self):
-        return {'gain': self.gain, 'seed': self.seed}
-
-
-class GlorotCauchyOrthogonal(CauchyOrthogonal):
-
-    def __init__(self, gain=1.0, seed=None, mode='fan_avg'):
-        self.fixed_gain = gain
-        self.gain = gain
-        self.seed = seed
-        self.mode = mode
-        self._random_generator = _RandomGenerator(seed)
-
-    def __call__(self, shape, dtype=None, **kwargs):
-        fan_in, fan_out = _compute_fans(shape)
-
-        scale = self.fixed_gain
-        if self.mode == 'fan_in':
-            scale /= max(1., fan_in)
-        elif self.mode == 'fan_out':
-            scale /= max(1., fan_out)
-        else:
-            scale /= max(1., (fan_in + fan_out) / 2.)
-
-        self.gain = math.sqrt(scale)
-        return super().__call__(shape, dtype, **kwargs)
-
-    def get_config(self):
-        return {'gain': self.gain, 'seed': self.seed, 'mode': self.mode}
-
-
-class MoreVarianceScaling(VarianceScaling):
+        return {
+            'scale': self.scale,
+            'mode': self.mode,
+            'distribution': self.distribution,
+            'seed': self.seed,
+            'orthogonalize': self.orthogonalize
+        }
 
     def __init__(self,
                  scale=1.0,
                  mode='fan_in',
                  distribution='truncated_normal',
+                 orthogonalize=False,
                  seed=None):
         if scale <= 0.:
             raise ValueError('`scale` must be positive float.')
-        if mode not in {'fan_in', 'fan_out', 'fan_avg'}:
+        if mode not in {'fan_in', 'fan_out', 'fan_avg', 'no_fan'}:
             raise ValueError('Invalid `mode` argument:', mode)
         distribution = distribution.lower()
         # Compatibility with keras-team/keras.
         if distribution == 'normal':
             distribution = 'truncated_normal'
-        if distribution not in {'uniform', 'truncated_normal', 'untruncated_normal', 'bi_gamma', 'tanh_normal'}:
+        if distribution not in {'uniform', 'truncated_normal', 'untruncated_normal', 'bi_gamma', 'tanh_normal',
+                                'cauchy'}:
             raise ValueError('Invalid `distribution` argument:', distribution)
         self.scale = scale
         self.mode = mode
         self.distribution = distribution
+        self.orthogonalize = orthogonalize
         self.seed = seed
         self._random_generator = _RandomGenerator(seed)
 
@@ -162,19 +90,21 @@ class MoreVarianceScaling(VarianceScaling):
             scale /= max(1., fan_in)
         elif self.mode == 'fan_out':
             scale /= max(1., fan_out)
+        elif self.mode == 'no_fan':
+            pass
         else:
             scale /= max(1., (fan_in + fan_out) / 2.)
 
         if self.distribution == 'truncated_normal':
             # constant from scipy.stats.truncnorm.std(a=-2, b=2, loc=0., scale=1.)
             stddev = math.sqrt(scale) / .87962566103423978
-            return self._random_generator.truncated_normal(shape, 0.0, stddev, dtype)
+            distribution = self._random_generator.truncated_normal(shape, 0.0, stddev, dtype)
 
         elif self.distribution == 'tanh_normal':
             # constant from scipy.stats.truncnorm.std(a=-2, b=2, loc=0., scale=1.)
             stddev = math.sqrt(scale)
             normal = self._random_generator.random_normal(shape, 0.0, stddev, dtype)
-            return tf.math.tanh(normal)
+            distribution = tf.math.tanh(normal)
 
         elif self.distribution == 'bi_gamma':
             # FIXME: without multiplying stddev at the end had very good results
@@ -186,18 +116,28 @@ class MoreVarianceScaling(VarianceScaling):
             flip = 2 * np.random.choice(2, shape) - 1
             samples = samples * flip  # / 10
             stddev = 2 * math.sqrt(scale)
-            return stddev * samples
+            distribution = stddev * samples
+
+        elif self.distribution == 'bi_gamma':
+            dist = tfd.Cauchy(loc=0., scale=1.)
+            stddev = math.sqrt(scale) / 2
+            distribution = stddev * dist.sample(shape)
 
         elif self.distribution == 'untruncated_normal':
             stddev = math.sqrt(scale)
-            return self._random_generator.random_normal(shape, 0.0, stddev, dtype)
+            distribution = self._random_generator.random_normal(shape, 0.0, stddev, dtype)
 
         else:
             limit = math.sqrt(3.0 * scale)
-            return self._random_generator.random_uniform(shape, -limit, limit, dtype)
+            distribution = self._random_generator.random_uniform(shape, -limit, limit, dtype)
+
+        if self.orthogonalize:
+            distribution = orthogonalize(distribution)
+
+        return distribution
 
 
-class GlorotTanh(MoreVarianceScaling):
+class GlorotTanh(MoreVarianceScalingAndOrthogonal):
     def __init__(self, seed=None):
         super().__init__(
             scale=1.0,
@@ -206,10 +146,50 @@ class GlorotTanh(MoreVarianceScaling):
             seed=seed)
 
 
-class BiGamma(MoreVarianceScaling):
+class BiGamma(MoreVarianceScalingAndOrthogonal):
     def __init__(self, seed=None):
         super().__init__(
             scale=1.0,
             mode='fan_avg',
             distribution='bi_gamma',
+            seed=seed)
+
+
+class BiGammaOrthogonal(MoreVarianceScalingAndOrthogonal):
+    def __init__(self, seed=None):
+        super().__init__(
+            scale=1.0,
+            mode='fan_avg',
+            distribution='bi_gamma',
+            orthogonalize=True,
+            seed=seed)
+
+
+class GlorotCauchyOrthogonal(MoreVarianceScalingAndOrthogonal):
+    def __init__(self, seed=None):
+        super().__init__(
+            scale=1.0,
+            mode='fan_avg',
+            distribution='cauchy',
+            orthogonalize=True,
+            seed=seed)
+
+
+class CauchyOrthogonal(MoreVarianceScalingAndOrthogonal):
+    def __init__(self, seed=None):
+        super().__init__(
+            scale=1.0,
+            mode='no_fan',
+            distribution='cauchy',
+            orthogonalize=True,
+            seed=seed)
+
+
+class GlorotOrthogonal(MoreVarianceScalingAndOrthogonal):
+    def __init__(self, seed=None):
+        super().__init__(
+            scale=1.0,
+            mode='fan_avg',
+            distribution='uniform',
+            orthogonalize=True,
             seed=seed)
