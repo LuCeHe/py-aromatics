@@ -2,12 +2,18 @@ import os, itertools
 
 def run_experiments(experiments, init_command='python language_main.py with ',
                     run_string='sbatch run_tf2.sh ', is_argparse=False):
-    ds = dict2iter(experiments)
+    if not experiments is None:
+        ds = dict2iter(experiments)
+    else:
+        ds = ['']
     print('Number jobs: {}'.format(len(ds)))
     for d in ds:
-        a = '--' if is_argparse else ''
-        config_update = ''.join([a + '{}={} '.format(k, v) for k, v in d.items()])
-        command = init_command + config_update
+        if not experiments is None:
+            a = '--' if is_argparse else ''
+            config_update = ''.join([a + '{}={} '.format(k, v) for k, v in d.items()])
+            command = init_command + config_update
+        else:
+            command = init_command
 
         command = run_string + "'{}'".format(command)
         command = command.replace('  ', ' ')
