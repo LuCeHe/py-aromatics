@@ -7,6 +7,13 @@ import numpy as np
 def plot_history(histories, plot_filename, epochs, method_names=None, save=True, show=False, bkg_color='white',
                  metrics_to_show=[], column_id=[], colors=None):
     if not isinstance(histories, list): histories = [histories]
+    if isinstance(histories[0], dict):
+        old_histories = histories
+        histories = []
+        for h in old_histories:
+            history = lambda x: None
+            history.history = h
+            histories.append(history)
 
     if not method_names is None:
         assert len(method_names) == len(histories)
