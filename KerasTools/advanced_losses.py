@@ -82,6 +82,7 @@ def bpc(y_true, y_pred):
 def bpc_2(y_true, y_pred):
     bits_per_character = -tf.reduce_sum(y_true * tf.math.log(y_pred), axis=[2]) / tf.math.log(2.)
     bits_per_character = tf.math.reduce_mean(tf.math.reduce_mean(bits_per_character, axis=1), axis=0)
+    # bits_per_character = tf.math.reduce_mean(bits_per_character)
     return bits_per_character
 
 
