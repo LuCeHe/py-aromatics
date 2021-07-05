@@ -113,7 +113,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
             samples = dist.sample(shape)
             flip = 2 * np.random.choice(2, shape) - 1
             stddev = 2 * math.sqrt(scale)
-            distribution = stddev * samples * flip/10
+            distribution = stddev * samples * flip / 10
 
         elif 'bi_gamma' in self.distribution:
             dist = tfd.Gamma(concentration=3.0, rate=2.0)
@@ -189,15 +189,16 @@ if __name__ == '__main__':
     initializer = MoreVarianceScalingAndOrthogonal(
         scale=1.0,
         mode='fan_in',
-        distribution='bi_gamma_10',
+        distribution='bi_gamma',
         orthogonalize=True,
         seed=None)
 
     t = initializer((2, 3000)).numpy()
 
-    product = np.dot(t, t.T)
+    product = np.abs(np.dot(t, t.T))
     np.fill_diagonal(product, 0)
-    if (product.all() < 1e-7):
+
+    if np.all(product < 1e-7):
         print('Orthogonal! ')
         print(product)
     else:
