@@ -4,12 +4,32 @@ from tensorflow.python.ops import math_ops
 from tensorflow.python.distribute import sharded_variable
 
 from GenericTools.KerasTools.esoteric_layers.convenience_layers import OneHot
+from GenericTools.KerasTools.esoteric_regularizers.isotropic_regularizer import Isotropic
 
 """
 sources:
     - https://github.com/akanyaani/gpt-2-tensorflow2.0/blob/master/layers/embedding_layer.py
     - https://arxiv.org/pdf/1702.01417.pdf
 """
+
+
+def string_to_emb(embedding, n_neurons):
+    emb_dim = 'None'
+    if ':' in embedding:
+        splits = embedding.split(':')
+        if len(splits) == 3:
+            symbol_embedding, position_embedding, factorized = splits
+        elif len(splits) == 4:
+            symbol_embedding, position_embedding, factorized, emb_dim = splits
+
+        else:
+            raise NotImplementedError
+
+    else:
+        raise NotImplementedError
+    emb_dim = n_neurons if emb_dim == 'None' else int(emb_dim)
+    factorized_dim = None if factorized == 'None' else int(factorized)
+    return emb_dim, factorized_dim, symbol_embedding, position_embedding
 
 
 class TokenAndPositionEmbedding(tf.keras.layers.Layer):
@@ -69,11 +89,14 @@ class ZeroMeanEmbedding(tf.keras.layers.Embedding):
 
 
 class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
-    def __init__(self, maxlen, vocab_size, embed_dim, embeddings_initializer='orthogonal',
+    def __init__(self, vocab_size, embed_dim, maxlen=512, embeddings_initializer='orthogonal',
                  name='SymbolAndPositionEmbedding',
                  symbol_embedding='zero_mean',
-                 position_embedding=None, factorized_dim=None):
-        super(SymbolAndPositionEmbedding, self).__init__(name=name)
+                 position_embedding=None, factorized_dim=None, from_string=None):
+        super().__init__(name=name)
+
+        if isinstance(from_string, str):
+            emb_dim, factorized_dim, symbol_embedding, position_embedding = string_to_emb(from_string, embed_dim)
 
         self.maxlen, self.vocab_size, self.embed_dim = maxlen, vocab_size, embed_dim
         self.embeddings_initializer = embeddings_initializer
@@ -82,9 +105,9 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
         self.factorized_dim = factorized_dim
 
         if not factorized_dim is None:
-            self.fs = tf.keras.layers.Dense(embed_dim)
+            self.fs = tf.keras.layers.Dense(embed_dim, kernel_initializer=embeddings_initializer)
             if not position_embedding in ['None', None, [None]]:
-                self.fp = tf.keras.layers.Dense(embed_dim)
+                self.fp = tf.keras.layers.Dense(embed_dim, kernel_initializer=embeddings_initializer)
             else:
                 self.fp = lambda x: x
             embed_dim = factorized_dim
