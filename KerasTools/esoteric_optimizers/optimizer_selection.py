@@ -5,7 +5,7 @@ from GenericTools.KerasTools.esoteric_optimizers.AdaBelief import AdaBelief
 from GenericTools.KerasTools.esoteric_optimizers.AdamW import AdamW
 
 
-def select_optimizer(optimizer_name, lr_schedule, total_steps, lr, weight_decay, clipnorm):
+def select_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_decay=False, clipnorm=False):
     learning_rate = lr
     if 'cosine_no_restarts' in lr_schedule:
         learning_rate = tf.keras.experimental.CosineDecay(learning_rate, decay_steps=int(4 * total_steps / 5), alpha=.1)
