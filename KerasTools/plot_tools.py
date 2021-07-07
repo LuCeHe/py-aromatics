@@ -36,7 +36,7 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
         axs = axs if type(axs) is np.ndarray else [axs]
 
         if colors is None:
-            cm = plt.get_cmap('tab20')  # Reds
+            cm = plt.get_cmap('gist_ncar')  # Reds tab20
             colors = cm(np.linspace(1, 0, len(histories)))
             np.random.shuffle(colors)
 
