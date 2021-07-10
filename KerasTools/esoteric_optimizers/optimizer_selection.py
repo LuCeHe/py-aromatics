@@ -36,6 +36,8 @@ def select_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weigh
                               exclude_from_weight_decay=['embedding'], remove_nans=['all'], weight_noise=.075)
     elif optimizer_name == 'SGD':
         optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate, clipnorm=clipnorm, momentum=0.99)
+    elif optimizer_name == 'Adam':
+        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, clipnorm=clipnorm)
     else:
         raise NotImplementedError
 
