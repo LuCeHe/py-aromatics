@@ -171,6 +171,9 @@ def move_mouse():
             print('You Pressed A Key!')
             break  # finishing the loop
 
+str2val = lambda comments, x, f: f(
+    [s for s in comments.split('_') if '{}:'.format(x) in s][0].replace('{}:'.format(x), ''))
+
 
 if __name__ == '__main__':
     move_mouse()
