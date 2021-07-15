@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.layers import *
-import numpy as np
+
 
 class LayerSupervision(tf.keras.layers.Layer):
     """ Inspired by Deeply-Supervised Nets """
@@ -24,9 +24,7 @@ class LayerSupervision(tf.keras.layers.Layer):
         conv = self.conv(representation)
         loss = self.coef * self.loss(classes, conv)
         self.add_loss(loss)
-
-        random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
-        self.add_metric(loss, name='layer_supervision_{}_{}'.format(self.name, random_string), aggregation='mean')
+        self.add_metric(loss, name='layer_supervision_{}'.format(self.name), aggregation='mean')
 
         return representation
 

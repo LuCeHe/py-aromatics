@@ -146,12 +146,22 @@ class GlorotTanh(MoreVarianceScalingAndOrthogonal):
 
 
 class BiGamma(MoreVarianceScalingAndOrthogonal):
+    def __init__(self, scale=1.0, mode='no_fan', distribution='bi_gamma', seed=None):
+        super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed)
+
+
+class GlorotBiGamma(MoreVarianceScalingAndOrthogonal):
     def __init__(self, scale=1.0, mode='fan_avg', distribution='bi_gamma', seed=None):
         super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed)
 
 
-class BiGammaOrthogonal(MoreVarianceScalingAndOrthogonal):
+class GlorotBiGammaOrthogonal(MoreVarianceScalingAndOrthogonal):
     def __init__(self, scale=1.0, mode='fan_avg', distribution='bi_gamma', orthogonalize=True, seed=None):
+        super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed, orthogonalize=orthogonalize)
+
+
+class BiGammaOrthogonal(MoreVarianceScalingAndOrthogonal):
+    def __init__(self, scale=1.0, mode='no_fan', distribution='bi_gamma', orthogonalize=True, seed=None):
         super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed, orthogonalize=orthogonalize)
 
 
@@ -188,8 +198,8 @@ class GlorotOrthogonal(MoreVarianceScalingAndOrthogonal):
 if __name__ == '__main__':
     initializer = MoreVarianceScalingAndOrthogonal(
         scale=1.0,
-        mode='fan_in',
-        distribution='bi_gamma',
+        mode='fan_avg',
+        distribution='tanh_bi_gamma',
         orthogonalize=True,
         seed=None)
 
