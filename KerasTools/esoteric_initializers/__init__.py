@@ -5,6 +5,7 @@ from tensorflow.keras.initializers import *
 esoteric_initializers_list = [
     'BiGamma', 'BiGamma10', 'BiGammaOrthogonal', 'CauchyOrthogonal', 'GlorotCauchyOrthogonal', 'GlorotOrthogonal',
     'GlorotTanh', 'MoreVarianceScalingAndOrthogonal', 'TanhBiGamma10', 'TanhBiGamma10Orthogonal',
+    'GlorotBiGammaOrthogonal', 'GlorotBiGamma'
 ]
 
 
