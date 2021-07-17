@@ -1,11 +1,12 @@
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 from GenericTools.KerasTools.learning_rate_schedules import AddWarmUpToSchedule, DummyConstantSchedule
 from GenericTools.KerasTools.esoteric_optimizers.AdaBelief import AdaBelief
 from GenericTools.KerasTools.esoteric_optimizers.AdamW import AdamW
 
 
-def select_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_decay=False, clipnorm=False):
+def get_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_decay=False, clipnorm=False):
     learning_rate = lr
     if 'cosine_no_restarts' in lr_schedule:
         learning_rate = tf.keras.experimental.CosineDecay(learning_rate, decay_steps=int(4 * total_steps / 5), alpha=.1)
@@ -18,6 +19,12 @@ def select_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weigh
 
     if 'warmup' in lr_schedule:
         learning_rate = AddWarmUpToSchedule(learning_rate, warmup_steps=total_steps / 6)
+
+    ma = lambda x: tfa.optimizers.MovingAverage(x) if 'MA' in optimizer_name else x
+    optimizer_name = optimizer_name.replace('MA', '')
+
+    swa = lambda x: tfa.optimizers.SWA(x) if 'SWA' in optimizer_name else x
+    optimizer_name = optimizer_name.replace('SWA', '')
 
     if optimizer_name == 'AdamW':
         optimizer = AdamW(learning_rate=learning_rate, weight_decay=weight_decay, clipnorm=clipnorm,
@@ -41,4 +48,5 @@ def select_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weigh
     else:
         raise NotImplementedError
 
-    return optimizer
+
+    return swa(ma(optimizer))
