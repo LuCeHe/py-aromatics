@@ -139,3 +139,64 @@ class OneHot(Layer):
 
     def get_config(self):
         return {'n_out': self.n_out}
+
+
+class SoftmaxMinusMax(Layer):
+    def __init__(self, axis, **kwargs):
+        self.axis = axis
+        super().__init__(**kwargs)
+
+    def call(self, inputs):
+        logits = inputs
+        logits = logits - tf.expand_dims(tf.reduce_max(logits, axis=-1), -1)
+        exp = tf.exp(logits)
+        sm = exp / tf.reduce_sum(exp, self.axis)
+        return sm
+
+    def get_config(self):
+        return {'axis': self.axis}
+
+
+class SoftplusMax(Layer):
+    def __init__(self, axis, **kwargs):
+        self.axis = axis
+        super().__init__(**kwargs)
+
+    def call(self, inputs):
+        logits = inputs
+        # logits = logits - tf.expand_dims(tf.reduce_max(logits, axis=-1), -1)
+        exp = tf.math.softplus(logits)
+        sm = exp / tf.reduce_sum(exp, self.axis)
+        return sm
+
+    def get_config(self):
+        return {'axis': self.axis}
+
+
+class SoftmaxVariations(Layer):
+    def __init__(self, axis=-1, from_string='', softplus=False, remove_max=False, **kwargs):
+        self.axis = axis
+        softplus = True if 'softplusmax' in from_string else softplus
+        self.exp = lambda x: tf.math.softplus(x) if softplus else tf.exp(x)
+        remove_max = True if 'remove_max' in from_string else remove_max
+        self.logify = lambda x: x - tf.expand_dims(tf.reduce_max(x, axis=-1), -1) if remove_max else x
+        super().__init__(**kwargs)
+
+    def call(self, inputs):
+        logits = self.logify(inputs)
+        exp = self.exp(logits)
+        sm = exp / tf.reduce_sum(exp, self.axis, keepdims=True)
+        return sm
+
+    def get_config(self):
+        return {
+            'axis': self.axis,
+            'from_string': self.from_string,
+            'softplus': self.softplus,
+            'remove_max': self.remove_max
+        }
+
+if __name__ == '__main__':
+    tensor = tf.random.uniform((2, 3, 2))
+    output = SoftmaxVariations(softplus=True, remove_max=True)(tensor)
+    print(output.shape)

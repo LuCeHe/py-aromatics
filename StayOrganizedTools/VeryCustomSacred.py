@@ -68,7 +68,15 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10, ingredie
     return ex
 
 
-def ChooseGPU(GPU=None):
+def ChooseGPU(GPU=None, memory_growth=True):
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, memory_growth)
+        except RuntimeError as e:
+            print(e)
+
     if not GPU is None:
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = str(GPU)
