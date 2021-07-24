@@ -96,7 +96,7 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
         super().__init__(name=name)
 
         if isinstance(from_string, str):
-            emb_dim, factorized_dim, symbol_embedding, position_embedding = string_to_emb(from_string, embed_dim)
+            embed_dim, factorized_dim, symbol_embedding, position_embedding = string_to_emb(from_string, embed_dim)
 
         self.maxlen, self.vocab_size, self.embed_dim = maxlen, vocab_size, embed_dim
         self.embeddings_initializer = embeddings_initializer
