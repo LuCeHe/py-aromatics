@@ -4,7 +4,7 @@ import tensorflow as tf
 class DropWord(tf.keras.layers.Layer):
 
     def __init__(self, dropword_prob, vocab_size, **kwargs):
-        super(DropWord, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.dropword_prob = dropword_prob
         self.vocab_size = vocab_size
 
