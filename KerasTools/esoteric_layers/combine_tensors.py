@@ -11,10 +11,7 @@ class CombineTensors(tf.keras.layers.Layer):
         self.s = tf.math.sigmoid if sigmoidal_gating else lambda x: x
 
     def build(self, input_shape):
-        print('nice')
-        print(input_shape)
         axis_size = input_shape[0][self.axis] if not self.axis is None else 1
-        print(input_shape, axis_size)
         self.matrices = []
         for i in range(self.n_tensors):
             m = self.add_weight(shape=(axis_size,), initializer=self.initializer, name='fd_{}'.format(i))
