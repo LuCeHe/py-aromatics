@@ -7,4 +7,5 @@ from GenericTools.KerasTools.esoteric_layers.dropword import DropWord
 from GenericTools.KerasTools.esoteric_layers.positional_embedding import SymbolAndPositionEmbedding
 from GenericTools.KerasTools.esoteric_layers.layer_supervision import LayerSupervision
 from GenericTools.KerasTools.esoteric_layers.convenience_layers import *
+from GenericTools.KerasTools.esoteric_layers.resizing_1d import Resizing1D
 from GenericTools.KerasTools.esoteric_layers.stochastic_depth import StochasticDepth

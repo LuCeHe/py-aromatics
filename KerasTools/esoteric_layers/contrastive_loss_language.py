@@ -3,10 +3,12 @@ import tensorflow as tf
 
 class ContrastiveLossLayer(tf.keras.layers.Layer):
 
-    def __init__(self, coef_disorder=.1, coef_random=.1, loss=tf.keras.losses.CategoricalCrossentropy(), **kwargs):
+    def __init__(self, coef_disorder=.1, coef_random=.1, n_random=1,
+                 loss=tf.keras.losses.CategoricalCrossentropy(), **kwargs):
         super().__init__(**kwargs)
         self.initial_coef_disorder = coef_disorder
         self.initial_coef_random = coef_random
+        self.n_random = n_random
 
         if hasattr(loss, 'name'):
             loss.name = loss.name
@@ -56,17 +58,18 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
             self.add_metric(cl_d, name='contrastive_disorder', aggregation='mean')
 
         if self.coef_random > 0:
-            if 'categorical' in self.loss.name:
-                p = tf.tile((1 / vocab_size)[None, None], [batch_size, vocab_size])
-                ps = tf.random.categorical(tf.math.log(p), seq_len)
-                random_words = tf.one_hot(ps, vocab_size)
-            else:
-                std = tf.math.reduce_std(output_words)
-                random_words = std * tf.random.normal(shape=tf.shape(probs))
+            for i in range(self.n_random):
+                if 'categorical' in self.loss.name:
+                    p = tf.tile((1 / vocab_size)[None, None], [batch_size, vocab_size])
+                    ps = tf.random.categorical(tf.math.log(p), seq_len)
+                    random_words = tf.one_hot(ps, vocab_size)
+                else:
+                    std = tf.math.reduce_std(output_words)
+                    random_words = std * tf.random.normal(shape=tf.shape(probs))
 
-            cl_r = - self.coef_random * self.loss(random_words, probs)
-            self.add_loss(cl_r)
-            self.add_metric(cl_r, name='contrastive_random', aggregation='mean')
+                cl_r = - self.coef_random * self.loss(random_words, probs)
+                self.add_loss(cl_r)
+                self.add_metric(cl_r, name='contrastive_random_{}'.format(i), aggregation='mean')
 
         return probs
 

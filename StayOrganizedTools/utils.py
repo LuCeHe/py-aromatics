@@ -1,4 +1,3 @@
-
 import argparse, logging, os, random, time
 from time import strftime, localtime
 
@@ -171,9 +170,18 @@ def move_mouse():
             print('You Pressed A Key!')
             break  # finishing the loop
 
-str2val = lambda comments, x, f: f(
-    [s for s in comments.split('_') if '{}:'.format(x) in s][0].replace('{}:'.format(x), ''))
 
+def str2val(comments, x, f, default=None):
+    if x in comments:
+        output = f(
+            [s for s in comments.split('_') if '{}:'.format(x) in s][0].replace('{}:'.format(x), ''))
+    else:
+        output = default
+    return output
+
+
+# str2val = lambda comments, x, f: f(
+#     [s for s in comments.split('_') if '{}:'.format(x) in s][0].replace('{}:'.format(x), ''))
 
 if __name__ == '__main__':
     move_mouse()
