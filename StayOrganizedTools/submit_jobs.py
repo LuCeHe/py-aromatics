@@ -19,7 +19,7 @@ def run_experiments(experiments, init_command='python language_main.py with ',
         command = run_string + "'{}'".format(command)
         command = command.replace('  ', ' ')
         print(command)
-        # os.system(command)
+        os.system(command)
     print('Number jobs: {}'.format(len(ds)))
 
 
