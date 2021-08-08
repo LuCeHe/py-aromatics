@@ -180,6 +180,7 @@ class SoftmaxVariations(Layer):
         self.exp = lambda x: tf.math.softplus(x) if softplus else tf.exp(x)
         remove_max = True if 'remove_max' in from_string else remove_max
         self.logify = lambda x: x - tf.expand_dims(tf.reduce_max(x, axis=-1), -1) if remove_max else x
+        self.from_string, self.softplus, self.remove_max = from_string, softplus, remove_max
         super().__init__(**kwargs)
 
     def call(self, inputs):
