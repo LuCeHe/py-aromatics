@@ -1,5 +1,5 @@
 import os, itertools
-
+from tqdm import tqdm
 
 def run_experiments(experiments, init_command='python language_main.py with ',
                     run_string='sbatch run_tf2.sh ', is_argparse=False):
@@ -8,7 +8,7 @@ def run_experiments(experiments, init_command='python language_main.py with ',
     else:
         ds = ['']
     print('Number jobs: {}'.format(len(ds)))
-    for d in ds:
+    for i, d in enumerate(ds):
         if not experiments is None:
             a = '--' if is_argparse else ''
             config_update = ''.join([a + '{}={} '.format(k, v) for k, v in d.items()])
@@ -18,7 +18,7 @@ def run_experiments(experiments, init_command='python language_main.py with ',
 
         command = run_string + "'{}'".format(command)
         command = command.replace('  ', ' ')
-        print(command)
+        print('{}/{}'.format(i, len(ds)), command)
         os.system(command)
     print('Number jobs: {}'.format(len(ds)))
 
