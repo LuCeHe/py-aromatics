@@ -172,7 +172,7 @@ def move_mouse():
 
 
 def str2val(comments, x, f, default=None):
-    if x in comments:
+    if '{}:'.format(x) in comments:
         output = f(
             [s for s in comments.split('_') if '{}:'.format(x) in s][0].replace('{}:'.format(x), ''))
     else:
