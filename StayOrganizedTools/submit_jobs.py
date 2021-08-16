@@ -1,5 +1,4 @@
 import os, itertools
-from tqdm import tqdm
 
 def run_experiments(experiments, init_command='python language_main.py with ',
                     run_string='sbatch run_tf2.sh ', is_argparse=False):
