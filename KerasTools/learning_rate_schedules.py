@@ -66,15 +66,16 @@ if __name__ == '__main__':
     lr = 1e-3
     learning_rate = DummyConstantSchedule(lr)
     # learning_rate = TransformerLRSchedule(d_model, total_epochs / 5)
-    learning_rate = tf.keras.experimental.CosineDecay(lr, decay_steps=int(4 * total_epochs / 5), alpha=.1)
+    learning_rate = tf.keras.experimental.CosineDecay(lr, decay_steps=int(4 * total_epochs / 5), alpha=.5)
     # learning_rate = tf.keras.experimental.LinearCosineDecay(lr, decay_steps=int(2 * total_epochs / 3), alpha=.5)
     # learning_rate = tf.keras.experimental.CosineDecayRestarts(lr, first_decay_steps=int(total_epochs / 6.5), alpha=.1)
     # learning_rate = tf.keras.experimental.PolynomialDecay(lr, decay_steps=int(2 * total_epochs / 3), alpha=.1)
     # learning_rate = tf.keras.optimizers.schedules.PolynomialDecay(lr, decay_steps=int(2 * total_epochs / 3), end_learning_rate=.1*lr)
     # learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(lr, decay_steps=int(2 * total_epochs / 3), decay_rate=.1*lr)
-    learning_rate = AddWarmUpToSchedule(learning_rate, warmup_steps=total_epochs / 6)
+    # learning_rate = AddWarmUpToSchedule(learning_rate, warmup_steps=total_epochs / 6)
 
     plt.plot(learning_rate(tf.range(total_epochs, dtype=tf.float32)))
     plt.ylabel("Learning Rate")
     plt.xlabel("Train Step")
+    plt.ylim(0., 1.3*lr)
     plt.show()
