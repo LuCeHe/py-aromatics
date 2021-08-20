@@ -47,7 +47,7 @@ class Multiple:
         return plt.FuncFormatter(multiple_formatter(self.denominator, self.number, self.latex))
 
 
-def load_plot_settings(mpl, pd=None):
+def load_plot_settings(mpl, pd=None, figsize=(6, 6)):
     mpl.rcParams['font.family'] = 'serif'
     mpl.rcParams['xtick.major.pad'] = '4'
     # print(mpl.rcParams.keys())
@@ -59,7 +59,7 @@ def load_plot_settings(mpl, pd=None):
 
     params = {'axes.titlesize': large,
               'legend.fontsize': med,
-              'figure.figsize': (6, 6),
+              'figure.figsize': figsize,
               'axes.labelsize': large,
               'xtick.labelsize': med,
               'ytick.labelsize': med,
