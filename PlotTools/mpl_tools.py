@@ -47,32 +47,37 @@ class Multiple:
         return plt.FuncFormatter(multiple_formatter(self.denominator, self.number, self.latex))
 
 
-def load_plot_settings(mpl, pd=None, figsize=(6, 6)):
-    mpl.rcParams['font.family'] = 'serif'
-    mpl.rcParams['xtick.major.pad'] = '4'
-    # print(mpl.rcParams.keys())
-    mpl.rcParams['xtick.major.size'] = '2'
+def load_plot_settings(mpl=None, pd=None, figsize=(6, 6)):
+    output = ()
+    if not mpl is None:
+        mpl.rcParams['font.family'] = 'serif'
+        mpl.rcParams['xtick.major.pad'] = '4'
+        # print(mpl.rcParams.keys())
+        mpl.rcParams['xtick.major.size'] = '2'
 
-    large = 22
-    med = 16
-    small = 12  # 12
+        large = 22
+        med = 16
+        small = 12  # 12
 
-    params = {'axes.titlesize': large,
-              'legend.fontsize': med,
-              'figure.figsize': figsize,
-              'axes.labelsize': large,
-              'xtick.labelsize': med,
-              'ytick.labelsize': med,
-              'figure.titlesize': large}
-    mpl.rcParams.update(params)
+        params = {'axes.titlesize': large,
+                  'legend.fontsize': med,
+                  'figure.figsize': figsize,
+                  'axes.labelsize': large,
+                  'xtick.labelsize': med,
+                  'ytick.labelsize': med,
+                  'figure.titlesize': large}
+        mpl.rcParams.update(params)
+        output += (mpl,)
 
     if not pd is None:
         pd.set_option('display.max_columns', None)
         pd.set_option('max_colwidth', 1)
         pd.set_option('precision', 3)
         pd.options.display.width = 500
+        pd.set_option('display.float_format', lambda x: '%.3f' % x)
         # pd.options.display.max_colwidth = 16
+        output += (pd,)
 
-        return mpl, pd
-    else:
-        return mpl
+    output = output[0] if len(output) > 0 else output
+    print(output)
+    return output
