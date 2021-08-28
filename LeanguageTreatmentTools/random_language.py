@@ -2,13 +2,26 @@ import numpy as np
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 
 
+def random_indices(vocab_size, batch_size=4, maxlen=7, padded=True, pad_idx=0):
+    non_pad_words = list(range(vocab_size))
+    non_pad_words.remove(pad_idx)
+    questions = []
+    for _ in range(batch_size):
+        sentence_length = np.random.choice(maxlen)
+        randomQ = np.random.choice(non_pad_words, sentence_length)
+        questions.append(randomQ)
+
+    if padded:
+        questions = pad_sequences(questions, value=pad_idx, maxlen=maxlen)
+    return questions
+
+
 def random_sequences_and_points(batch_size=3,
                                 lat_dim=4,
                                 maxlen=6,
                                 repeated=False,
                                 vocab_size=2,
                                 hyperplane=False):
-
     if not repeated:
         questions = []
         points = np.random.rand(batch_size, lat_dim)

@@ -2,6 +2,7 @@ from tensorflow.keras import backend as K
 import numpy as np
 import tensorflow as tf
 from scipy.ndimage import distance_transform_edt as distance
+import tensorflow_addons as tfa
 
 """
 sources:
@@ -65,6 +66,7 @@ def second_half_mode_accuracy(y_true, y_pred):
     acc = tf.reduce_mean(equal)
     return acc
 
+
 def zeros_categorical_accuracy(y_true, y_pred):
     n_tot = tf.reduce_sum(y_true, axis=[1, 2])
     depth = tf.shape(y_true)[-1]
@@ -122,3 +124,48 @@ def perplexity(y_true, y_pred):
     mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
     p = tf.exp(mean_xent)
     return p
+
+
+def sparse_perplexity(y_true, y_pred):
+    mean_xent = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(y_true, y_pred)
+    p = tf.exp(mean_xent)
+    return p
+
+
+def f1(y_true, y_pred):
+    actual, predicted = y_true, y_pred
+    # https://stackoverflow.com/questions/35365007/tensorflow-precision-recall-f1-score-and-confusion-matrix
+    # Now if you have your actual and predicted values as vectors of 0/1, you can calculate TP, TN, FP, FN using tf.count_nonzero:
+    TP = tf.math.count_nonzero(predicted * actual)
+    # TN = tf.math.count_nonzero((predicted - 1) * (actual - 1))
+    FP = tf.math.count_nonzero(predicted * (actual - 1))
+    FN = tf.math.count_nonzero((predicted - 1) * actual)
+
+    precision = TP / (TP + FP)
+    recall = TP / (TP + FN)
+    f1 = 2 * precision * recall / (precision + recall)
+    return f1
+
+
+def sparse_f1_on_max(num_classes):
+    def sparse_f1_on_max(y_true, y_pred):
+        max_pred = tf.argmax(y_pred, -1)
+        # max_pred = tf.cast(max_pred, tf.float32)
+        y_true = tf.cast(y_true, tf.int32)
+        oh_true = tf.one_hot(y_true, depth=num_classes)
+        oh_pred = tf.one_hot(max_pred, depth=num_classes)
+        return f1(oh_true, oh_pred)
+
+    return sparse_f1_on_max
+
+
+
+def sparse_f1(num_classes):
+    def score(y_true, y_pred):
+        # num_classes = tf.shape(y_pred)[-1]
+        y_true = tf.one_hot(tf.cast(y_true, tf.int32), depth=num_classes)
+        f1 = tfa.metrics.F1Score(num_classes=num_classes)
+        result = f1.update_state(y_true, y_pred)
+        return result.result()
+
+    return score

@@ -32,39 +32,6 @@ def string_to_emb(embedding, n_neurons):
     return emb_dim, factorized_dim, symbol_embedding, position_embedding
 
 
-class TokenAndPositionEmbedding(tf.keras.layers.Layer):
-    def __init__(self, maxlen, vocab_size, embed_dim, embeddings_initializer='uniform',
-                 name='TokenAndPositionEmbedding', **kwargs):
-        super().__init__(name=name,**kwargs)
-        self.maxlen, self.vocab_size, self.embed_dim = maxlen, vocab_size, embed_dim
-        self.embeddings_initializer = embeddings_initializer
-        self.token_emb = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embed_dim,
-                                                   embeddings_initializer=embeddings_initializer,
-                                                   name='SymbolEmbedding')
-        self.pos_emb = tf.keras.layers.Embedding(input_dim=maxlen, output_dim=embed_dim,
-                                                 embeddings_initializer=embeddings_initializer,
-                                                 name='PositionEmbedding')
-
-    def call(self, inputs):
-        maxlen = tf.shape(inputs)[-1]
-        positions = tf.range(start=0, limit=maxlen, delta=1)
-        positions = self.pos_emb(positions)
-        x = self.token_emb(inputs)
-        return x + positions
-
-    def get_config(self):
-        config = {
-            'maxlen': self.maxlen,
-            'vocab_size': self.vocab_size,
-            'embeddings_initializer':
-                tf.keras.initializers.serialize(tf.keras.initializers.get(self.embeddings_initializer)),
-            'embed_dim': self.embed_dim,
-        }
-
-        base_config = super(TokenAndPositionEmbedding, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
-
-
 
 class ZeroMeanEmbedding(tf.keras.layers.Embedding):
     """

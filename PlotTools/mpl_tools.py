@@ -78,6 +78,5 @@ def load_plot_settings(mpl=None, pd=None, figsize=(6, 6)):
         # pd.options.display.max_colwidth = 16
         output += (pd,)
 
-    output = output[0] if len(output) > 0 else output
-    print(output)
+    output = output[0] if len(output) == 1 else output
     return output
