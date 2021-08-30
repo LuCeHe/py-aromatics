@@ -70,8 +70,9 @@ def download(data_path, tokenizer_choice, n_dialogues):
                 wizard_count = 0
                 chosen_topic_passage = [
                     data[dialogue_i]['chosen_topic'] + ': ' + ' '.join(data[dialogue_i]['chosen_topic_passage'])]
-                knowledge_1_back = ['[PAD]'] * 6
-                knowledge_2_back = ['[PAD]'] * 6
+                zero_knowledge = ['[PAD][PAD]'] * 6
+                knowledge_1_back = zero_knowledge
+                knowledge_2_back = zero_knowledge
 
                 # print('Length conversation: ', len(data[dialogue_i]['dialog']))
                 speakers = [d['speaker'] for d in data[dialogue_i]['dialog']]
@@ -89,7 +90,10 @@ def download(data_path, tokenizer_choice, n_dialogues):
                         target = d['text']
                     rp = [list(l.keys())[0] + ': ' + ' '.join(list(l.values())[0]) for l in d['retrieved_passages']]
 
-                    knowledge = ['no passages used'] + chosen_topic_passage + knowledge_1_back + knowledge_2_back
+                    knowledge = ['no passages used'] + chosen_topic_passage \
+                                + knowledge_1_back + knowledge_2_back + zero_knowledge
+                    knowledge = knowledge[:16]
+
                     random.shuffle(knowledge)
                     knowledge_2_back = knowledge_1_back
                     knowledge_1_back = rp
@@ -199,7 +203,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             data_path=None,
             tokenizer_choice='bpe',
             n_dialogues=-1,
-            category_coding='onehot'):
+    ):
 
         self.__dict__.update(
             epochs=epochs,
@@ -217,7 +221,6 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         download(data_path=data_path, tokenizer_choice=tokenizer_choice, n_dialogues=n_dialogues)
 
         self.maxlen = maxlen
-
         self.on_epoch_end()
 
         tokenizer_path = os.path.join(self.data_path, 'tokenizer-{}.json'.format(tokenizer_choice))
@@ -228,6 +231,11 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         self.epochs = 50 if epochs == None else epochs
 
     def on_epoch_end(self):
+
+        if hasattr(self, 'data'):
+            self.data.close()
+            del self.data
+
         h5_path = os.path.join(self.data_path, '{}_{}.h5'.format(self.data_split, self.tokenizer_choice))
         self.data = h5py.File(h5_path, 'r')
         n_samples = len(self.data['choices'])
@@ -236,29 +244,30 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         if self.steps_per_epoch == None:
             self.steps_per_epoch = int(n_samples / self.batch_size)
 
-    def data_generation(self):
+    def data_generation(self, index=None):
+        if index is None:
+            index = np.random.randint(0, self.steps_per_epoch)
 
-        batch_indices = self.random_indices[-self.batch_size:]
-        self.random_indices = self.random_indices[:-self.batch_size]
+        batch_indices = self.random_indices[index * self.batch_size:(index + 1) * self.batch_size]
+        # self.random_indices = self.random_indices[:-self.batch_size]
         batch_indices = sorted(batch_indices)
         reshuffled_indices = np.random.choice(self.batch_size, self.batch_size, replace=False)
 
         targets = [eval(s) for s in self.data['targets'][batch_indices]]
         input_targets = [[self.start_idx] + s for s in targets]
-        input_targets = pad_sequences(input_targets, value=self.pad_idx, padding='post')[reshuffled_indices]
-        output_targets = pad_sequences(targets, value=self.pad_idx, padding='post')[reshuffled_indices]
+        output_targets = [s + [self.pad_idx] for s in targets]
+        input_targets = pad_sequences(input_targets, value=self.pad_idx)[reshuffled_indices]
+        output_targets = pad_sequences(output_targets, value=self.pad_idx)[reshuffled_indices]
 
         contexts = [eval(s) for s in self.data['contexts'][batch_indices]]
         padded_contexts = pad_sequences(contexts, value=self.pad_idx)[reshuffled_indices]
 
         choices = np.array([eval(s) for s in self.data['choices'][batch_indices]])[reshuffled_indices]
 
-        knowledges = [[s for s in sbatch] for sbatch in self.data['knowledges'][batch_indices]]
-        print(knowledges)
-        knowledges = [[eval(s) for s in sbatch] for sbatch in self.data['knowledges'][batch_indices]]
+        knowledges = [[[int(i) for i in s[1:-1].split(',')] for s in k] for k in self.data['knowledges'][batch_indices]]
         maxlen = max([len(item) for sublist in knowledges for item in sublist])
-        padded_knowledges = np.asarray([[[self.pad_idx] * (maxlen - len(s)) + s for s in sbatch]
-                                        for sbatch in knowledges])[reshuffled_indices]
+        padded_knowledges = [[[self.pad_idx] * (maxlen - len(s)) + s for s in k] for k in knowledges]
+        padded_knowledges = np.asarray(padded_knowledges)[reshuffled_indices]
 
         return {'choices': choices, 'knowledges': padded_knowledges[..., -self.maxlen:],
                 'targets': input_targets[..., -self.maxlen:], 'contexts': padded_contexts[..., -self.maxlen:],
@@ -269,9 +278,8 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         return self.steps_per_epoch
 
     def __getitem__(self, index=0):
-        batch = self.data_generation()
-        # input_tensors = [src_tokens, know_tokens, chosen_knowledge, tgt_tokens]
-
+        batch = self.data_generation(index)
+        print(batch['targets'])
         return [
                    batch['contexts'],
                    batch['knowledges'],

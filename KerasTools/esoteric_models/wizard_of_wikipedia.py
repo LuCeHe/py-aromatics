@@ -12,6 +12,7 @@ from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncod
     PaddingLookAheadMasks, create_padding_mask, create_look_ahead_mask
 from GenericTools.LeanguageTreatmentTools.random_language import random_indices
 
+
 def metrics_wow(num_classes):
     metrics = [
         sparse_perplexity,
@@ -20,7 +21,7 @@ def metrics_wow(num_classes):
     return metrics
 
 
-def universal_sentence_embedding(sentences, mask, sqrt=True):
+def universal_sentence_embedding(sentences, mask, sqrt=True, epsilon=1e-6):
     """
     Perform Universal Sentence Encoder averaging (https://arxiv.org/abs/1803.11175).
 
@@ -40,7 +41,7 @@ def universal_sentence_embedding(sentences, mask, sqrt=True):
     if sqrt:
         divisor = tf.sqrt(divisor)
 
-    sentence_sums /= divisor[..., None]
+    sentence_sums /= divisor[..., None] + epsilon
     return sentence_sums
 
 
@@ -85,8 +86,8 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
         context_encoded = self.transformer_encoder(src_tokens, mask=context_mask)
         know_encoded = self.transformer_encoder(know_flat, mask=knw_mask)
 
-        context_use = universal_sentence_embedding(context_encoded, tf.squeeze(context_mask, [1, 2]), sqrt=True)
-        know_use = universal_sentence_embedding(know_encoded, tf.squeeze(knw_mask, [1, 2]), sqrt=True)
+        context_use = universal_sentence_embedding(context_encoded, tf.squeeze(1-context_mask, [1, 2]), sqrt=True)
+        know_use = universal_sentence_embedding(know_encoded, tf.squeeze(1-knw_mask, [1, 2]), sqrt=True)
 
         know_use = tf.reshape(know_use, (N, K, self.d_model))
 
@@ -98,7 +99,9 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
         if chosen_knowledge is None:
             chosen_knowledge = tf.argmax(ck_attn, axis=1)
         else:
-            loss = .1 * tf.keras.losses.SparseCategoricalCrossentropy()(chosen_knowledge, ck_attn)
+            expandaded_ck_attn = tf.expand_dims(ck_attn, 1)
+
+            loss = .1 * tf.keras.losses.SparseCategoricalCrossentropy()(chosen_knowledge, expandaded_ck_attn)
             self.add_loss(loss)
             self.add_metric(loss, name='knowledge_loss', aggregation='mean')
 
@@ -134,8 +137,8 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
         decoder_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
 
         output = self.transformer_decoder(
-            tgt_tokens, encoder_output, decoder_mask, encoder_mask, output_type=output_type)
-
+            tgt_tokens, encoder_output, decoder_mask, encoder_mask, output_type=output_type)[0]
+        output = output - tf.reduce_max(output, axis=-1, keepdims=True)
         return output  # (batch_size, input_seq_len, d_model)
 
 
@@ -160,9 +163,9 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
 # 'temperature': 1.0, 'adam_eps': 1e-08, 'adafactor_eps': (1e-30, 0.001), 'weight_decay': None,
 
 def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_size=int(5e4),
-                  target_vocab_size=int(5e4), max_pos=1024, rate=.1, max_knowledge=5):
-    cke = tf_ContextKnowledgeEncoder(num_layers, d_model, num_heads, dff, input_vocab_size, max_pos, rate)
-    ckd = tf_ContextKnowledgeDecoder(num_layers, d_model, num_heads, dff, target_vocab_size, max_pos, rate)
+                  target_vocab_size=int(5e4), max_pos=1024, rate=.1, max_knowledge=5, pad_idx=0):
+    cke = tf_ContextKnowledgeEncoder(num_layers, d_model, num_heads, dff, input_vocab_size, max_pos, rate, pad_idx)
+    ckd = tf_ContextKnowledgeDecoder(num_layers, d_model, num_heads, dff, target_vocab_size, max_pos, rate, pad_idx)
 
     src_tokens = Input((None,))
     tgt_tokens = Input((None,))
@@ -170,7 +173,7 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
     chosen_knowledge = Input((1,))
 
     code = cke([src_tokens, know_tokens, chosen_knowledge])
-    logits = ckd([tgt_tokens, code], output_type='embedding_projection')[0]
+    logits = ckd([tgt_tokens, code], output_type='embedding_projection')
 
     model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
 
@@ -184,7 +187,7 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
     #
     # test_model = tf.keras.models.Model([src_tokens, know_tokens, tgt_tokens], logits)
 
-    return model #, test_model
+    return model  # , test_model
 
 
 def quick_test():
