@@ -74,6 +74,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
                 zero_knowledge = ['[PAD][PAD]'] * 6
                 knowledge_1_back = zero_knowledge
                 knowledge_2_back = zero_knowledge
+                knowledge_3_back = zero_knowledge
 
                 # print('Length conversation: ', len(data[dialogue_i]['dialog']))
                 speakers = [d['speaker'] for d in data[dialogue_i]['dialog']]
@@ -92,10 +93,11 @@ def download(data_path, tokenizer_choice, n_dialogues):
                     rp = [list(l.keys())[0] + ': ' + ' '.join(list(l.values())[0]) for l in d['retrieved_passages']]
 
                     knowledge = ['no passages used'] + chosen_topic_passage \
-                                + knowledge_1_back + knowledge_2_back + zero_knowledge
-                    knowledge = knowledge[:16]
+                                + knowledge_1_back + knowledge_2_back + knowledge_3_back + zero_knowledge
+                    knowledge = knowledge[:22] #[:16]
 
                     random.shuffle(knowledge)
+                    knowledge_3_back = knowledge_2_back
                     knowledge_2_back = knowledge_1_back
                     knowledge_1_back = rp
 
