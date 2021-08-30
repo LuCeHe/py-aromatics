@@ -1,7 +1,6 @@
 # I'm turning into tf the code for the article
 # WIZARD OF WIKIPEDIA: KNOWLEDGE-POWERED CONVERSATIONAL AGENTS
 # that was originally written in PyTorch in the ParlAI library
-from projects.wizard_of_wikipedia.generator.modules import ContextKnowledgeEncoder
 from tensorflow.keras.layers import *
 import tensorflow as tf
 
