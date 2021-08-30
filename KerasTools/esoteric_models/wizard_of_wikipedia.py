@@ -174,13 +174,23 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
 
     model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
 
-    return model
+    #
+    # src_tokens = Input((None,))
+    # tgt_tokens = Input((None,))
+    # know_tokens = Input((max_knowledge, None))
+    #
+    # code = cke([src_tokens, know_tokens])
+    # logits = ckd([tgt_tokens, code], output_type='embedding_projection')[0]
+    #
+    # test_model = tf.keras.models.Model([src_tokens, know_tokens, tgt_tokens], logits)
+
+    return model #, test_model
 
 
 def quick_test():
     max_knowledge = 5
     input_vocab_size = int(5e4)
-    model = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=input_vocab_size)
+    model, _ = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=input_vocab_size)
     vocab_size = 20
 
     src_tokens = random_indices(vocab_size)
