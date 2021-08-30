@@ -51,6 +51,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
                  'max_knowledge_items', 'n_samples', 'n_dialogues'])
 
     for split_name in split_names:
+        print(split_name)
         max_target_length, max_context_length, max_knowledge_length, max_knowledge_items = 0, 0, 0, 0
         h5_path = os.path.join(DATAPATH, '{}_{}.h5'.format(split_name, tokenizer_choice))
         data_json = os.path.join(DATAPATH, split_name + '.json')
@@ -63,7 +64,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
             contexts = []
             knowledges = []
             choices = []
-            for dialogue_i in range(len(data))[:n_dialogues]:
+            for dialogue_i in tqdm(range(len(data))[:n_dialogues]):
                 # print('-' * 59, dialogue_i)
                 context = data[dialogue_i]['chosen_topic']
                 target = ''
@@ -81,7 +82,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
                 # print('Wizard speaks {} times'.format(wizard_utterances))
                 predict_wizard_i = np.random.choice(wizard_utterances)
                 # print('Wizard to predict: ', predict_wizard_i)
-                for d in tqdm(data[dialogue_i]['dialog']):
+                for d in data[dialogue_i]['dialog']:
                     # print('-' * 39)
                     # print(d.keys())
                     # print(d['speaker'])
@@ -279,7 +280,6 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
 
     def __getitem__(self, index=0):
         batch = self.data_generation(index)
-        print(batch['targets'])
         return [
                    batch['contexts'],
                    batch['knowledges'],
