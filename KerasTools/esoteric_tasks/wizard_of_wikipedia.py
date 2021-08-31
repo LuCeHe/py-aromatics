@@ -10,7 +10,7 @@ from GenericTools.StayOrganizedTools.download_utils import download_and_unzip
 
 pd = load_plot_settings(pd=pd)
 
-split_names = ['valid_random_split', 'valid_topic_split', 'train', 'test_random_split', 'test_topic_split']
+split_names = ['valid_random_split', 'valid_topic_split', 'test_random_split', 'test_topic_split', 'train']
 
 
 def download(data_path, tokenizer_choice, n_dialogues):
@@ -51,12 +51,12 @@ def download(data_path, tokenizer_choice, n_dialogues):
                  'max_knowledge_items', 'n_samples', 'n_dialogues'])
 
     for split_name in split_names:
-        print(split_name)
         max_target_length, max_context_length, max_knowledge_length, max_knowledge_items = 0, 0, 0, 0
         h5_path = os.path.join(DATAPATH, '{}_{}.h5'.format(split_name, tokenizer_choice))
         data_json = os.path.join(DATAPATH, split_name + '.json')
 
         if not os.path.isfile(h5_path):
+            print(split_name)
             with open(data_json) as f:
                 data = json.load(f)
 
