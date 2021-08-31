@@ -76,17 +76,11 @@ def download(data_path, tokenizer_choice, n_dialogues):
                 zero_knowledge = ['[PAD][PAD]'] * 7
                 dialogue_knowledges = [zero_knowledge] * n_utterances_back
 
-                # print('Length conversation: ', len(data[dialogue_i]['dialog']))
                 speakers = [d['speaker'] for d in data[dialogue_i]['dialog']]
-                # print(speakers)
                 wizard_utterances = speakers.count('1_Wizard') + speakers.count('0_Wizard')
-                # print('Wizard speaks {} times'.format(wizard_utterances))
                 predict_wizard_i = np.random.choice(wizard_utterances)
-                # print('Wizard to predict: ', predict_wizard_i)
                 for d in data[dialogue_i]['dialog']:
                     # print('-' * 39)
-                    # print(d.keys())
-                    # print(d['speaker'])
                     if 'Wizard' in d['speaker']:
                         wizard_count += 1
                         target = d['text']
@@ -100,6 +94,8 @@ def download(data_path, tokenizer_choice, n_dialogues):
                     rp = [list(l.keys())[0] + ': ' + ' '.join(list(l.values())[0]) for l in d['retrieved_passages']]
                     dialogue_knowledges.append(rp)
 
+                    print(rp)
+
                     if 'checked_sentence' in d.keys():
                         chosen = list(d['checked_sentence'].values())[0] \
                             if not len(d['checked_sentence']) == 0 else 'no passages used'
@@ -107,6 +103,9 @@ def download(data_path, tokenizer_choice, n_dialogues):
                         for i, s in enumerate(knowledge):
                             if chosen.replace('_', ' ') in s.replace('_', ' '):
                                 chosen_i = i
+
+                        print(chosen)
+                        # print(knowledge)
                         assert not chosen_i is None
 
                     if wizard_count > predict_wizard_i: break
