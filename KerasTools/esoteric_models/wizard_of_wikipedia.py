@@ -105,13 +105,11 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
             self.add_loss(loss)
             self.add_metric(loss, name='knowledge_loss', aggregation='mean')
 
-        print('now!')
-        print(chosen_knowledge.shape)
         koh = tf.squeeze(tf.one_hot(tf.cast(chosen_knowledge, tf.int32), K), 1)
 
         know_encoded = tf.reshape(know_encoded, (N, K, Tk, self.d_model))
         knw_mask = tf.reshape(knw_mask, (N, K, Tk))
-        print(know_encoded.shape, koh.shape)
+
         cs_encoded = tf.einsum('bijk,bi->bjk', know_encoded, koh)
         cs_mask = tf.einsum('bij,bi->bj', knw_mask, koh)
 
@@ -189,7 +187,6 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
     logits = ckd([tgt_tokens, code], output_type='embedding_projection')[0]
 
     test_model = tf.keras.models.Model([src_tokens, know_tokens, tgt_tokens], logits)
-
     return model, test_model
 
 
@@ -218,11 +215,13 @@ def quick_test():
         metrics=metrics_wow(num_classes=input_vocab_size))
     model.fit(input_tensors, tgt_tokens, epochs=3)
 
+    prediction = test_model.predict()
+    print(prediction.shape)
 
-    test_model.compile(
-        'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        metrics=metrics_wow(num_classes=input_vocab_size))
-    test_model.fit(input_test_tensors, tgt_tokens, epochs=3)
+    # test_model.compile(
+    #     'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+    #     metrics=metrics_wow(num_classes=input_vocab_size))
+    # test_model.fit(input_test_tensors, tgt_tokens, epochs=3)
 
 if __name__ == '__main__':
     quick_test()
