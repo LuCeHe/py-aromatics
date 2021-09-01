@@ -105,6 +105,8 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
             self.add_loss(loss)
             self.add_metric(loss, name='knowledge_loss', aggregation='mean')
 
+        print('inside')
+        print(chosen_knowledge.shape)
         koh = tf.squeeze(tf.one_hot(tf.cast(chosen_knowledge, tf.int32), K), 1)
 
         know_encoded = tf.reshape(know_encoded, (N, K, Tk, self.d_model))

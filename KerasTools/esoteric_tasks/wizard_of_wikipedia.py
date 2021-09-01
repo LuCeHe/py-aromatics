@@ -266,8 +266,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
 
         choices = np.array([eval(s) for s in self.data['choices'][batch_indices]])[reshuffled_indices]
 
-        know = self.data['knowledges'][batch_indices]
-        knowledges = [b[1:-1].replace('],', ']:,').split(':, ') for b in know]
+        knowledges = [b[1:-1].replace('],', ']:,').split(':, ') for b in self.data['knowledges'][batch_indices]]
         knowledges = [[[int(i) for i in s[1:-1].split(', ')] for s in b] for b in knowledges]
         maxlen = max([len(item) for sublist in knowledges for item in sublist])
         padded_knowledges = [[[self.pad_idx] * (maxlen - len(s)) + s for s in k] for k in knowledges]
