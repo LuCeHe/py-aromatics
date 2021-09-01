@@ -105,8 +105,6 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
             self.add_loss(loss)
             self.add_metric(loss, name='knowledge_loss', aggregation='mean')
 
-        # print('inside')
-        # print(chosen_knowledge.shape)
         koh = tf.squeeze(tf.one_hot(tf.cast(chosen_knowledge, tf.int32), K), 1)
 
         know_encoded = tf.reshape(know_encoded, (N, K, Tk, self.d_model))
@@ -192,6 +190,33 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
     return model, test_model
 
 
+def EndToEndModelGPT2(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_size=int(5e4),
+                  target_vocab_size=int(5e4), max_pos=1024, rate=.1, max_knowledge=5, pad_idx=0):
+    cke = tf_ContextKnowledgeEncoder(num_layers, d_model, num_heads, dff, input_vocab_size, max_pos, rate, pad_idx)
+    ckd = tf_ContextKnowledgeDecoder(num_layers, d_model, num_heads, dff, target_vocab_size, max_pos, rate, pad_idx)
+
+    src_tokens = Input((None,))
+    tgt_tokens = Input((None,))
+    know_tokens = Input((max_knowledge, None))
+    chosen_knowledge = Input((1,))
+
+    code = cke([src_tokens, know_tokens, chosen_knowledge])
+    logits = ckd([tgt_tokens, code], output_type='embedding_projection')
+
+    model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
+
+
+    src_tokens = Input((None,))
+    tgt_tokens = Input((None,))
+    know_tokens = Input((max_knowledge, None))
+
+    code = cke([src_tokens, know_tokens])
+    logits = ckd([tgt_tokens, code], output_type='embedding_projection')[0]
+
+    test_model = tf.keras.models.Model([src_tokens, know_tokens, tgt_tokens], logits)
+    return model, test_model
+
+
 def quick_test():
     max_knowledge = 5
     input_vocab_size = int(5e4)
@@ -217,13 +242,16 @@ def quick_test():
         metrics=metrics_wow(num_classes=input_vocab_size))
     model.fit(input_tensors, tgt_tokens, epochs=3)
 
-    prediction = test_model.predict()
+    prediction = test_model.predict(input_test_tensors)
     print(prediction.shape)
 
     # test_model.compile(
     #     'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
     #     metrics=metrics_wow(num_classes=input_vocab_size))
     # test_model.fit(input_test_tensors, tgt_tokens, epochs=3)
+
+
+
 
 if __name__ == '__main__':
     quick_test()
