@@ -106,7 +106,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
                         try:
                             assert not chosen_i is None
                         except:
-                            chosen_not_found +=1
+                            chosen_not_found += 1
                             chosen_i = knowledge.index('no passages used')
 
                     if wizard_count > predict_wizard_i: break
@@ -259,18 +259,21 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         output_targets = [s + [self.pad_idx] for s in targets]
         input_targets = pad_sequences(input_targets, value=self.pad_idx)[reshuffled_indices]
         output_targets = pad_sequences(output_targets, value=self.pad_idx)[reshuffled_indices]
+        print(output_targets.shape)
 
         contexts = [eval(s) for s in self.data['contexts'][batch_indices]]
         padded_contexts = pad_sequences(contexts, value=self.pad_idx)[reshuffled_indices]
 
         choices = np.array([eval(s) for s in self.data['choices'][batch_indices]])[reshuffled_indices]
 
-        knowledges = [[[int(i) for i in s[1:-1].split(',')] for s in k] for k in self.data['knowledges'][batch_indices]]
+        know = self.data['knowledges'][batch_indices]
+        knowledges = [b[1:-1].replace('],', ']:,').split(':, ') for b in know]
+        knowledges = [[[int(i) for i in s[1:-1].split(', ')] for s in b] for b in knowledges]
         maxlen = max([len(item) for sublist in knowledges for item in sublist])
         padded_knowledges = [[[self.pad_idx] * (maxlen - len(s)) + s for s in k] for k in knowledges]
         padded_knowledges = np.asarray(padded_knowledges)[reshuffled_indices]
 
-        return {'choices': choices, 'knowledges': padded_knowledges[..., -self.maxlen:],
+        return {'choices': choices[..., None], 'knowledges': padded_knowledges[..., -self.maxlen:],
                 'targets': input_targets[..., -self.maxlen:], 'contexts': padded_contexts[..., -self.maxlen:],
                 'output_targets': output_targets[..., -self.maxlen:]}
 
