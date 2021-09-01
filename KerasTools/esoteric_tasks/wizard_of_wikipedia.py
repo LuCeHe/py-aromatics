@@ -88,15 +88,12 @@ def download(data_path, tokenizer_choice, n_dialogues):
                         target = d['text']
 
                     flattened_knowledges = [k for dk in dialogue_knowledges[-n_utterances_back:] for k in dk]
-                    print(len(flattened_knowledges))
                     knowledge = ['no passages used'] + chosen_topic_passage + flattened_knowledges + zero_knowledge
                     knowledge = knowledge[:max_knowledge]  # [:16]
                     random.shuffle(knowledge)
 
                     rp = [list(l.keys())[0] + ': ' + ' '.join(list(l.values())[0]) for l in d['retrieved_passages']]
                     dialogue_knowledges.append(rp)
-
-                    print(rp)
 
                     if 'checked_sentence' in d.keys():
                         chosen = list(d['checked_sentence'].values())[0] \
@@ -106,13 +103,11 @@ def download(data_path, tokenizer_choice, n_dialogues):
                             if chosen.replace('_', ' ') in s.replace('_', ' '):
                                 chosen_i = i
 
-                        print(chosen)
-                        # print(knowledge)
                         try:
                             assert not chosen_i is None
                         except:
                             chosen_not_found +=1
-                            chosen_i = knowledge.index('no_passages_used')
+                            chosen_i = knowledge.index('no passages used')
 
                     if wizard_count > predict_wizard_i: break
                     speaker = d['speaker'].replace('1_', '').replace('0_', '').upper()

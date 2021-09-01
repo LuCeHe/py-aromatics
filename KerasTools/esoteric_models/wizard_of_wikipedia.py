@@ -97,6 +97,7 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
 
         if chosen_knowledge is None:
             chosen_knowledge = tf.argmax(ck_attn, axis=1)
+            chosen_knowledge = tf.expand_dims(chosen_knowledge, 1)
         else:
             expandaded_ck_attn = tf.expand_dims(ck_attn, 1)
 
@@ -104,10 +105,13 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
             self.add_loss(loss)
             self.add_metric(loss, name='knowledge_loss', aggregation='mean')
 
+        print('now!')
+        print(chosen_knowledge.shape)
         koh = tf.squeeze(tf.one_hot(tf.cast(chosen_knowledge, tf.int32), K), 1)
 
         know_encoded = tf.reshape(know_encoded, (N, K, Tk, self.d_model))
         knw_mask = tf.reshape(knw_mask, (N, K, Tk))
+        print(know_encoded.shape, koh.shape)
         cs_encoded = tf.einsum('bijk,bi->bjk', know_encoded, koh)
         cs_mask = tf.einsum('bij,bi->bj', knw_mask, koh)
 
@@ -176,23 +180,23 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
 
     model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
 
-    #
-    # src_tokens = Input((None,))
-    # tgt_tokens = Input((None,))
-    # know_tokens = Input((max_knowledge, None))
-    #
-    # code = cke([src_tokens, know_tokens])
-    # logits = ckd([tgt_tokens, code], output_type='embedding_projection')[0]
-    #
-    # test_model = tf.keras.models.Model([src_tokens, know_tokens, tgt_tokens], logits)
 
-    return model  # , test_model
+    src_tokens = Input((None,))
+    tgt_tokens = Input((None,))
+    know_tokens = Input((max_knowledge, None))
+
+    code = cke([src_tokens, know_tokens])
+    logits = ckd([tgt_tokens, code], output_type='embedding_projection')[0]
+
+    test_model = tf.keras.models.Model([src_tokens, know_tokens, tgt_tokens], logits)
+
+    return model, test_model
 
 
 def quick_test():
     max_knowledge = 5
     input_vocab_size = int(5e4)
-    model = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=input_vocab_size)
+    model, test_model = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=input_vocab_size)
     vocab_size = 20
 
     src_tokens = random_indices(vocab_size)
@@ -200,6 +204,7 @@ def quick_test():
     know_tokens = tf.concat([random_indices(vocab_size)[:, None] for _ in range(max_knowledge)], axis=1)
     chosen_knowledge = random_indices(max_knowledge, maxlen=1)
     input_tensors = [src_tokens, know_tokens, chosen_knowledge, tgt_tokens]
+    input_test_tensors = [src_tokens, know_tokens, tgt_tokens]
 
     print(src_tokens.shape, know_tokens.shape, chosen_knowledge.shape, tgt_tokens.shape)
     output = model(input_tensors)
@@ -213,6 +218,11 @@ def quick_test():
         metrics=metrics_wow(num_classes=input_vocab_size))
     model.fit(input_tensors, tgt_tokens, epochs=3)
 
+
+    test_model.compile(
+        'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=metrics_wow(num_classes=input_vocab_size))
+    test_model.fit(input_test_tensors, tgt_tokens, epochs=3)
 
 if __name__ == '__main__':
     quick_test()
