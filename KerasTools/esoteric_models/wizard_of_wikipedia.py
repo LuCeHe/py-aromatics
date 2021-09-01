@@ -192,7 +192,7 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
 def quick_test():
     max_knowledge = 5
     input_vocab_size = int(5e4)
-    model, _ = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=input_vocab_size)
+    model = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=input_vocab_size)
     vocab_size = 20
 
     src_tokens = random_indices(vocab_size)

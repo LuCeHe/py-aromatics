@@ -50,10 +50,12 @@ def download(data_path, tokenizer_choice, n_dialogues):
 
     large_df = pd.DataFrame(
         columns=['data_split', 'max_target_length', 'max_context_length', 'max_knowledge_length',
-                 'max_knowledge_items', 'n_samples', 'n_dialogues'])
+                 'max_knowledge_items', 'n_samples', 'n_dialogues', 'chosen_not_found'])
 
     for split_name in split_names:
         max_target_length, max_context_length, max_knowledge_length, max_knowledge_items = 0, 0, 0, 0
+        chosen_not_found = 0
+
         h5_path = os.path.join(DATAPATH, '{}_{}.h5'.format(split_name, tokenizer_choice))
         data_json = os.path.join(DATAPATH, split_name + '.json')
 
@@ -106,7 +108,11 @@ def download(data_path, tokenizer_choice, n_dialogues):
 
                         print(chosen)
                         # print(knowledge)
-                        assert not chosen_i is None
+                        try:
+                            assert not chosen_i is None
+                        except:
+                            chosen_not_found +=1
+                            chosen_i = knowledge.index('no_passages_used')
 
                     if wizard_count > predict_wizard_i: break
                     speaker = d['speaker'].replace('1_', '').replace('0_', '').upper()
@@ -140,9 +146,9 @@ def download(data_path, tokenizer_choice, n_dialogues):
             df = pd.DataFrame(
                 np.array(
                     [split_name, max_target_length, max_context_length, max_knowledge_length, max_knowledge_items,
-                     len(targets), len(data)])[None],
+                     len(targets), len(data), chosen_not_found])[None],
                 columns=['data_split', 'max_target_length', 'max_context_length', 'max_knowledge_length',
-                         'max_knowledge_items', 'n_samples', 'n_dialogues'])
+                         'max_knowledge_items', 'n_samples', 'n_dialogues', 'chosen_not_found'])
             large_df = large_df.append(df)
             data_lists = {'targets': targets, 'contexts': contexts, 'choices': choices, 'knowledges': knowledges}
 
