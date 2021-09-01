@@ -259,7 +259,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         output_targets = [s + [self.pad_idx] for s in targets]
         input_targets = pad_sequences(input_targets, value=self.pad_idx)[reshuffled_indices]
         output_targets = pad_sequences(output_targets, value=self.pad_idx)[reshuffled_indices]
-        print(output_targets.shape)
+        # print(output_targets.shape)
 
         contexts = [eval(s) for s in self.data['contexts'][batch_indices]]
         padded_contexts = pad_sequences(contexts, value=self.pad_idx)[reshuffled_indices]
