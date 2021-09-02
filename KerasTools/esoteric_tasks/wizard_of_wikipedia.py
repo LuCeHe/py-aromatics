@@ -248,8 +248,12 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
     def data_generation(self, index=None):
         if index is None:
             index = np.random.randint(0, self.steps_per_epoch)
-
+        print('here!')
+        print(index, type(index))
+        # index = 1115
+        # print(index, type(index))
         batch_indices = self.random_indices[index * self.batch_size:(index + 1) * self.batch_size]
+        print(batch_indices)
         # self.random_indices = self.random_indices[:-self.batch_size]
         batch_indices = sorted(batch_indices)
         reshuffled_indices = np.random.choice(self.batch_size, self.batch_size, replace=False)
@@ -271,7 +275,10 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         maxlen = max([len(item) for sublist in knowledges for item in sublist])
         padded_knowledges = [[[self.pad_idx] * (maxlen - len(s)) + s for s in k] for k in knowledges]
         padded_knowledges = np.asarray(padded_knowledges)[reshuffled_indices]
-
+        print(len(padded_knowledges))
+        print([len(k) for k in padded_knowledges])
+        print([len(i) for k in padded_knowledges for i in k])
+        print(type(padded_knowledges))
         return {'choices': choices[..., None], 'knowledges': padded_knowledges[..., -self.maxlen:],
                 'targets': input_targets[..., -self.maxlen:], 'contexts': padded_contexts[..., -self.maxlen:],
                 'output_targets': output_targets[..., -self.maxlen:]}

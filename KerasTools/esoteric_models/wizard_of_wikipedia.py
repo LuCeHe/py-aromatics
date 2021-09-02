@@ -45,9 +45,14 @@ def universal_sentence_embedding(sentences, mask, sqrt=True, epsilon=1e-6):
 
 
 class UniversalSentenceEmbedding(tf.keras.layers.Layer):
+    def __init__(self, invert_mask=True, **kwargs):
+        self.invert_mask = invert_mask
+        super().__init__(**kwargs)
 
     def call(self, inputs, *args, **kwargs):
         sentences, mask = inputs
+        if self.invert_mask:
+            mask = 1 - mask
         sentence_sums = universal_sentence_embedding(sentences, mask, sqrt=True)
         return sentence_sums
 
@@ -85,8 +90,8 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
         context_encoded = self.transformer_encoder(src_tokens, mask=context_mask)
         know_encoded = self.transformer_encoder(know_flat, mask=knw_mask)
 
-        context_use = universal_sentence_embedding(context_encoded, tf.squeeze(1-context_mask, [1, 2]), sqrt=True)
-        know_use = universal_sentence_embedding(know_encoded, tf.squeeze(1-knw_mask, [1, 2]), sqrt=True)
+        context_use = universal_sentence_embedding(context_encoded, tf.squeeze(1 - context_mask, [1, 2]), sqrt=True)
+        know_use = universal_sentence_embedding(know_encoded, tf.squeeze(1 - knw_mask, [1, 2]), sqrt=True)
 
         know_use = tf.reshape(know_use, (N, K, self.d_model))
 
@@ -178,7 +183,6 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
 
     model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
 
-
     src_tokens = Input((None,))
     tgt_tokens = Input((None,))
     know_tokens = Input((max_knowledge, None))
@@ -191,7 +195,7 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
 
 
 def EndToEndModelGPT2(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_size=int(5e4),
-                  target_vocab_size=int(5e4), max_pos=1024, rate=.1, max_knowledge=5, pad_idx=0):
+                      target_vocab_size=int(5e4), max_pos=1024, rate=.1, max_knowledge=5, pad_idx=0):
     cke = tf_ContextKnowledgeEncoder(num_layers, d_model, num_heads, dff, input_vocab_size, max_pos, rate, pad_idx)
     ckd = tf_ContextKnowledgeDecoder(num_layers, d_model, num_heads, dff, target_vocab_size, max_pos, rate, pad_idx)
 
@@ -204,7 +208,6 @@ def EndToEndModelGPT2(num_layers=5, d_model=256, num_heads=2, dff=512, input_voc
     logits = ckd([tgt_tokens, code], output_type='embedding_projection')
 
     model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
-
 
     src_tokens = Input((None,))
     tgt_tokens = Input((None,))
@@ -249,8 +252,6 @@ def quick_test():
     #     'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
     #     metrics=metrics_wow(num_classes=input_vocab_size))
     # test_model.fit(input_test_tensors, tgt_tokens, epochs=3)
-
-
 
 
 if __name__ == '__main__':
