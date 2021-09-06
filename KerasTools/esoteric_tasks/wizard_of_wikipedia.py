@@ -16,6 +16,14 @@ pd = load_plot_settings(pd=pd)
 split_names = ['valid_random_split', 'valid_topic_split', 'test_random_split', 'test_topic_split', 'train']
 # split_names = ['train', 'valid_random_split', 'test_random_split']
 
+def tokenize(sentence, tokenizer, tokenizer_choice):
+    if tokenizer_choice == 'bpe':
+        ids = tokenizer.encode(sentence).ids
+    elif tokenizer_choice == 'gpt2':
+        ids = tokenizer(sentence)['input_ids']
+    else:
+        raise NotImplementedError
+    return ids
 
 def download(data_path, tokenizer_choice, n_dialogues):
     safe_max_len = 512
@@ -59,6 +67,8 @@ def download(data_path, tokenizer_choice, n_dialogues):
 
     else:
         tokenizer = Tokenizer.from_file(tokenizer_path)
+
+    pad_idx = tokenizer.encode('[PAD]').ids[0]
 
     large_df = pd.DataFrame(
         columns=['data_split', 'max_target_length', 'max_context_length', 'max_knowledge_length',
@@ -128,17 +138,17 @@ def download(data_path, tokenizer_choice, n_dialogues):
                 # print(target)
                 # print(context)
                 # print('Target:')
-                output = tokenizer.encode(target)
-                target_length = len(output.ids)
-                targets.append(output.ids)
+                output = tokenize(target, tokenizer, tokenizer_choice)
+                target_length = len(output)
+                targets.append(output)
 
                 # print('Context:')
-                output = tokenizer.encode(context)
-                context_length = len(output.ids)
-                contexts.append(output.ids)
+                output = tokenize(context, tokenizer, tokenizer_choice)
+                context_length = len(output)
+                contexts.append(output)
 
                 # print('Knowledge:')
-                k_ids = [tokenizer.encode(k).ids for k in knowledge]
+                k_ids = [tokenize(k, tokenizer, tokenizer_choice) for k in knowledge]
                 knowledge_lengths = [len(k) for k in k_ids]
                 knowledges.append(k_ids)
 
@@ -150,7 +160,6 @@ def download(data_path, tokenizer_choice, n_dialogues):
                 max_knowledge_length = max(max(knowledge_lengths), max_knowledge_length)
                 max_knowledge_items = max(len(knowledge_lengths), max_knowledge_items)
 
-            pad_idx = tokenizer.encode('[PAD]').ids[0]
             targets = pad_sequences(targets, padding='post', value=pad_idx)[:, :safe_max_len]
             contexts = pad_sequences(contexts, value=pad_idx)[:, -safe_max_len:]
             choices = np.array(choices)[..., None]

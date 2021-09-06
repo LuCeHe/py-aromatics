@@ -1,6 +1,8 @@
-# I'm turning into tf the code for the article
+# tensorflow version of the code for the article
 # WIZARD OF WIKIPEDIA: KNOWLEDGE-POWERED CONVERSATIONAL AGENTS
 # that was originally written in PyTorch in the ParlAI library
+# https://gitlab.ilabt.imec.be/ahadifar/google-research/-/blob/16a8f847718f1ad824eb16680caabb7a79ae8411/dialogue_ope/airdialogue_model_transformer/models/modules.py
+
 from tensorflow.keras.layers import *
 import tensorflow as tf
 
@@ -8,7 +10,7 @@ tf.executing_eagerly()
 
 from GenericTools.KerasTools.advanced_losses import sparse_perplexity, sparse_f1_on_max
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder, TransformerDecoder, \
-    PaddingLookAheadMasks, create_padding_mask, create_look_ahead_mask
+    create_padding_mask, create_look_ahead_mask
 from GenericTools.LeanguageTreatmentTools.random_language import random_indices
 
 
@@ -218,6 +220,12 @@ def EndToEndModelGPT2(num_layers=5, d_model=256, num_heads=2, dff=512, input_voc
 
     test_model = tf.keras.models.Model([src_tokens, know_tokens, tgt_tokens], logits)
     return model, test_model
+
+
+models_dict = {
+    'EndToEndModel': EndToEndModel,
+    'EndToEndModelGPT2': EndToEndModelGPT2,
+}
 
 
 def quick_test():
