@@ -1,31 +1,39 @@
 import os, shutil, json, random, h5py, argparse
 from tokenizers import Tokenizer
+from transformers import GPT2Tokenizer
 import tensorflow as tf
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
+
+from GenericTools.LeanguageTreatmentTools.unpadding import unpad_sequence
 from GenericTools.PlotTools.mpl_tools import load_plot_settings
 from GenericTools.StayOrganizedTools.download_utils import download_and_unzip
 
 pd = load_plot_settings(pd=pd)
 
 split_names = ['valid_random_split', 'valid_topic_split', 'test_random_split', 'test_topic_split', 'train']
+# split_names = ['train', 'valid_random_split', 'test_random_split']
 
 
 def download(data_path, tokenizer_choice, n_dialogues):
+    safe_max_len = 512
     n_utterances_back = 4
     max_knowledge = 32
     DATAPATH = data_path
+    DATADESTINATION = os.path.join(DATAPATH, tokenizer_choice)
+    os.makedirs(DATADESTINATION, exist_ok=True)
+
     n_dialogues = int(n_dialogues) if n_dialogues > 0 else None
     assert tokenizer_choice in ['bpe', 'gpt2']
-    tokenizer_path = os.path.join(DATAPATH, 'tokenizer-{}.json'.format(tokenizer_choice))
+    tokenizer_path = os.path.join(DATADESTINATION, 'tokenizer-{}.json'.format(tokenizer_choice))
 
     if len(os.listdir(DATAPATH)) == 0:
         url = 'http://parl.ai/downloads/wizard_of_wikipedia/wizard_of_wikipedia.tgz'
         download_and_unzip([url], DATAPATH)
 
-    if not os.path.isfile(tokenizer_path):
+    if not os.path.isfile(tokenizer_path) and tokenizer_choice == 'bpe':
         from tokenizers.models import BPE
         from tokenizers.trainers import BpeTrainer
         from tokenizers.pre_tokenizers import Whitespace, Sequence, Digits
@@ -35,7 +43,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
 
         tokenizer = Tokenizer(BPE(unk_token='[UNK]'))
 
-        trainer = BpeTrainer(special_tokens=['[UNK]', '[WIZARD]', '[APPRENTICE]', '[PAD]', '[START]'])
+        trainer = BpeTrainer(special_tokens=['[UNK]', '[PAD]', '[START]'])
         pre_tokenizer = Sequence([Whitespace(), Digits(individual_digits=True)])
         tokenizer.pre_tokenizer = pre_tokenizer
 
@@ -45,6 +53,10 @@ def download(data_path, tokenizer_choice, n_dialogues):
         tokenizer.save(tokenizer_path)
 
         shutil.rmtree(os.path.join(DATAPATH, 'wikitext-103-raw'))
+    elif not os.path.isfile(tokenizer_path) and tokenizer_choice == 'gpt2':
+        tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+        print(tokenizer)
+
     else:
         tokenizer = Tokenizer.from_file(tokenizer_path)
 
@@ -56,7 +68,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
         max_target_length, max_context_length, max_knowledge_length, max_knowledge_items = 0, 0, 0, 0
         chosen_not_found = 0
 
-        h5_path = os.path.join(DATAPATH, '{}_{}.h5'.format(split_name, tokenizer_choice))
+        h5_path = os.path.join(DATADESTINATION, '{}_{}.h5'.format(split_name, tokenizer_choice))
         data_json = os.path.join(DATAPATH, split_name + '.json')
 
         if not os.path.isfile(h5_path):
@@ -75,7 +87,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
                 wizard_count = 0
                 chosen_topic_passage = [
                     data[dialogue_i]['chosen_topic'] + ': ' + ' '.join(data[dialogue_i]['chosen_topic_passage'])]
-                zero_knowledge = ['[PAD][PAD]'] * 7
+                zero_knowledge = ['[PAD][PAD]'] * 10
                 dialogue_knowledges = [zero_knowledge] * n_utterances_back
 
                 speakers = [d['speaker'] for d in data[dialogue_i]['dialog']]
@@ -110,8 +122,8 @@ def download(data_path, tokenizer_choice, n_dialogues):
                             chosen_i = knowledge.index('no passages used')
 
                     if wizard_count > predict_wizard_i: break
-                    speaker = d['speaker'].replace('1_', '').replace('0_', '').upper()
-                    context += ' [{}] {}'.format(speaker, d['text'])
+                    speaker = 'me' if 'Wizard' in d['speaker'] else 'you'
+                    context += ' {}: {}'.format(speaker, d['text'])
 
                 # print(target)
                 # print(context)
@@ -138,6 +150,15 @@ def download(data_path, tokenizer_choice, n_dialogues):
                 max_knowledge_length = max(max(knowledge_lengths), max_knowledge_length)
                 max_knowledge_items = max(len(knowledge_lengths), max_knowledge_items)
 
+            pad_idx = tokenizer.encode('[PAD]').ids[0]
+            targets = pad_sequences(targets, padding='post', value=pad_idx)[:, :safe_max_len]
+            contexts = pad_sequences(contexts, value=pad_idx)[:, -safe_max_len:]
+            choices = np.array(choices)[..., None]
+
+            l_0, l_1 = len(knowledges), len(knowledges[0])
+            b = pad_sequences([l[-safe_max_len:] for li in knowledges for l in li], value=pad_idx)
+            knowledges = np.reshape(b, (l_0, l_1, -1))
+
             df = pd.DataFrame(
                 np.array(
                     [split_name, max_target_length, max_context_length, max_knowledge_length, max_knowledge_items,
@@ -148,13 +169,16 @@ def download(data_path, tokenizer_choice, n_dialogues):
             data_lists = {'targets': targets, 'contexts': contexts, 'choices': choices, 'knowledges': knowledges}
 
             with h5py.File(h5_path, 'w') as f:
-                dt = h5py.special_dtype(vlen=str)
-                dsets = {k: f.create_dataset(k, data=np.array(data_lists[k], dtype=object), dtype=dt) for k in
-                         data_lists.keys()}
+                # dt = h5py.special_dtype(vlen=str)
+                # dsets = {k: f.create_dataset(k, data=data_lists[k]) for k in
+                #          data_lists.keys()}
+                for k, v in data_lists.items():
+                    print(k, v.shape)
+                    f.create_dataset(k, data=v)
 
     if large_df.shape[0] == 5:
         print(large_df)
-        with open(os.path.join(DATAPATH, 'summary.txt'), 'w') as f:
+        with open(os.path.join(DATADESTINATION, 'summary.txt'), 'w') as f:
             f.write(large_df.to_string(index=False))
 
 
@@ -205,6 +229,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             tokenizer_choice='bpe',
             n_dialogues=-1,
     ):
+        DATADESTINATION = os.path.join(data_path, tokenizer_choice)
 
         self.__dict__.update(
             epochs=epochs,
@@ -212,7 +237,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             batch_size=batch_size,
             maxlen=maxlen,
             data_split=data_split,
-            data_path=data_path,
+            data_path=DATADESTINATION,
             tokenizer_choice=tokenizer_choice,
         )
 
@@ -248,40 +273,27 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
     def data_generation(self, index=None):
         if index is None:
             index = np.random.randint(0, self.steps_per_epoch)
-        print('here!')
-        print(index, type(index))
-        # index = 1115
-        # print(index, type(index))
         batch_indices = self.random_indices[index * self.batch_size:(index + 1) * self.batch_size]
-        print(batch_indices)
-        # self.random_indices = self.random_indices[:-self.batch_size]
         batch_indices = sorted(batch_indices)
         reshuffled_indices = np.random.choice(self.batch_size, self.batch_size, replace=False)
 
-        targets = [eval(s) for s in self.data['targets'][batch_indices]]
-        input_targets = [[self.start_idx] + s for s in targets]
-        output_targets = [s + [self.pad_idx] for s in targets]
-        input_targets = pad_sequences(input_targets, value=self.pad_idx)[reshuffled_indices]
-        output_targets = pad_sequences(output_targets, value=self.pad_idx)[reshuffled_indices]
-        # print(output_targets.shape)
+        targets = self.data['targets'][batch_indices]
+        targets = unpad_sequence(targets, padding='post', value=self.pad_idx)
+        input_targets = self.start_idx * np.ones((targets.shape[0], targets.shape[1] + 1), dtype=np.int32)
+        input_targets[:, 1:] = targets
+        output_targets = self.pad_idx * np.ones((targets.shape[0], targets.shape[1] + 1), dtype=np.int32)
+        output_targets[:, :-1] = targets
 
-        contexts = [eval(s) for s in self.data['contexts'][batch_indices]]
-        padded_contexts = pad_sequences(contexts, value=self.pad_idx)[reshuffled_indices]
+        contexts = self.data['contexts'][batch_indices]
+        padded_contexts = unpad_sequence(contexts, padding='pre', value=self.pad_idx)[reshuffled_indices]
+        choices = self.data['choices'][batch_indices][reshuffled_indices]
 
-        choices = np.array([eval(s) for s in self.data['choices'][batch_indices]])[reshuffled_indices]
+        knowledges = self.data['knowledges'][batch_indices]
+        padded_knowledges = unpad_sequence(knowledges, padding='pre', value=self.pad_idx)[reshuffled_indices]
 
-        knowledges = [b[1:-1].replace('],', ']:,').split(':, ') for b in self.data['knowledges'][batch_indices]]
-        knowledges = [[[int(i) for i in s[1:-1].split(', ')] for s in b] for b in knowledges]
-        maxlen = max([len(item) for sublist in knowledges for item in sublist])
-        padded_knowledges = [[[self.pad_idx] * (maxlen - len(s)) + s for s in k] for k in knowledges]
-        padded_knowledges = np.asarray(padded_knowledges)[reshuffled_indices]
-        print(len(padded_knowledges))
-        print([len(k) for k in padded_knowledges])
-        print([len(i) for k in padded_knowledges for i in k])
-        print(type(padded_knowledges))
-        return {'choices': choices[..., None], 'knowledges': padded_knowledges[..., -self.maxlen:],
-                'targets': input_targets[..., -self.maxlen:], 'contexts': padded_contexts[..., -self.maxlen:],
-                'output_targets': output_targets[..., -self.maxlen:]}
+        return {'choices': choices, 'knowledges': padded_knowledges[..., -self.maxlen:],
+                'targets': input_targets[..., :self.maxlen], 'contexts': padded_contexts[..., -self.maxlen:],
+                'output_targets': output_targets[..., :self.maxlen]}
 
     def __len__(self):
         'Denotes the number of batches per epoch'
