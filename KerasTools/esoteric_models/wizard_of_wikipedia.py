@@ -150,8 +150,8 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-                 maximum_position_encoding, rate=0.1, pad_idx=0):
-        super().__init__()
+                 maximum_position_encoding, rate=0.1, pad_idx=0, **kwargs):
+        super().__init__(**kwargs)
 
         self.init_args = dict(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
                               input_vocab_size=input_vocab_size, maximum_position_encoding=maximum_position_encoding,

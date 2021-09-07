@@ -306,9 +306,6 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
 
         contexts = self.data['contexts'][batch_indices]
         padded_contexts = unpad_sequence(contexts, padding='pre', value=self.pad_idx)[reshuffled_indices]
-        print('-'*20)
-        print(batch_indices)
-        print(padded_contexts.shape)
         choices = self.data['choices'][batch_indices][reshuffled_indices]
 
         knowledges = self.data['knowledges'][batch_indices]
