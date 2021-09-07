@@ -47,8 +47,15 @@ def universal_sentence_embedding(sentences, mask, sqrt=True, epsilon=1e-6):
 
 
 class UniversalSentenceEmbedding(tf.keras.layers.Layer):
+
+    def get_config(self):
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(self.init_args.items()))
+
     def __init__(self, invert_mask=True, **kwargs):
-        self.invert_mask = invert_mask
+        self.init_args = dict(invert_mask=invert_mask)
+        self.__dict__.update(self.init_args)
+
         super().__init__(**kwargs)
 
     def call(self, inputs, *args, **kwargs):
@@ -60,11 +67,20 @@ class UniversalSentenceEmbedding(tf.keras.layers.Layer):
 
 
 class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
+
+    def get_config(self):
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(self.init_args.items()))
+
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
                  maximum_position_encoding, rate=0.1, pad_idx=0):
         super().__init__()
-        self.pad_idx = pad_idx
-        self.d_model = d_model
+
+        self.init_args = dict(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
+                              input_vocab_size=input_vocab_size, maximum_position_encoding=maximum_position_encoding,
+                              rate=rate, pad_idx=pad_idx)
+        self.__dict__.update(self.init_args)
+
         self.transformer_encoder = TransformerEncoder(num_layers, d_model, num_heads, dff, input_vocab_size,
                                                       maximum_position_encoding, rate)
 
@@ -128,11 +144,20 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
 
 
 class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
+
+    def get_config(self):
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(self.init_args.items()))
+
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
                  maximum_position_encoding, rate=0.1, pad_idx=0):
         super().__init__()
-        self.pad_idx = pad_idx
-        self.d_model = d_model
+
+        self.init_args = dict(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
+                              input_vocab_size=input_vocab_size, maximum_position_encoding=maximum_position_encoding,
+                              rate=rate, pad_idx=pad_idx)
+        self.__dict__.update(self.init_args)
+
         self.transformer_decoder = TransformerDecoder(num_layers, d_model, num_heads, dff, input_vocab_size,
                                                       maximum_position_encoding, rate)
 
