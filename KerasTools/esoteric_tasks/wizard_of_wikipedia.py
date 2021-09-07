@@ -26,6 +26,7 @@ def tokenize(sentence, tokenizer, tokenizer_choice):
     return ids
 
 def download(data_path, tokenizer_choice, n_dialogues):
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
     safe_max_len = 512
     n_utterances_back = 4
     max_knowledge = 32
