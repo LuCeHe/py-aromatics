@@ -1,6 +1,6 @@
 import os, shutil, json, random, h5py, argparse
 from tokenizers import Tokenizer
-from transformers import GPT2Tokenizer
+from transformers import GPT2Tokenizer, AutoTokenizer, AutoConfig
 import tensorflow as tf
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 from tqdm import tqdm
@@ -64,8 +64,14 @@ def download(data_path, tokenizer_choice, n_dialogues):
     elif not os.path.isfile(tokenizer_path) and tokenizer_choice == 'gpt2':
         tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
         tokenizer.save_vocabulary(DATADESTINATION)
+
+        config = AutoConfig.from_pretrained('gpt2')
+        config.save_pretrained(DATADESTINATION)
     else:
-        tokenizer = Tokenizer.from_file(tokenizer_path)
+        if tokenizer_choice == 'bpe':
+            tokenizer = Tokenizer.from_file(tokenizer_path)
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(DATADESTINATION)
 
     pad_word = '[PAD]' if tokenizer_choice == 'bpe' else '<|endoftext|>'
     pad_idx = tokenize(pad_word, tokenizer, tokenizer_choice)[0]
@@ -259,7 +265,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         if tokenizer_choice == 'bpe':
             self.tokenizer = Tokenizer.from_file(tokenizer_path)
         else:
-            self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+            self.tokenizer = AutoTokenizer.from_pretrained(self.data_path)
 
         pad_word = '[PAD]' if tokenizer_choice == 'bpe' else '<|endoftext|>'
         self.pad_idx = tokenize(pad_word, self.tokenizer, tokenizer_choice)[0]

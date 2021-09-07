@@ -171,7 +171,7 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
 # 'temperature': 1.0, 'adam_eps': 1e-08, 'adafactor_eps': (1e-30, 0.001), 'weight_decay': None,
 
 def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_size=int(5e4),
-                  target_vocab_size=int(5e4), max_pos=1024, rate=.1, max_knowledge=5, pad_idx=0):
+                  target_vocab_size=int(5e4), max_pos=1024, rate=.1, max_knowledge=5, pad_idx=0, datapath=''):
     cke = tf_ContextKnowledgeEncoder(num_layers, d_model, num_heads, dff, input_vocab_size, max_pos, rate, pad_idx)
     ckd = tf_ContextKnowledgeDecoder(num_layers, d_model, num_heads, dff, target_vocab_size, max_pos, rate, pad_idx)
 
@@ -194,38 +194,6 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
 
     test_model = tf.keras.models.Model([src_tokens, know_tokens, tgt_tokens], logits)
     return model, test_model
-
-
-def EndToEndModelGPT2(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_size=int(5e4),
-                      target_vocab_size=int(5e4), max_pos=1024, rate=.1, max_knowledge=5, pad_idx=0):
-    cke = tf_ContextKnowledgeEncoder(num_layers, d_model, num_heads, dff, input_vocab_size, max_pos, rate, pad_idx)
-    ckd = tf_ContextKnowledgeDecoder(num_layers, d_model, num_heads, dff, target_vocab_size, max_pos, rate, pad_idx)
-
-    src_tokens = Input((None,))
-    tgt_tokens = Input((None,))
-    know_tokens = Input((max_knowledge, None))
-    chosen_knowledge = Input((1,))
-
-    code = cke([src_tokens, know_tokens, chosen_knowledge])
-    logits = ckd([tgt_tokens, code], output_type='embedding_projection')
-
-    model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
-
-    src_tokens = Input((None,))
-    tgt_tokens = Input((None,))
-    know_tokens = Input((max_knowledge, None))
-
-    code = cke([src_tokens, know_tokens])
-    logits = ckd([tgt_tokens, code], output_type='embedding_projection')[0]
-
-    test_model = tf.keras.models.Model([src_tokens, know_tokens, tgt_tokens], logits)
-    return model, test_model
-
-
-models_dict = {
-    'EndToEndModel': EndToEndModel,
-    'EndToEndModelGPT2': EndToEndModelGPT2,
-}
 
 
 def quick_test():
