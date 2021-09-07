@@ -62,7 +62,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
         tokenizer.save(tokenizer_path)
 
         shutil.rmtree(os.path.join(DATAPATH, 'wikitext-103-raw'))
-    elif not os.path.isfile(tokenizer_path) and tokenizer_choice == 'gpt2':
+    elif not os.path.isfile(os.path.join(DATADESTINATION, 'config.json')) and tokenizer_choice == 'gpt2':
         tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
         tokenizer.save_vocabulary(DATADESTINATION)
 
@@ -306,6 +306,9 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
 
         contexts = self.data['contexts'][batch_indices]
         padded_contexts = unpad_sequence(contexts, padding='pre', value=self.pad_idx)[reshuffled_indices]
+        print('-'*20)
+        print(batch_indices)
+        print(padded_contexts.shape)
         choices = self.data['choices'][batch_indices][reshuffled_indices]
 
         knowledges = self.data['knowledges'][batch_indices]
