@@ -63,12 +63,12 @@ def download(data_path, tokenizer_choice, n_dialogues):
         shutil.rmtree(os.path.join(DATAPATH, 'wikitext-103-raw'))
     elif not os.path.isfile(tokenizer_path) and tokenizer_choice == 'gpt2':
         tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-        print(tokenizer)
-
+        tokenizer.save_vocabulary(DATADESTINATION)
     else:
         tokenizer = Tokenizer.from_file(tokenizer_path)
 
-    pad_idx = tokenizer.encode('[PAD]').ids[0]
+    pad_word = '[PAD]' if tokenizer_choice == 'bpe' else '<|endoftext|>'
+    pad_idx = tokenize(pad_word, tokenizer, tokenizer_choice)[0]
 
     large_df = pd.DataFrame(
         columns=['data_split', 'max_target_length', 'max_context_length', 'max_knowledge_length',
@@ -178,11 +178,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
             data_lists = {'targets': targets, 'contexts': contexts, 'choices': choices, 'knowledges': knowledges}
 
             with h5py.File(h5_path, 'w') as f:
-                # dt = h5py.special_dtype(vlen=str)
-                # dsets = {k: f.create_dataset(k, data=data_lists[k]) for k in
-                #          data_lists.keys()}
                 for k, v in data_lists.items():
-                    print(k, v.shape)
                     f.create_dataset(k, data=v)
 
     if large_df.shape[0] == 5:
@@ -259,9 +255,17 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         self.on_epoch_end()
 
         tokenizer_path = os.path.join(self.data_path, 'tokenizer-{}.json'.format(tokenizer_choice))
-        self.tokenizer = Tokenizer.from_file(tokenizer_path)
-        self.pad_idx = self.tokenizer.encode('[PAD]').ids[0]
-        self.start_idx = self.tokenizer.encode('[START]').ids[0]
+
+        if tokenizer_choice == 'bpe':
+            self.tokenizer = Tokenizer.from_file(tokenizer_path)
+        else:
+            self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+
+        pad_word = '[PAD]' if tokenizer_choice == 'bpe' else '<|endoftext|>'
+        self.pad_idx = tokenize(pad_word, self.tokenizer, tokenizer_choice)[0]
+
+        start_word = '[START]' if tokenizer_choice == 'bpe' else '<|endoftext|>'
+        self.start_idx = tokenize(start_word, self.tokenizer, tokenizer_choice)[0]
 
         self.epochs = 50 if epochs == None else epochs
 
