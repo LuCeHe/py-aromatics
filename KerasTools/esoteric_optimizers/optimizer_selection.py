@@ -7,10 +7,10 @@ from GenericTools.KerasTools.esoteric_optimizers.AdamW import AdamW
 
 
 def get_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_decay=False, clipnorm=False,
-                  exclude_from_weight_decay=[]):
+                  exclude_from_weight_decay=[], warmup_steps=None):
     learning_rate = lr
     if 'cosine_no_restarts' in lr_schedule:
-        learning_rate = tf.keras.experimental.CosineDecay(learning_rate, decay_steps=int(4 * total_steps / 5), alpha=.1)
+        learning_rate = tf.keras.experimental.CosineDecay(learning_rate, decay_steps=int(4 * total_steps / 5), alpha=.5)
     elif 'cosine_restarts' in lr_schedule:
         learning_rate = tf.keras.experimental.CosineDecayRestarts(learning_rate,
                                                                   first_decay_steps=int(total_steps / 6.5), alpha=.1)
@@ -19,7 +19,9 @@ def get_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_d
         pass
 
     if 'warmup' in lr_schedule:
-        learning_rate = AddWarmUpToSchedule(learning_rate, warmup_steps=total_steps / 6)
+        if warmup_steps is None:
+            warmup_steps = total_steps / 6
+        learning_rate = AddWarmUpToSchedule(learning_rate, warmup_steps=warmup_steps)
 
     ma = lambda x: tfa.optimizers.MovingAverage(x) if 'MA' in optimizer_name else x
     optimizer_name = optimizer_name.replace('MA', '')
@@ -44,6 +46,9 @@ def get_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_d
                               exclude_from_weight_decay=['embedding'], remove_nans=['all'], weight_noise=.075)
     elif optimizer_name == 'SGD':
         optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate, clipnorm=clipnorm, momentum=0.99)
+
+    elif optimizer_name == 'Nadam':
+        optimizer = tf.keras.optimizers.Nadam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.98, clipnorm=clipnorm)
     elif optimizer_name == 'Adam':
         optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, clipnorm=clipnorm)
     else:

@@ -2,15 +2,18 @@
 # WIZARD OF WIKIPEDIA: KNOWLEDGE-POWERED CONVERSATIONAL AGENTS
 # that was originally written in PyTorch in the ParlAI library
 # https://gitlab.ilabt.imec.be/ahadifar/google-research/-/blob/16a8f847718f1ad824eb16680caabb7a79ae8411/dialogue_ope/airdialogue_model_transformer/models/modules.py
-
+from parlai.agents.transformer.modules import TransformerEncoder as pt_TransformerEncoder
+from projects.wizard_of_wikipedia.generator.modules import ContextKnowledgeDecoder as pt_ContextKnowledgeDecoder
+from projects.wizard_of_wikipedia.generator.modules import ContextKnowledgeEncoder as pt_ContextKnowledgeEncoder
 from tensorflow.keras.layers import *
 import tensorflow as tf
 
 tf.executing_eagerly()
 
 from GenericTools.KerasTools.advanced_losses import sparse_perplexity, sparse_f1_on_max
-from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder, TransformerDecoder, \
-    create_padding_mask, create_look_ahead_mask
+from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder
+from GenericTools.KerasTools.esoteric_models.transformer import TransformerDecoder as tf_TransformerDecoder
+from GenericTools.KerasTools.esoteric_models.transformer import create_padding_mask, create_look_ahead_mask
 from GenericTools.LeanguageTreatmentTools.random_language import random_indices
 
 
@@ -81,8 +84,8 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
                               rate=rate, pad_idx=pad_idx)
         self.__dict__.update(self.init_args)
 
-        self.transformer_encoder = TransformerEncoder(num_layers, d_model, num_heads, dff, input_vocab_size,
-                                                      maximum_position_encoding, rate)
+        self.transformer_encoder = tf_TransformerEncoder(num_layers, d_model, num_heads, dff, input_vocab_size,
+                                                         maximum_position_encoding, rate)
 
     def call(self, inputs, *args, **kwargs):
         if isinstance(inputs, list):
@@ -158,8 +161,8 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
                               rate=rate, pad_idx=pad_idx)
         self.__dict__.update(self.init_args)
 
-        self.transformer_decoder = TransformerDecoder(num_layers, d_model, num_heads, dff, input_vocab_size,
-                                                      maximum_position_encoding, rate)
+        self.transformer_decoder = tf_TransformerDecoder(num_layers, d_model, num_heads, dff, input_vocab_size,
+                                                         maximum_position_encoding, rate)
 
     def call(self, inputs, output_type='embedding_projection', *args, **kwargs):
         tgt_tokens, encoder_state = inputs
@@ -255,5 +258,36 @@ def quick_test():
     # test_model.fit(input_test_tensors, tgt_tokens, epochs=3)
 
 
+def test_compare_pytorch_and_tf():
+    n_heads = 4
+    n_layers = 4
+    embedding_size = 2
+    ffn_size = 2
+    vocabulary_size = 4
+    embedding = 4
+    dropout = 3
+    attention_dropout = .0
+    relu_dropout = .0
+    padding_idx = 2
+    learn_positional_embeddings = True
+    embeddings_scale = 3
+    reduction_type = 2
+    n_positions = 2
+    n_segments = 4
+    activation = 2
+    variant = 1
+    output_scaling = 3
+
+    pt_transformer = pt_TransformerEncoder(
+        n_heads=n_heads, n_layers=n_layers, embedding_size=embedding_size, ffn_size=ffn_size,
+        vocabulary_size=vocabulary_size, embedding=embedding, dropout=dropout, attention_dropout=attention_dropout,
+        relu_dropout=relu_dropout, padding_idx=padding_idx, learn_positional_embeddings=learn_positional_embeddings,
+        embeddings_scale=embeddings_scale, reduction_type=reduction_type, n_positions=n_positions,
+        n_segments=n_segments, activation=activation, variant=variant, output_scaling=output_scaling,
+    )
+    pt_cke = pt_ContextKnowledgeEncoder(pt_transformer)
+
+
 if __name__ == '__main__':
     quick_test()
+    test_compare_pytorch_and_tf()
