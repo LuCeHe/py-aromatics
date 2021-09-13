@@ -8,7 +8,7 @@ from projects.wizard_of_wikipedia.generator.modules import ContextKnowledgeEncod
 from tensorflow.keras.layers import *
 import tensorflow as tf
 
-tf.executing_eagerly()
+# tf.executing_eagerly()
 
 from GenericTools.KerasTools.advanced_losses import sparse_perplexity, sparse_f1_on_max
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder
@@ -87,7 +87,16 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
         self.transformer_encoder = tf_TransformerEncoder(num_layers, d_model, num_heads, dff, input_vocab_size,
                                                          maximum_position_encoding, rate)
 
+    def build(self, input_shape):
+        self.use_external_knowledge = self.add_weight(
+            name='use_external_knowledge', shape=(), initializer=tf.keras.initializers.Constant(1.), trainable=False
+        )
+        self.built = True
+
     def call(self, inputs, *args, **kwargs):
+        if not kwargs['training'] is None:
+            tf.keras.backend.set_learning_phase(kwargs['training'])
+
         if isinstance(inputs, list):
             if len(inputs) == 3:
                 src_tokens, know_tokens, chosen_knowledge = inputs
@@ -101,7 +110,7 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
 
         context_mask = create_padding_mask(src_tokens, pad_idx=self.pad_idx)
 
-        N = tf.shape(know_tokens)[0]
+        batch_size = tf.shape(know_tokens)[0]
         K = tf.shape(know_tokens)[1]
         Tk = tf.shape(know_tokens)[2]
 
@@ -114,27 +123,29 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
         context_use = universal_sentence_embedding(context_encoded, tf.squeeze(1 - context_mask, [1, 2]), sqrt=True)
         know_use = universal_sentence_embedding(know_encoded, tf.squeeze(1 - knw_mask, [1, 2]), sqrt=True)
 
-        know_use = tf.reshape(know_use, (N, K, self.d_model))
+        know_use = tf.reshape(know_use, (batch_size, K, self.d_model))
 
         context_use = context_use / tf.sqrt(tf.cast(self.d_model, tf.float32))
         know_use = know_use / tf.sqrt(tf.cast(self.d_model, tf.float32))
 
         ck_attn = tf.einsum('bij,bj->bi', know_use, context_use)
 
-        if chosen_knowledge is None:
-            chosen_knowledge = tf.argmax(ck_attn, axis=1)
-            chosen_knowledge = tf.expand_dims(chosen_knowledge, 1)
-        else:
-            expandaded_ck_attn = tf.expand_dims(ck_attn, 1)
+        network_knowledge_choice = tf.argmax(ck_attn, axis=1)
+        network_knowledge_choice = tf.cast(tf.expand_dims(network_knowledge_choice, 1), tf.float32)
 
-            loss = .1 * tf.keras.losses.SparseCategoricalCrossentropy()(chosen_knowledge, expandaded_ck_attn)
-            self.add_loss(loss)
-            self.add_metric(loss, name='knowledge_loss', aggregation='mean')
+        knowledge = self.use_external_knowledge * chosen_knowledge \
+                    + (1 - self.use_external_knowledge) * network_knowledge_choice
 
-        koh = tf.squeeze(tf.one_hot(tf.cast(chosen_knowledge, tf.int32), K), 1)
+        expandaded_ck_attn = tf.expand_dims(ck_attn, 1)
 
-        know_encoded = tf.reshape(know_encoded, (N, K, Tk, self.d_model))
-        knw_mask = tf.reshape(knw_mask, (N, K, Tk))
+        loss = .1 * tf.keras.losses.SparseCategoricalCrossentropy()(chosen_knowledge, expandaded_ck_attn)
+        self.add_loss(loss)
+        self.add_metric(loss, name='knowledge_loss', aggregation='mean')
+
+        koh = tf.squeeze(tf.one_hot(tf.cast(knowledge, tf.int32), K), 1)
+
+        know_encoded = tf.reshape(know_encoded, (batch_size, K, Tk, self.d_model))
+        knw_mask = tf.reshape(knw_mask, (batch_size, K, Tk))
 
         cs_encoded = tf.einsum('bijk,bi->bjk', know_encoded, koh)
         cs_mask = tf.einsum('bij,bi->bj', knw_mask, koh)
@@ -175,6 +186,7 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
         output = self.transformer_decoder(
             tgt_tokens, encoder_output, decoder_mask, encoder_mask, output_type=output_type)[0]
         output = output - tf.reduce_max(output, axis=-1, keepdims=True)
+
         return output  # (batch_size, input_seq_len, d_model)
 
 
@@ -212,22 +224,30 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
     logits = ckd([tgt_tokens, code], output_type='embedding_projection')
 
     model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
+    return model
 
-    src_tokens = Input((None,))
-    tgt_tokens = Input((None,))
-    know_tokens = Input((max_knowledge, None))
 
-    code = cke([src_tokens, know_tokens])
-    logits = ckd([tgt_tokens, code], output_type='embedding_projection')[0]
+def switch_external_knowledge(model, state='on'):
+    if state == 'on':
+        switch = 1.
+    else:
+        switch = 0.
 
-    test_model = tf.keras.models.Model([src_tokens, know_tokens, tgt_tokens], logits)
-    return model, test_model
+    knowledge_switch = 'use_external_knowledge'
+    for layer in model.layers:
+        for weight in layer.weights:
+            if knowledge_switch in weight.name:
+                knowledge_weight = weight
+    tf.keras.backend.set_value(knowledge_weight, switch)
 
 
 def quick_test():
+    import numpy as np
+    np.random.seed(2)
     max_knowledge = 5
     input_vocab_size = int(5e4)
-    model, test_model = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=input_vocab_size)
+    # tf.compat.v1.disable_eager_execution()
+    model = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=input_vocab_size)
     vocab_size = 20
 
     src_tokens = random_indices(vocab_size)
@@ -237,25 +257,41 @@ def quick_test():
     input_tensors = [src_tokens, know_tokens, chosen_knowledge, tgt_tokens]
     input_test_tensors = [src_tokens, know_tokens, tgt_tokens]
 
-    print(src_tokens.shape, know_tokens.shape, chosen_knowledge.shape, tgt_tokens.shape)
-    output = model(input_tensors)
-    print(output.shape)
+    print([t.shape for t in input_tensors])
+    print([t.shape for t in input_test_tensors])
 
-    prediction = model.predict(input_tensors)
+    output_1 = model(input_tensors)
+    output_2 = model(input_tensors)
+    print('Is the reply of the network consistent with itself? ', np.all(output_2 == output_1))
+
+    switch_external_knowledge(model, state='off')
+    # output_3 = test_model(input_test_tensors)
+    output_3 = model(input_tensors)
+    print('Is the reply of the test network consistent with train network? ', np.all(output_2 == output_3))
+
+    print(output_1.shape, output_3.shape)
+
+    print('train and test model predictions')
+    switch_external_knowledge(model, state='on')
+    prediction = model.predict(input_tensors, steps=1)
     print(prediction.shape)
 
+    switch_external_knowledge(model, state='off')
+    prediction = model.predict(input_tensors, steps=1)
+    print(prediction.shape)
+
+    print('train and test model fit')
+    switch_external_knowledge(model, state='on')
     model.compile(
         'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         metrics=metrics_wow(num_classes=input_vocab_size))
-    model.fit(input_tensors, tgt_tokens, epochs=3)
+    model.fit(input_tensors, tgt_tokens, epochs=2, steps_per_epoch=1)
 
-    prediction = test_model.predict(input_test_tensors)
-    print(prediction.shape)
-
-    # test_model.compile(
-    #     'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-    #     metrics=metrics_wow(num_classes=input_vocab_size))
-    # test_model.fit(input_test_tensors, tgt_tokens, epochs=3)
+    switch_external_knowledge(model, state='off')
+    model.compile(
+        'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=metrics_wow(num_classes=input_vocab_size))
+    model.fit(input_tensors, tgt_tokens, epochs=2, steps_per_epoch=1)
 
 
 def test_compare_pytorch_and_tf():
@@ -288,6 +324,11 @@ def test_compare_pytorch_and_tf():
     pt_cke = pt_ContextKnowledgeEncoder(pt_transformer)
 
 
+def test_generation():
+    pass
+
+
 if __name__ == '__main__':
-    quick_test()
-    test_compare_pytorch_and_tf()
+    # quick_test()
+    # test_compare_pytorch_and_tf()
+    test_generation()
