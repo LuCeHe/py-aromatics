@@ -10,17 +10,20 @@ import tensorflow as tf
 
 # tf.executing_eagerly()
 
-from GenericTools.KerasTools.advanced_losses import sparse_perplexity, sparse_f1_on_max
+from GenericTools.KerasTools.advanced_losses import sparse_perplexity, sparse_f1_on_max, masked_sparse_crossentropy, \
+    masked_sparse_perplexity
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerDecoder as tf_TransformerDecoder
 from GenericTools.KerasTools.esoteric_models.transformer import create_padding_mask, create_look_ahead_mask
 from GenericTools.LeanguageTreatmentTools.random_language import random_indices
 
 
-def metrics_wow(num_classes):
+def metrics_wow(num_classes, mask_value):
     metrics = [
         sparse_perplexity,
         sparse_f1_on_max(num_classes),
+        masked_sparse_crossentropy(mask_value),
+        masked_sparse_perplexity(mask_value),
     ]
     return metrics
 
@@ -180,7 +183,7 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
         encoder_output, encoder_mask, _ = encoder_state
 
         look_ahead_mask = create_look_ahead_mask(tf.shape(tgt_tokens)[1])
-        dec_target_padding_mask = create_padding_mask(tgt_tokens)
+        dec_target_padding_mask = create_padding_mask(tgt_tokens, pad_idx=self.pad_idx)
         decoder_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
 
         output = self.transformer_decoder(
@@ -324,11 +327,8 @@ def test_compare_pytorch_and_tf():
     pt_cke = pt_ContextKnowledgeEncoder(pt_transformer)
 
 
-def test_generation():
-    pass
-
 
 if __name__ == '__main__':
-    # quick_test()
+    quick_test()
     # test_compare_pytorch_and_tf()
-    test_generation()
+    # test_generation()

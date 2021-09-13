@@ -4,6 +4,7 @@ import tensorflow as tf
 from scipy.ndimage import distance_transform_edt as distance
 import tensorflow_addons as tfa
 
+
 """
 sources:
 https://github.com/LIVIAETS/surface-loss/issues/14#issuecomment-546342163
@@ -126,10 +127,37 @@ def perplexity(y_true, y_pred):
     return p
 
 
+def masked_sparse_crossentropy(mask_value):
+    # mask_value = K.variable(mask_value)
+    def masked_xent(y_true, y_pred):
+        # find out which timesteps in `y_true` are not the padding character '#'
+        mask = K.equal(y_true, mask_value)
+        mask = 1 - K.cast(mask, K.floatx())
+
+        # multiply categorical_crossentropy with the mask
+        loss = K.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
+        mloss = loss * mask
+        # take average w.r.t. the number of unmasked entries
+        return K.sum(mloss) / K.sum(mask)
+
+    return masked_xent
+
+
 def sparse_perplexity(y_true, y_pred):
     mean_xent = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(y_true, y_pred)
     p = tf.exp(mean_xent)
     return p
+
+
+def masked_sparse_perplexity(mask_value):
+    mxent = masked_sparse_crossentropy(mask_value)
+
+    def masked_perplexity(y_true, y_pred):
+        mean_xent = mxent(y_true, y_pred)
+        p = tf.exp(mean_xent)
+        return p
+
+    return masked_perplexity
 
 
 def f1(y_true, y_pred):
@@ -159,7 +187,6 @@ def sparse_f1_on_max(num_classes):
     return sparse_f1_on_max
 
 
-
 def sparse_f1(num_classes):
     def score(y_true, y_pred):
         # num_classes = tf.shape(y_pred)[-1]
@@ -169,3 +196,19 @@ def sparse_f1(num_classes):
         return result.result()
 
     return score
+
+
+if __name__ == '__main__':
+    from GenericTools.LeanguageTreatmentTools.random_language import random_indices
+
+    vocab_size = 300
+    pad_idx = 7
+    batch_size = 4
+    maxlen = 7
+    y_true = random_indices(vocab_size, batch_size=batch_size, maxlen=maxlen, pad_idx=pad_idx)
+    print(y_true)
+    y_pred = tf.random.uniform((batch_size, maxlen, vocab_size))
+    print(y_pred.shape)
+
+    loss = masked_sparse_crossentropy(mask_value=pad_idx)(y_true, y_pred)
+    print(loss)
