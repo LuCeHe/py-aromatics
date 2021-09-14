@@ -237,11 +237,10 @@ def quick_test():
     import numpy as np
     np.random.seed(2)
     max_knowledge = 5
-    input_vocab_size = int(5e4)
+    vocab_size = int(5e4)
     pad_idx = 3
     # tf.compat.v1.disable_eager_execution()
-    model = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=input_vocab_size, pad_idx=pad_idx)
-    vocab_size = 20
+    model = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=vocab_size, pad_idx=pad_idx)
 
     src_tokens = random_indices(vocab_size, pad_idx=pad_idx)
     tgt_tokens = random_indices(vocab_size, pad_idx=pad_idx)
@@ -276,13 +275,13 @@ def quick_test():
     switch_external_knowledge(model, state='on')
     model.compile(
         'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        metrics=metrics_wow(num_classes=input_vocab_size, mask_value=pad_idx))
+        metrics=metrics_wow(num_classes=vocab_size, mask_value=pad_idx))
     model.fit(input_tensors, tgt_tokens, epochs=2, steps_per_epoch=1)
 
     switch_external_knowledge(model, state='off')
     model.compile(
         'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        metrics=metrics_wow(num_classes=input_vocab_size, mask_value=pad_idx))
+        metrics=metrics_wow(num_classes=vocab_size, mask_value=pad_idx))
     model.fit(input_tensors, tgt_tokens, epochs=2, steps_per_epoch=1)
 
 
