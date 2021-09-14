@@ -14,6 +14,8 @@ from GenericTools.StayOrganizedTools.download_utils import download_and_unzip
 pd = load_plot_settings(pd=pd)
 
 split_names = ['valid_random_split', 'valid_topic_split', 'test_random_split', 'test_topic_split', 'train']
+
+
 # split_names = ['train', 'valid_random_split', 'test_random_split']
 
 def tokenize(sentence, tokenizer, tokenizer_choice):
@@ -24,6 +26,7 @@ def tokenize(sentence, tokenizer, tokenizer_choice):
     else:
         raise NotImplementedError
     return ids
+
 
 def download(data_path, tokenizer_choice, n_dialogues):
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -321,6 +324,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
 
     def __getitem__(self, index=0):
         batch = self.data_generation(index)
+        # print(['{}: {}'.format(k, v.shape) for k, v in batch.items()])
         return [
                    batch['contexts'],
                    batch['knowledges'],

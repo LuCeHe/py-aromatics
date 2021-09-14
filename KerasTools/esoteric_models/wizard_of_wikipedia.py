@@ -79,7 +79,7 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-                 maximum_position_encoding, rate=0.1, pad_idx=0):
+                 maximum_position_encoding=1024, rate=0.1, pad_idx=0):
         super().__init__()
 
         self.init_args = dict(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
@@ -242,11 +242,18 @@ def quick_test():
     # tf.compat.v1.disable_eager_execution()
     model = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=vocab_size, pad_idx=pad_idx)
 
-    src_tokens = random_indices(vocab_size, pad_idx=pad_idx)
-    tgt_tokens = random_indices(vocab_size, pad_idx=pad_idx)
-    know_tokens = tf.concat([random_indices(vocab_size, pad_idx=pad_idx)[:, None] for _ in range(max_knowledge)],
-                            axis=1)
-    chosen_knowledge = random_indices(max_knowledge, maxlen=1)
+    batch_size = 5
+    maxlen = 3
+    src_tokens = random_indices(vocab_size, pad_idx=pad_idx, batch_size=batch_size, maxlen=4)
+    tgt_tokens = random_indices(vocab_size, pad_idx=pad_idx, maxlen=maxlen, batch_size=batch_size)
+    know_tokens = tf.concat([random_indices(vocab_size, pad_idx=pad_idx, batch_size=batch_size, maxlen=9)[:, None]
+                             for _ in range(max_knowledge)], axis=1)
+
+    # src_tokens = random_indices(vocab_size, pad_idx=pad_idx)
+    # tgt_tokens = random_indices(vocab_size, pad_idx=pad_idx)
+    # know_tokens = tf.concat([random_indices(vocab_size, pad_idx=pad_idx)[:, None] for _ in range(max_knowledge)],
+    #                         axis=1)
+    chosen_knowledge = random_indices(max_knowledge, maxlen=1, batch_size=batch_size)
     input_tensors = [src_tokens, know_tokens, chosen_knowledge, tgt_tokens]
 
     print([t.shape for t in input_tensors])
