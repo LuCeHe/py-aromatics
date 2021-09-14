@@ -97,19 +97,7 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
         self.built = True
 
     def call(self, inputs, *args, **kwargs):
-        if not kwargs['training'] is None:
-            tf.keras.backend.set_learning_phase(kwargs['training'])
-
-        if isinstance(inputs, list):
-            if len(inputs) == 3:
-                src_tokens, know_tokens, chosen_knowledge = inputs
-            elif len(inputs) == 2:
-                src_tokens, know_tokens = inputs
-                chosen_knowledge = None
-            else:
-                raise NotImplementedError
-        else:
-            raise NotImplementedError
+        src_tokens, know_tokens, chosen_knowledge = inputs
 
         context_mask = create_padding_mask(src_tokens, pad_idx=self.pad_idx)
 
@@ -187,7 +175,8 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
         decoder_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
 
         output = self.transformer_decoder(
-            tgt_tokens, encoder_output, decoder_mask, encoder_mask, output_type=output_type)[0]
+            tgt_tokens, enc_output=encoder_output, look_ahead_mask=decoder_mask, padding_mask=encoder_mask,
+            output_type=output_type)[0]
         output = output - tf.reduce_max(output, axis=-1, keepdims=True)
 
         return output  # (batch_size, input_seq_len, d_model)
@@ -224,8 +213,8 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
     chosen_knowledge = Input((1,))
 
     code = cke([src_tokens, know_tokens, chosen_knowledge])
-    logits = ckd([tgt_tokens, code], output_type='embedding_projection')
 
+    logits = ckd([tgt_tokens, code], output_type='embedding_projection')
     model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
     return model
 
@@ -249,19 +238,19 @@ def quick_test():
     np.random.seed(2)
     max_knowledge = 5
     input_vocab_size = int(5e4)
+    pad_idx = 3
     # tf.compat.v1.disable_eager_execution()
-    model = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=input_vocab_size)
+    model = EndToEndModel(max_knowledge=max_knowledge, input_vocab_size=input_vocab_size, pad_idx=pad_idx)
     vocab_size = 20
 
-    src_tokens = random_indices(vocab_size)
-    tgt_tokens = random_indices(vocab_size)
-    know_tokens = tf.concat([random_indices(vocab_size)[:, None] for _ in range(max_knowledge)], axis=1)
+    src_tokens = random_indices(vocab_size, pad_idx=pad_idx)
+    tgt_tokens = random_indices(vocab_size, pad_idx=pad_idx)
+    know_tokens = tf.concat([random_indices(vocab_size, pad_idx=pad_idx)[:, None] for _ in range(max_knowledge)],
+                            axis=1)
     chosen_knowledge = random_indices(max_knowledge, maxlen=1)
     input_tensors = [src_tokens, know_tokens, chosen_knowledge, tgt_tokens]
-    input_test_tensors = [src_tokens, know_tokens, tgt_tokens]
 
     print([t.shape for t in input_tensors])
-    print([t.shape for t in input_test_tensors])
 
     output_1 = model(input_tensors)
     output_2 = model(input_tensors)
@@ -287,13 +276,13 @@ def quick_test():
     switch_external_knowledge(model, state='on')
     model.compile(
         'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        metrics=metrics_wow(num_classes=input_vocab_size))
+        metrics=metrics_wow(num_classes=input_vocab_size, mask_value=pad_idx))
     model.fit(input_tensors, tgt_tokens, epochs=2, steps_per_epoch=1)
 
     switch_external_knowledge(model, state='off')
     model.compile(
         'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        metrics=metrics_wow(num_classes=input_vocab_size))
+        metrics=metrics_wow(num_classes=input_vocab_size, mask_value=pad_idx))
     model.fit(input_tensors, tgt_tokens, epochs=2, steps_per_epoch=1)
 
 
@@ -325,7 +314,6 @@ def test_compare_pytorch_and_tf():
         n_segments=n_segments, activation=activation, variant=variant, output_scaling=output_scaling,
     )
     pt_cke = pt_ContextKnowledgeEncoder(pt_transformer)
-
 
 
 if __name__ == '__main__':

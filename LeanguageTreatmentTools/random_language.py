@@ -2,7 +2,7 @@ import numpy as np
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 
 
-def random_indices(vocab_size, batch_size=4, maxlen=7, padded=True, pad_idx=0):
+def random_indices(vocab_size, batch_size=4, maxlen=7, padded=True, pad_idx=0, padding='pre'):
     non_pad_words = list(range(vocab_size))
     non_pad_words.remove(pad_idx)
     questions = []
@@ -12,7 +12,7 @@ def random_indices(vocab_size, batch_size=4, maxlen=7, padded=True, pad_idx=0):
         questions.append(randomQ)
 
     if padded:
-        questions = pad_sequences(questions, value=pad_idx, maxlen=maxlen)
+        questions = pad_sequences(questions, value=pad_idx, maxlen=maxlen, padding=padding)
     return questions
 
 

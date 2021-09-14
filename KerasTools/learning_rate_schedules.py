@@ -46,7 +46,8 @@ class AddWarmUpToSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
         self.alpha = alpha
 
     def __call__(self, step):
-        arg1 = float(step) * (self.warm_learning_rate - self.initial_learning_rate) / (
+        step = tf.cast(step, tf.float32)
+        arg1 = step * (self.warm_learning_rate - self.initial_learning_rate) / (
             self.warmup_steps) + self.initial_learning_rate
         arg2 = self.scheduler(step)
         warmup_steps = self.warmup_steps * tf.ones_like(step)

@@ -282,7 +282,7 @@ class GPTBlock(tf.keras.layers.Layer):
 class TransformerEncoder(tf.keras.layers.Layer):
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
                  maximum_position_encoding, rate=0.1):
-        super(TransformerEncoder, self).__init__()
+        super().__init__()
 
         self.d_model = d_model
         self.num_layers = num_layers
@@ -296,7 +296,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
 
         self.dropout = tf.keras.layers.Dropout(rate)
 
-    def call(self, x, mask):
+    def call(self, x, mask=None, *args, **kwargs):
         seq_len = tf.shape(x)[1]
 
         # adding embedding and position encoding.
@@ -315,7 +315,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
 class TransformerDecoder(tf.keras.layers.Layer):
     def __init__(self, num_layers, d_model, num_heads, dff, target_vocab_size,
                  maximum_position_encoding, rate=0.1):
-        super(TransformerDecoder, self).__init__()
+        super().__init__()
 
         self.d_model = d_model
         self.num_layers = num_layers
@@ -327,8 +327,8 @@ class TransformerDecoder(tf.keras.layers.Layer):
                            for _ in range(num_layers)]
         self.dropout = tf.keras.layers.Dropout(rate)
 
-    def call(self, x, enc_output,
-             look_ahead_mask, padding_mask, output_type=''):
+    def call(self, x, enc_output=None,
+             look_ahead_mask=None, padding_mask=None, output_type='', *args, **kwargs):
         seq_len = tf.shape(x)[1]
         attention_weights = {}
 
@@ -339,8 +339,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
         x = self.dropout(x)
 
         for i in range(self.num_layers):
-            x, block1, block2 = self.dec_layers[i](x, enc_output,
-                                                   look_ahead_mask, padding_mask)
+            x, block1, block2 = self.dec_layers[i](x, enc_output, look_ahead_mask, padding_mask)
 
             attention_weights[f'decoder_layer{i + 1}_block1'] = block1
             attention_weights[f'decoder_layer{i + 1}_block2'] = block2

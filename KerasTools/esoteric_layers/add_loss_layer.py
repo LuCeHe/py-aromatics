@@ -7,12 +7,17 @@ class AddLossLayer(tf.keras.layers.Layer):
         self.coef = coef
         self.loss = loss
 
+        try:
+            self.loss_name = self.loss.name
+        except:
+            self.loss_name = self.loss.__name__
+
     def call(self, inputs, training=None):
         true_output, pred_output = inputs
 
-        loss = self.coef * self.loss(true_output, pred_output)
+        loss = tf.reduce_sum(self.coef * self.loss(true_output, pred_output))
         self.add_loss(loss)
-        self.add_metric(loss, name=self.loss.name, aggregation='mean')
+        self.add_metric(loss, name=self.loss_name, aggregation='mean')
         return pred_output
 
 
