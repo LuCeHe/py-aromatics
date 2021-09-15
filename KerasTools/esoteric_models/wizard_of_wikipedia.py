@@ -2,6 +2,7 @@
 # WIZARD OF WIKIPEDIA: KNOWLEDGE-POWERED CONVERSATIONAL AGENTS
 # that was originally written in PyTorch in the ParlAI library
 # https://gitlab.ilabt.imec.be/ahadifar/google-research/-/blob/16a8f847718f1ad824eb16680caabb7a79ae8411/dialogue_ope/airdialogue_model_transformer/models/modules.py
+# https://github.com/facebookresearch/ParlAI/tree/main/projects/wizard_of_wikipedia
 from parlai.agents.transformer.modules import TransformerEncoder as pt_TransformerEncoder
 from projects.wizard_of_wikipedia.generator.modules import ContextKnowledgeDecoder as pt_ContextKnowledgeDecoder
 from projects.wizard_of_wikipedia.generator.modules import ContextKnowledgeEncoder as pt_ContextKnowledgeEncoder
@@ -20,7 +21,7 @@ from GenericTools.LeanguageTreatmentTools.random_language import random_indices
 
 def metrics_wow(num_classes, mask_value):
     metrics = [
-        sparse_perplexity,
+        # sparse_perplexity,
         sparse_f1_on_max(num_classes),
         masked_sparse_crossentropy(mask_value),
         masked_sparse_perplexity(mask_value),
@@ -129,7 +130,7 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
 
         expandaded_ck_attn = tf.expand_dims(ck_attn, 1)
 
-        loss = .1 * tf.keras.losses.SparseCategoricalCrossentropy()(chosen_knowledge, expandaded_ck_attn)
+        loss = .2 * tf.keras.losses.SparseCategoricalCrossentropy()(chosen_knowledge, expandaded_ck_attn)
         self.add_loss(loss)
         self.add_metric(loss, name='knowledge_loss', aggregation='mean')
 

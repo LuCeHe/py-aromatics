@@ -46,6 +46,7 @@ class AddWarmUpToSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
         self.alpha = alpha
 
     def __call__(self, step):
+        print('in: ', step)
         step = tf.cast(step, tf.float32)
         arg1 = step * (self.warm_learning_rate - self.initial_learning_rate) / (
             self.warmup_steps) + self.initial_learning_rate
@@ -69,7 +70,7 @@ if __name__ == '__main__':
     lr = 1e-3
     learning_rate = DummyConstantSchedule(lr)
     # learning_rate = TransformerLRSchedule(d_model, total_epochs / 5)
-    # learning_rate = tf.keras.experimental.CosineDecay(lr, decay_steps=int(4 * total_epochs / 5), alpha=.5)
+    learning_rate = tf.keras.experimental.CosineDecay(lr, decay_steps=int(4 * total_epochs / 5), alpha=.5)
     # learning_rate = tf.keras.experimental.LinearCosineDecay(lr, decay_steps=int(2 * total_epochs / 3), alpha=.5)
     # learning_rate = tf.keras.experimental.CosineDecayRestarts(lr, first_decay_steps=int(total_epochs / 6.5), alpha=.1)
     # learning_rate = tf.keras.experimental.PolynomialDecay(lr, decay_steps=int(2 * total_epochs / 3), alpha=.1)
