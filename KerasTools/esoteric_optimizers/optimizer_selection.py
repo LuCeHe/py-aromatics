@@ -10,7 +10,7 @@ def get_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_d
                   exclude_from_weight_decay=[], warmup_steps=None):
     learning_rate = lr
     if 'cosine_no_restarts' in lr_schedule:
-        learning_rate = tf.keras.experimental.CosineDecay(learning_rate, decay_steps=int(4 * total_steps / 5), alpha=.5)
+        learning_rate = tf.keras.experimental.CosineDecay(learning_rate, decay_steps=int(4 * total_steps / 5), alpha=.1)
     elif 'cosine_restarts' in lr_schedule:
         learning_rate = tf.keras.experimental.CosineDecayRestarts(learning_rate,
                                                                   first_decay_steps=int(total_steps / 6.5), alpha=.1)
