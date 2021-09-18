@@ -44,16 +44,25 @@ class CustomFileStorageObserver(FileStorageObserver):
 
 
 def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10, ingredients=[]):
-    ex = Experiment(name=experiment_name, base_dir=base_dir, ingredients=ingredients, save_git_info=False)
+    import numpy as np
+    random_string = ''.join([str(r) for r in np.random.choice(10, 4)]) + '-'
+    ex = Experiment(name=random_string + experiment_name, base_dir=base_dir, ingredients=ingredients, save_git_info=False)
     ex.observers.append(CustomFileStorageObserver("experiments"))
 
     ex.captured_out_filter = apply_backspaces_and_linefeeds
 
     # create convenient folders for all experiments
-    for path in ['data', 'experiments']:
+    basic_folders =  ['data', 'experiments', 'good_experiments']
+    for path in basic_folders:
         complete_path = os.path.join(base_dir, path)
         if not os.path.isdir(complete_path):
             os.mkdir(complete_path)
+
+    gitignore_path = os.path.join(base_dir, '.gitignore')
+    if not os.path.isfile(gitignore_path):
+        with open(gitignore_path, 'w', encoding="utf-8") as f:
+            for folder_name in basic_folders:
+                f.write('\n' + folder_name)
 
     # choose GPU
     if not GPU == None:
