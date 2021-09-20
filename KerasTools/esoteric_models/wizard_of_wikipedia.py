@@ -13,6 +13,7 @@ import tensorflow as tf
 
 from GenericTools.KerasTools.advanced_losses import sparse_perplexity, sparse_f1_on_max, masked_sparse_crossentropy, \
     masked_sparse_perplexity
+from GenericTools.KerasTools.esoteric_layers.random_switch import RandomSwitch
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerDecoder as tf_TransformerDecoder
 from GenericTools.KerasTools.esoteric_models.transformer import create_padding_mask, create_look_ahead_mask
@@ -73,6 +74,23 @@ class UniversalSentenceEmbedding(tf.keras.layers.Layer):
         return sentence_sums
 
 
+class KnowledgeDropout(tf.keras.layers.Layer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.random_switch = RandomSwitch([.6, .31, .09])
+
+    def call(self, inputs, *args, **kwargs):
+        koh = inputs
+
+        look_all_knowledge = tf.ones_like(koh) / tf.cast(tf.shape(koh)[-1], tf.float32)
+        look_no_knowledge = tf.zeros_like(koh)
+
+        switched = self.random_switch([koh, look_all_knowledge, look_no_knowledge])
+        lp = tf.keras.backend.learning_phase()
+        switched = lp * switched + (1 - lp) * koh
+        return switched
+
+
 class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
 
     def get_config(self):
@@ -90,6 +108,7 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
 
         self.transformer_encoder = tf_TransformerEncoder(num_layers, d_model, num_heads, dff, input_vocab_size,
                                                          maximum_position_encoding, rate)
+        self.knowledge_dropout = KnowledgeDropout()
 
     def build(self, input_shape):
         self.use_external_knowledge = self.add_weight(
@@ -130,15 +149,19 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
 
         expandaded_ck_attn = tf.expand_dims(ck_attn, 1)
 
-        loss = .2 * tf.keras.losses.SparseCategoricalCrossentropy()(chosen_knowledge, expandaded_ck_attn)
+        loss = 1. * tf.keras.losses.SparseCategoricalCrossentropy()(chosen_knowledge, expandaded_ck_attn)
         self.add_loss(loss)
         self.add_metric(loss, name='knowledge_loss', aggregation='mean')
 
         koh = tf.squeeze(tf.one_hot(tf.cast(knowledge, tf.int32), K), 1)
 
+        # FIXME: knowledge_dropout will cause probs with cs_mask
+        print('here', koh)
+        koh = self.knowledge_dropout(koh)
         know_encoded = tf.reshape(know_encoded, (batch_size, K, Tk, self.d_model))
         knw_mask = tf.reshape(knw_mask, (batch_size, K, Tk))
 
+        print('here', koh)
         cs_encoded = tf.einsum('bijk,bi->bjk', know_encoded, koh)
         cs_mask = tf.einsum('bij,bi->bj', knw_mask, koh)
 
@@ -204,9 +227,14 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
 # 'temperature': 1.0, 'adam_eps': 1e-08, 'adafactor_eps': (1e-30, 0.001), 'weight_decay': None,
 
 def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_size=int(5e4),
-                  target_vocab_size=int(5e4), max_pos=1024, rate=.1, max_knowledge=5, pad_idx=0, datapath=''):
-    cke = tf_ContextKnowledgeEncoder(num_layers, d_model, num_heads, dff, input_vocab_size, max_pos, rate, pad_idx)
-    ckd = tf_ContextKnowledgeDecoder(num_layers, d_model, num_heads, dff, target_vocab_size, max_pos, rate, pad_idx)
+                  target_vocab_size=int(5e4), encoder_maxlen=1024, decoder_maxlen=1024,
+                  rate=.1, max_knowledge=5, pad_idx=0, datapath=''):
+    cke = tf_ContextKnowledgeEncoder(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
+                                     input_vocab_size=input_vocab_size, maximum_position_encoding=encoder_maxlen,
+                                     rate=rate, pad_idx=pad_idx)
+    ckd = tf_ContextKnowledgeDecoder(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
+                                     input_vocab_size=input_vocab_size, maximum_position_encoding=decoder_maxlen,
+                                     rate=rate, pad_idx=pad_idx)
 
     src_tokens = Input((None,))
     tgt_tokens = Input((None,))

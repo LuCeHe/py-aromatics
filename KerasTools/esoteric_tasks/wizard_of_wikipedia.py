@@ -238,7 +238,8 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             epochs=1,
             batch_size=32,
             steps_per_epoch=1,
-            maxlen=512,
+            encoder_maxlen=512,
+            decoder_maxlen=512,
             data_split='train',
             data_path=None,
             tokenizer_choice='bpe',
@@ -250,7 +251,8 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
             batch_size=batch_size,
-            maxlen=maxlen,
+            encoder_maxlen=encoder_maxlen,
+            decoder_maxlen=decoder_maxlen,
             data_split=data_split,
             data_path=DATADESTINATION,
             tokenizer_choice=tokenizer_choice,
@@ -261,7 +263,6 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             raise ValueError("Specify the data_path where you want the data to be saved!")
         download(data_path=data_path, tokenizer_choice=tokenizer_choice, n_dialogues=n_dialogues)
 
-        self.maxlen = maxlen
         self.on_epoch_end()
 
         tokenizer_path = os.path.join(self.data_path, 'tokenizer-{}.json'.format(tokenizer_choice))
@@ -301,7 +302,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         reshuffled_indices = np.random.choice(self.batch_size, self.batch_size, replace=False)
 
         targets = self.data['targets'][batch_indices]
-        targets = unpad_sequence(targets, padding='post', value=self.pad_idx)
+        targets = unpad_sequence(targets, padding='post', value=self.pad_idx)[reshuffled_indices]
         input_targets = self.start_idx * np.ones((targets.shape[0], targets.shape[1] + 1), dtype=np.int32)
         input_targets[:, 1:] = targets
         output_targets = self.pad_idx * np.ones((targets.shape[0], targets.shape[1] + 1), dtype=np.int32)
@@ -314,9 +315,9 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         knowledges = self.data['knowledges'][batch_indices]
         padded_knowledges = unpad_sequence(knowledges, padding='pre', value=self.pad_idx)[reshuffled_indices]
 
-        return {'choices': choices, 'knowledges': padded_knowledges[..., -self.maxlen:],
-                'targets': input_targets[..., :self.maxlen], 'contexts': padded_contexts[..., -self.maxlen:],
-                'output_targets': output_targets[..., :self.maxlen]}
+        return {'choices': choices, 'knowledges': padded_knowledges[..., -self.encoder_maxlen:],
+                'targets': input_targets[..., :self.decoder_maxlen], 'contexts': padded_contexts[..., -self.encoder_maxlen:],
+                'output_targets': output_targets[..., :self.decoder_maxlen]}
 
     def __len__(self):
         'Denotes the number of batches per epoch'
