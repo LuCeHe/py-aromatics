@@ -77,6 +77,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
         tokenizer.save(tokenizer_path)
 
         shutil.rmtree(os.path.join(DATAPATH, 'wikitext-103-raw'))
+
     elif not os.path.isfile(os.path.join(DATADESTINATION, 'config.json')) and tokenizer_choice == 'gpt2':
         tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
         tokenizer.save_vocabulary(DATADESTINATION)
@@ -275,6 +276,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             data_split=data_split,
             data_path=DATADESTINATION,
             tokenizer_choice=tokenizer_choice,
+            n_dialogues=n_dialogues,
         )
 
         assert data_split in split_names
