@@ -10,6 +10,7 @@ import pandas as pd
 from GenericTools.LeanguageTreatmentTools.unpadding import unpad_sequence
 from GenericTools.PlotTools.mpl_tools import load_plot_settings
 from GenericTools.StayOrganizedTools.download_utils import download_and_unzip
+from GenericTools.StayOrganizedTools.utils import str2val
 
 pd = load_plot_settings(pd=pd)
 
@@ -37,7 +38,17 @@ def download(data_path, tokenizer_choice, n_dialogues):
     DATADESTINATION = os.path.join(DATAPATH, tokenizer_choice)
     os.makedirs(DATADESTINATION, exist_ok=True)
 
-    n_dialogues = int(n_dialogues) if n_dialogues > 0 else None
+    random_or_full = str(n_dialogues)
+
+    if 'random' in n_dialogues:
+        n_dialogues = str2val(n_dialogues, 'random', int, default=None)
+        predict_wizards = lambda x: [np.random.choice(x)]
+    elif n_dialogues == 'full':
+        n_dialogues = str2val(n_dialogues, 'full', int, default=None)
+        predict_wizards = lambda x: range(x)
+    else:
+        raise NotImplementedError
+
     assert tokenizer_choice in ['bpe', 'gpt2']
     tokenizer_path = os.path.join(DATADESTINATION, 'tokenizer-{}.json'.format(tokenizer_choice))
 
@@ -88,7 +99,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
         max_target_length, max_context_length, max_knowledge_length, max_knowledge_items = 0, 0, 0, 0
         chosen_not_found = 0
 
-        h5_path = os.path.join(DATADESTINATION, '{}_{}.h5'.format(split_name, tokenizer_choice))
+        h5_path = os.path.join(DATADESTINATION, '{}_{}_{}.h5'.format(split_name, tokenizer_choice, random_or_full))
         data_json = os.path.join(DATAPATH, split_name + '.json')
 
         if not os.path.isfile(h5_path):
@@ -112,63 +123,65 @@ def download(data_path, tokenizer_choice, n_dialogues):
 
                 speakers = [d['speaker'] for d in data[dialogue_i]['dialog']]
                 wizard_utterances = speakers.count('1_Wizard') + speakers.count('0_Wizard')
-                predict_wizard_i = np.random.choice(wizard_utterances)
-                for d in data[dialogue_i]['dialog']:
-                    # print('-' * 39)
-                    if 'Wizard' in d['speaker']:
-                        wizard_count += 1
-                        target = d['text']
+                predict_wizard = predict_wizards(wizard_utterances)
 
-                    flattened_knowledges = [k for dk in dialogue_knowledges[-n_utterances_back:] for k in dk]
-                    knowledge = ['no passages used'] + chosen_topic_passage + flattened_knowledges + zero_knowledge
-                    knowledge = knowledge[:max_knowledge]  # [:16]
-                    random.shuffle(knowledge)
+                for predict_wizard_i in predict_wizard:
+                    for d in data[dialogue_i]['dialog']:
+                        # print('-' * 39)
+                        if 'Wizard' in d['speaker']:
+                            wizard_count += 1
+                            target = d['text']
 
-                    rp = [list(l.keys())[0] + ': ' + ' '.join(list(l.values())[0]) for l in d['retrieved_passages']]
-                    dialogue_knowledges.append(rp)
+                        flattened_knowledges = [k for dk in dialogue_knowledges[-n_utterances_back:] for k in dk]
+                        knowledge = ['no passages used'] + chosen_topic_passage + flattened_knowledges + zero_knowledge
+                        knowledge = knowledge[:max_knowledge]  # [:16]
+                        random.shuffle(knowledge)
 
-                    if 'checked_sentence' in d.keys():
-                        chosen = list(d['checked_sentence'].values())[0] \
-                            if not len(d['checked_sentence']) == 0 else 'no passages used'
-                        chosen_i = None
-                        for i, s in enumerate(knowledge):
-                            if chosen.replace('_', ' ') in s.replace('_', ' '):
-                                chosen_i = i
+                        rp = [list(l.keys())[0] + ': ' + ' '.join(list(l.values())[0]) for l in d['retrieved_passages']]
+                        dialogue_knowledges.append(rp)
 
-                        try:
-                            assert not chosen_i is None
-                        except:
-                            chosen_not_found += 1
-                            chosen_i = knowledge.index('no passages used')
+                        if 'checked_sentence' in d.keys():
+                            chosen = list(d['checked_sentence'].values())[0] \
+                                if not len(d['checked_sentence']) == 0 else 'no passages used'
+                            chosen_i = None
+                            for i, s in enumerate(knowledge):
+                                if chosen.replace('_', ' ') in s.replace('_', ' '):
+                                    chosen_i = i
 
-                    if wizard_count > predict_wizard_i: break
-                    speaker = 'me' if 'Wizard' in d['speaker'] else 'you'
-                    context += ' {}: {}'.format(speaker, d['text'])
+                            try:
+                                assert not chosen_i is None
+                            except:
+                                chosen_not_found += 1
+                                chosen_i = knowledge.index('no passages used')
 
-                # print(target)
-                # print(context)
-                # print('Target:')
-                output = tokenize(target, tokenizer, tokenizer_choice)
-                target_length = len(output)
-                targets.append(output)
+                        if wizard_count > predict_wizard_i: break
+                        speaker = 'me' if 'Wizard' in d['speaker'] else 'you'
+                        context += ' {}: {}'.format(speaker, d['text'])
 
-                # print('Context:')
-                output = tokenize(context, tokenizer, tokenizer_choice)
-                context_length = len(output)
-                contexts.append(output)
+                    # print(target)
+                    # print(context)
+                    # print('Target:')
+                    output = tokenize(target, tokenizer, tokenizer_choice)
+                    target_length = len(output)
+                    targets.append(output)
 
-                # print('Knowledge:')
-                k_ids = [tokenize(k, tokenizer, tokenizer_choice) for k in knowledge]
-                knowledge_lengths = [len(k) for k in k_ids]
-                knowledges.append(k_ids)
+                    # print('Context:')
+                    output = tokenize(context, tokenizer, tokenizer_choice)
+                    context_length = len(output)
+                    contexts.append(output)
 
-                # print('Knowledge id:')
-                choices.append(chosen_i)
+                    # print('Knowledge:')
+                    k_ids = [tokenize(k, tokenizer, tokenizer_choice) for k in knowledge]
+                    knowledge_lengths = [len(k) for k in k_ids]
+                    knowledges.append(k_ids)
 
-                max_target_length = max(target_length, max_target_length)
-                max_context_length = max(context_length, max_context_length)
-                max_knowledge_length = max(max(knowledge_lengths), max_knowledge_length)
-                max_knowledge_items = max(len(knowledge_lengths), max_knowledge_items)
+                    # print('Knowledge id:')
+                    choices.append(chosen_i)
+
+                    max_target_length = max(target_length, max_target_length)
+                    max_context_length = max(context_length, max_context_length)
+                    max_knowledge_length = max(max(knowledge_lengths), max_knowledge_length)
+                    max_knowledge_items = max(len(knowledge_lengths), max_knowledge_items)
 
             targets = pad_sequences(targets, padding='post', value=pad_idx)[:, :safe_max_len]
             contexts = pad_sequences(contexts, value=pad_idx)[:, -safe_max_len:]
@@ -286,7 +299,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             self.data.close()
             del self.data
 
-        h5_path = os.path.join(self.data_path, '{}_{}.h5'.format(self.data_split, self.tokenizer_choice))
+        h5_path = os.path.join(self.data_path, '{}_{}_{}.h5'.format(self.data_split, self.tokenizer_choice, self.n_dialogues))
         self.data = h5py.File(h5_path, 'r')
         n_samples = len(self.data['choices'])
         self.random_indices = np.random.choice(n_samples, n_samples, replace=False)
@@ -316,7 +329,8 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         padded_knowledges = unpad_sequence(knowledges, padding='pre', value=self.pad_idx)[reshuffled_indices]
 
         return {'choices': choices, 'knowledges': padded_knowledges[..., -self.encoder_maxlen:],
-                'targets': input_targets[..., :self.decoder_maxlen], 'contexts': padded_contexts[..., -self.encoder_maxlen:],
+                'targets': input_targets[..., :self.decoder_maxlen],
+                'contexts': padded_contexts[..., -self.encoder_maxlen:],
                 'output_targets': output_targets[..., :self.decoder_maxlen]}
 
     def __len__(self):
