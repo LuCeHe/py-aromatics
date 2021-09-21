@@ -31,7 +31,7 @@ def tokenize(sentence, tokenizer, tokenizer_choice):
 
 def download(data_path, tokenizer_choice, n_dialogues):
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
-    safe_max_len = 512
+    safe_max_len = 256
     n_utterances_back = 4
     max_knowledge = 32
     DATAPATH = data_path
@@ -163,15 +163,15 @@ def download(data_path, tokenizer_choice, n_dialogues):
                     # print('Target:')
                     output = tokenize(target, tokenizer, tokenizer_choice)
                     target_length = len(output)
-                    targets.append(output)
+                    targets.append(output[:safe_max_len])
 
                     # print('Context:')
                     output = tokenize(context, tokenizer, tokenizer_choice)
                     context_length = len(output)
-                    contexts.append(output)
+                    contexts.append(output[-safe_max_len:])
 
                     # print('Knowledge:')
-                    k_ids = [tokenize(k, tokenizer, tokenizer_choice) for k in knowledge]
+                    k_ids = [tokenize(k, tokenizer, tokenizer_choice)[-safe_max_len:] for k in knowledge]
                     knowledge_lengths = [len(k) for k in k_ids]
                     knowledges.append(k_ids)
 
