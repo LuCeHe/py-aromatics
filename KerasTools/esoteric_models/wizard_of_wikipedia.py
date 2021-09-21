@@ -157,7 +157,7 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
         koh = tf.squeeze(tf.one_hot(tf.cast(knowledge, tf.int32), K), 1)
 
         # FIXME: knowledge_dropout will cause probs with cs_mask
-        koh = self.knowledge_dropout(koh)
+        # koh = self.knowledge_dropout(koh)
         know_encoded = tf.reshape(know_encoded, (batch_size, K, Tk, self.d_model))
         knw_mask = tf.reshape(knw_mask, (batch_size, K, Tk))
 
@@ -320,6 +320,14 @@ def quick_test():
     model.fit(input_tensors, tgt_tokens, epochs=2, steps_per_epoch=1)
 
 
+class HF_outputs:
+    def __init__(self, logits):
+        self.logits = logits
+
+    def __len__(self):
+        return 1
+
+
 class HF_ModelUpgrade(TFGenerationMixin):
     def __init__(self, model, encoder_inputs, bos_token_id, eos_token_id, pad_token_id, vocab_size):
         self.model = model
@@ -344,13 +352,16 @@ class HF_ModelUpgrade(TFGenerationMixin):
         self.config.forced_eos_token_id = None
         self.config.vocab_size = vocab_size
         self.config.is_encoder_decoder = False
+        self.config.output_scores = False
+        self.config.return_dict_in_generate = False
+        self.config.output_attentions = False
+        self.config.output_hidden_states = False
 
-    def __call__(self, input_ids):
-
+    def __call__(self, input_ids, return_dict=False, output_attentions=False, output_hidden_states=False):
         encoder_inputs = [tf.repeat(t, repeats=self.num_beams * self.num_return_sequences, axis=0)
                           for t in self.encoder_inputs]
         prediction = self.model(encoder_inputs + [input_ids])
-        return [prediction]
+        return HF_outputs(prediction)
 
     def get_output_embeddings(self):
         return 0

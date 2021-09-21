@@ -34,7 +34,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
     safe_max_len = 256 if 'full' in n_dialogues else 512
     n_utterances_back = 4
     max_knowledge = 32
-    reduce_data_by =2
+    reduce_data_by = 2
     DATAPATH = data_path
     DATADESTINATION = os.path.join(DATAPATH, tokenizer_choice)
     os.makedirs(DATADESTINATION, exist_ok=True)
@@ -307,7 +307,8 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             self.data.close()
             del self.data
 
-        h5_path = os.path.join(self.data_path, '{}_{}_{}.h5'.format(self.data_split, self.tokenizer_choice, self.n_dialogues))
+        h5_path = os.path.join(self.data_path,
+                               '{}_{}_{}.h5'.format(self.data_split, self.tokenizer_choice, self.n_dialogues))
         self.data = h5py.File(h5_path, 'r')
         n_samples = len(self.data['choices'])
         self.random_indices = np.random.choice(n_samples, n_samples, replace=False)
@@ -336,10 +337,13 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         knowledges = self.data['knowledges'][batch_indices]
         padded_knowledges = unpad_sequence(knowledges, padding='pre', value=self.pad_idx)[reshuffled_indices]
 
-        return {'choices': choices, 'knowledges': padded_knowledges[..., -self.encoder_maxlen:],
-                'targets': input_targets[..., :self.decoder_maxlen],
-                'contexts': padded_contexts[..., -self.encoder_maxlen:],
-                'output_targets': output_targets[..., :self.decoder_maxlen]}
+        return {
+            'choices': choices,
+            'knowledges': padded_knowledges[..., -self.encoder_maxlen:],
+            'targets': input_targets[..., :self.decoder_maxlen],
+            'contexts': padded_contexts[..., -self.encoder_maxlen:],
+            'output_targets': output_targets[..., :self.decoder_maxlen]
+        }
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -347,7 +351,6 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
 
     def __getitem__(self, index=0):
         batch = self.data_generation(index)
-        # print(['{}: {}'.format(k, v.shape) for k, v in batch.items()])
         return [
                    batch['contexts'],
                    batch['knowledges'],
