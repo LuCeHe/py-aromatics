@@ -31,9 +31,10 @@ def tokenize(sentence, tokenizer, tokenizer_choice):
 
 def download(data_path, tokenizer_choice, n_dialogues):
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
-    safe_max_len = 256
+    safe_max_len = 256 if 'full' in n_dialogues else 512
     n_utterances_back = 4
     max_knowledge = 32
+    reduce_data_by =2
     DATAPATH = data_path
     DATADESTINATION = os.path.join(DATAPATH, tokenizer_choice)
     os.makedirs(DATADESTINATION, exist_ok=True)
@@ -43,7 +44,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
     if 'random' in n_dialogues:
         n_dialogues = str2val(n_dialogues, 'random', int, default=None)
         predict_wizards = lambda x: [np.random.choice(x)]
-    elif n_dialogues == 'full':
+    elif 'full' in n_dialogues:
         n_dialogues = str2val(n_dialogues, 'full', int, default=None)
         predict_wizards = lambda x: range(x)
     else:
@@ -118,7 +119,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
                 wizard_count = 0
                 chosen_topic_passage = [
                     data[dialogue_i]['chosen_topic'] + ': ' + ' '.join(data[dialogue_i]['chosen_topic_passage'])]
-                zero_knowledge = ['[PAD][PAD]'] * 10
+                zero_knowledge = ['[PAD][PAD]'] * max_knowledge
                 dialogue_knowledges = [zero_knowledge] * n_utterances_back
 
                 speakers = [d['speaker'] for d in data[dialogue_i]['dialog']]
@@ -173,6 +174,9 @@ def download(data_path, tokenizer_choice, n_dialogues):
                     # print('Knowledge:')
                     k_ids = [tokenize(k, tokenizer, tokenizer_choice)[-safe_max_len:] for k in knowledge]
                     knowledge_lengths = [len(k) for k in k_ids]
+                    if not len(knowledge_lengths) == 32:
+                        print(chosen_topic_passage)
+                        print(len(knowledge_lengths))
                     knowledges.append(k_ids)
 
                     # print('Knowledge id:')
@@ -200,9 +204,11 @@ def download(data_path, tokenizer_choice, n_dialogues):
             large_df = large_df.append(df)
             data_lists = {'targets': targets, 'contexts': contexts, 'choices': choices, 'knowledges': knowledges}
 
+            shuffled_indices = np.random.choice(l_0, l_0, replace=False)
+
             with h5py.File(h5_path, 'w') as f:
                 for k, v in data_lists.items():
-                    f.create_dataset(k, data=v)
+                    f.create_dataset(k, data=v[shuffled_indices][::reduce_data_by])
 
     if large_df.shape[0] == 5:
         print(large_df)
