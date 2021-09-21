@@ -128,10 +128,8 @@ def perplexity(y_true, y_pred):
 
 
 def masked_sparse_crossentropy(mask_value):
-    # mask_value = K.variable(mask_value)
     def masked_xent(y_true, y_pred):
         # find out which timesteps in `y_true` are not the padding character '#'
-        print(y_true)
         mask = K.equal(y_true, mask_value)
         mask = 1 - K.cast(mask, K.floatx())
 

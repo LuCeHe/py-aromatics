@@ -125,18 +125,17 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True):
     # Fix the seed of all random number generator
     random.seed(seed)
     np.random.seed(seed)
+    tf.random.set_seed(seed)
 
     if prove_seed:
         print(np.random.rand())
-    if tf.__version__[0] == '2':
-        tf.random.set_seed(seed)
-    else:
-        tf.random.set_random_seed(seed)
 
     config = tf.compat.v1.ConfigProto(
         intra_op_parallelism_threads=1,
         inter_op_parallelism_threads=1,
-        device_count={'CPU': 1})
+        device_count={'CPU': 1}
+    )
+
     if disableGpuMemPrealloc:
         config.gpu_options.allow_growth = True
     # K.clear_session()

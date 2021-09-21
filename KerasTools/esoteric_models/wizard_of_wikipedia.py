@@ -3,6 +3,7 @@
 # that was originally written in PyTorch in the ParlAI library
 # https://gitlab.ilabt.imec.be/ahadifar/google-research/-/blob/16a8f847718f1ad824eb16680caabb7a79ae8411/dialogue_ope/airdialogue_model_transformer/models/modules.py
 # https://github.com/facebookresearch/ParlAI/tree/main/projects/wizard_of_wikipedia
+
 from parlai.agents.transformer.modules import TransformerEncoder as pt_TransformerEncoder
 from projects.wizard_of_wikipedia.generator.modules import ContextKnowledgeDecoder as pt_ContextKnowledgeDecoder
 from projects.wizard_of_wikipedia.generator.modules import ContextKnowledgeEncoder as pt_ContextKnowledgeEncoder
