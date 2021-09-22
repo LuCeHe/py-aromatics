@@ -16,7 +16,6 @@ from GenericTools.KerasTools.esoteric_layers.random_switch import RandomSwitch
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerDecoder as tf_TransformerDecoder
 from GenericTools.KerasTools.esoteric_models.transformer import create_padding_mask, create_look_ahead_mask
-from GenericTools.LeanguageTreatmentTools.random_language import random_indices
 
 
 def metrics_wow(num_classes, mask_value):
@@ -155,7 +154,7 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
         koh = tf.squeeze(tf.one_hot(tf.cast(knowledge, tf.int32), K), 1)
 
         # FIXME: knowledge_dropout will cause probs with cs_mask
-        # koh = self.knowledge_dropout(koh)
+        koh = self.knowledge_dropout(koh)
         know_encoded = tf.reshape(know_encoded, (batch_size, K, Tk, self.d_model))
         knw_mask = tf.reshape(knw_mask, (batch_size, K, Tk))
 
@@ -312,6 +311,51 @@ def quick_test():
         'SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         metrics=metrics_wow(num_classes=vocab_size, mask_value=pad_idx))
     model.fit(input_tensors, tgt_tokens, epochs=2, steps_per_epoch=1)
+
+
+def long_test():
+    from GenericTools.LeanguageTreatmentTools.random_language import random_indices
+    from GenericTools.KerasTools.esoteric_optimizers.optimizer_selection import get_optimizer
+    from GenericTools.KerasTools.esoteric_tasks.wizard_of_wikipedia import WikipediaWizardGenerator
+
+    max_knowledge = 32
+    batch_size = 8
+    n_dialogues = 'full'  # -1 100 random
+    epochs = 1
+    steps_per_epoch = None
+    seed = 4
+    vocab_size = int(3e4)
+    tokenizer_choice = 'bpe'
+    rate = .1
+
+    encoder_maxlen = 128
+    decoder_maxlen = 16
+
+    gen_train = WikipediaWizardGenerator(
+        data_path=DATAPATH, n_dialogues=n_dialogues, batch_size=batch_size, steps_per_epoch=steps_per_epoch,
+        encoder_maxlen=encoder_maxlen, decoder_maxlen=decoder_maxlen, epochs=epochs, tokenizer_choice=tokenizer_choice,
+        data_split='train')
+    gen_val = WikipediaWizardGenerator(
+        data_path=DATAPATH, n_dialogues=n_dialogues, batch_size=batch_size, steps_per_epoch=steps_per_epoch,
+        encoder_maxlen=encoder_maxlen, decoder_maxlen=decoder_maxlen, tokenizer_choice=tokenizer_choice,
+        data_split='valid_random_split')
+    pad_idx = gen_train.pad_idx
+
+    model = EndToEndModel(
+        max_knowledge=max_knowledge, input_vocab_size=vocab_size, target_vocab_size=vocab_size, pad_idx=pad_idx,
+        encoder_maxlen=encoder_maxlen, decoder_maxlen=decoder_maxlen, rate=rate)
+    model.summary()
+    optimizer = get_optimizer(
+        'Adam', .0005, lr_schedule='cosine_no_restarts',
+        total_steps=gen_train.epochs, clipnorm=.1,
+        warmup_steps=gen_train.steps_per_epoch
+    )
+    model.compile(
+        optimizer,
+        masked_sparse_crossentropy(mask_value=pad_idx),
+        metrics=metrics_wow(num_classes=vocab_size, mask_value=pad_idx)
+    )
+    model.fit(gen_train, epochs=gen_train.epochs, validation_data=gen_val)
 
 
 if __name__ == '__main__':
