@@ -73,6 +73,7 @@ class HF_ModelUpgrade(TFGenerationMixin):
         return 0
 
     def generate(self, fixed_length_input=False, **kwargs):
+        kwargs['input_ids'] = tf.cast(kwargs['input_ids'], tf.int32)
         self.curDim = 0
         self.fixed_length_input = fixed_length_input
         self.__dict__.update(kwargs)
