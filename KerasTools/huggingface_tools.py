@@ -60,7 +60,7 @@ class HF_ModelUpgrade(TFGenerationMixin):
             print(input_ids)
             print(start_ids)
             start_ids = tf.concat([input_ids, start_ids], axis=1)
-            input_ids = start_ids
+            input_ids = tf.cast(start_ids, tf.int32)
         prediction = self.model(encoder_inputs + [input_ids])
 
         if self.fixed_length_input:
