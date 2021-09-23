@@ -57,11 +57,8 @@ class HF_ModelUpgrade(TFGenerationMixin):
         if self.fixed_length_input:
             b = input_ids.shape[0]
             start_ids = tf.cast(self.config.bos_token_id * tf.ones((b, self.max_length - self.curDim)), input_ids.dtype)
-            print(input_ids)
-            print(start_ids)
             start_ids = tf.concat([input_ids, start_ids], axis=1)
             input_ids = tf.cast(start_ids, tf.int32)
-            print(input_ids)
         prediction = self.model(encoder_inputs + [input_ids])
 
         if self.fixed_length_input:
