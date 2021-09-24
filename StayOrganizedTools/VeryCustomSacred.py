@@ -102,14 +102,14 @@ def remove_folder(folder_path):
     shutil.rmtree(folder_path, ignore_errors=True)
 
 
-def summarize(track_params=[]):
-    CDIR = os.path.dirname(os.path.realpath(__file__))
-    CDIR = os.path.abspath(os.path.join(*[CDIR, '..', ]))
+def summarize(CDIR, track_params=[]):
+    # CDIR = os.path.dirname(os.path.realpath(__file__))
+    # CDIR = os.path.abspath(os.path.join(*[CDIR, '..', ]))
     EXPERIMENTS = os.path.join(*[CDIR, 'experiments'])
 
     time_string = timeStructured()
 
-    summary_file = os.path.join(*[EXPERIMENTS, time_string + '_summary_slurms.txt'])
+    summary_file = os.path.join(EXPERIMENTS, time_string + '_summary_slurms.txt')
 
     ds = [d for d in os.listdir(CDIR) if 'slurm' in d]
     ds = sorted(ds)
