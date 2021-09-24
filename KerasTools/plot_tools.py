@@ -23,7 +23,7 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
             keys.extend(list(h.history.keys()))
 
         keys = list(set(keys))
-        keys = [k for k in keys if not 'val' in k]
+        keys = sorted([k for k in keys if not 'val' in k])
 
         if metrics_to_show:
             keys = [k for k in keys if k in metrics_to_show]
