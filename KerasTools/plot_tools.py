@@ -4,7 +4,7 @@ import numpy as np
 
 
 def plot_history(histories, plot_filename, epochs, method_names=None, save=True, show=False, bkg_color='white',
-                 metrics_to_show=[], column_id=[], colors=None, figsize=None, ylims=None):
+                 metrics_to_show=[], column_id=[], colors=None, figsize=None, ylims={}):
     if not isinstance(histories, list): histories = [histories]
     if isinstance(histories[0], dict):
         old_histories = histories

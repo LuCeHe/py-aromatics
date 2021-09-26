@@ -94,6 +94,7 @@ def ChooseGPU(GPU=None, memory_growth=True):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(GPU)
         config = tf.compat.v1.ConfigProto()  # tf.ConfigProto()
         config.gpu_options.allow_growth = True
+
         sess = tf.compat.v1.Session(config=config)  # tf.Session(config=config)
 
 

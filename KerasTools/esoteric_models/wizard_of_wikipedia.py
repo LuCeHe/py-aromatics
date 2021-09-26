@@ -75,7 +75,7 @@ class UniversalSentenceEmbedding(tf.keras.layers.Layer):
 class KnowledgeDropout(tf.keras.layers.Layer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.random_switch = RandomSwitch([.6, .31, .09])
+        self.random_switch = RandomSwitch([.8, .1, .1])
 
     def call(self, inputs, *args, **kwargs):
         koh = inputs
