@@ -10,7 +10,10 @@ class AddLossLayer(tf.keras.layers.Layer):
         try:
             self.loss_name = self.loss.name
         except:
-            self.loss_name = self.loss.__name__
+            try:
+                self.loss_name = self.loss.__name__
+            except:
+                self.loss_name = str(loss)
 
     def call(self, inputs, training=None):
         true_output, pred_output = inputs

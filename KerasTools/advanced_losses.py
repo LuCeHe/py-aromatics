@@ -4,7 +4,6 @@ import tensorflow as tf
 from scipy.ndimage import distance_transform_edt as distance
 import tensorflow_addons as tfa
 
-
 """
 sources:
 https://github.com/LIVIAETS/surface-loss/issues/14#issuecomment-546342163
@@ -186,6 +185,29 @@ def sparse_f1_on_max(num_classes):
     return sparse_f1_on_max
 
 
+def masked_f1_on_max(num_classes, mask_value):
+    def masked_f1_on_max(y_true, y_pred):
+        mask = 1-tf.cast(K.equal(y_true, mask_value), tf.float32)
+        mask = tf.expand_dims(mask, -1)
+
+        max_pred = tf.argmax(y_pred, -1)
+        y_true = tf.cast(y_true, tf.int32)
+        oh_true = tf.one_hot(y_true, depth=num_classes)
+        oh_pred = tf.one_hot(max_pred, depth=num_classes)
+
+        TP = tf.math.count_nonzero(oh_pred * oh_true * mask)
+        FP = tf.math.count_nonzero(oh_pred * (oh_true - 1) * mask)
+        FN = tf.math.count_nonzero((oh_pred - 1) * oh_true * mask)
+
+        precision = TP / (TP + FP)
+        recall = TP / (TP + FN)
+        f1 = 2 * precision * recall / (precision + recall)
+
+        return f1
+
+    return masked_f1_on_max
+
+
 def sparse_f1(num_classes):
     def score(y_true, y_pred):
         # num_classes = tf.shape(y_pred)[-1]
@@ -200,14 +222,15 @@ def sparse_f1(num_classes):
 if __name__ == '__main__':
     from GenericTools.LeanguageTreatmentTools.random_language import random_indices
 
-    vocab_size = 300
+    vocab_size = 10
     pad_idx = 7
-    batch_size = 4
-    maxlen = 7
+    batch_size = 2
+    maxlen = 3
     y_true = random_indices(vocab_size, batch_size=batch_size, maxlen=maxlen, pad_idx=pad_idx)
     print(y_true)
     y_pred = tf.random.uniform((batch_size, maxlen, vocab_size))
     print(y_pred.shape)
 
-    loss = masked_sparse_crossentropy(mask_value=pad_idx)(y_true, y_pred)
+    # loss = masked_sparse_crossentropy(mask_value=pad_idx)(y_true, y_pred)
+    loss = masked_f1_on_max(num_classes=vocab_size, mask_value=pad_idx)(y_true, y_pred)
     print(loss)

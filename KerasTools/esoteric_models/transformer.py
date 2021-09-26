@@ -351,9 +351,18 @@ class TransformerDecoder(tf.keras.layers.Layer):
 
 
 class GPT(tf.keras.layers.Layer):
+    def get_config(self):
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(self.init_args.items()))
+
     def __init__(self, num_layers, d_model, num_heads, dff, target_vocab_size,
-                 maximum_position_encoding, pad_idx, rate=0.1):
-        super().__init__()
+                 maximum_position_encoding, pad_idx, rate=0.1, **kwargs):
+        super().__init__(**kwargs)
+
+        self.init_args = dict(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
+                              target_vocab_size=target_vocab_size, maximum_position_encoding=maximum_position_encoding,
+                              rate=rate, pad_idx=pad_idx)
+
 
         self.d_model = d_model
         self.num_layers = num_layers
