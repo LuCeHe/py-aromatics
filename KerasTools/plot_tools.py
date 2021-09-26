@@ -4,7 +4,7 @@ import numpy as np
 
 
 def plot_history(histories, plot_filename, epochs, method_names=None, save=True, show=False, bkg_color='white',
-                 metrics_to_show=[], column_id=[], colors=None, figsize=None):
+                 metrics_to_show=[], column_id=[], colors=None, figsize=None, ylims=None):
     if not isinstance(histories, list): histories = [histories]
     if isinstance(histories[0], dict):
         old_histories = histories
@@ -61,8 +61,12 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
                         line, = ax.plot(history.history[k], label=k, color=c, linestyle='--')
                         if method_names is None:
                             ax.legend()
+
                 if column == 0:
                     ax.set_ylabel(k.replace('_', '\n'))
+
+                if k in ylims:
+                    ax.set_ylim(*ylims[k])
 
             lines.append(line)
             ax.set_xlabel('epoch')
