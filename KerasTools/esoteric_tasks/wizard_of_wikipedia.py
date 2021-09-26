@@ -50,6 +50,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
     else:
         raise NotImplementedError
 
+
     assert tokenizer_choice in ['bpe', 'gpt2']
     tokenizer_path = os.path.join(DATADESTINATION, 'tokenizer-{}.json'.format(tokenizer_choice))
 
