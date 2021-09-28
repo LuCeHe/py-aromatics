@@ -316,7 +316,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
         self.random_indices = np.random.choice(n_samples, n_samples, replace=False)
 
         if self.steps_per_epoch == None:
-            self.steps_per_epoch = 2 #int(n_samples / self.batch_size)
+            self.steps_per_epoch = int(n_samples / self.batch_size)
 
     def data_generation(self, index=None):
         if index is None:
