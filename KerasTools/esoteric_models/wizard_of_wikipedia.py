@@ -21,7 +21,7 @@ from GenericTools.KerasTools.esoteric_models.transformer import create_padding_m
 def metrics_wow(num_classes, mask_value):
     metrics = [
         # sparse_perplexity,
-        sparse_f1_on_max(num_classes),
+        # sparse_f1_on_max(num_classes),
         masked_sparse_crossentropy(mask_value),
         masked_sparse_perplexity(mask_value),
         masked_f1_on_max(num_classes, mask_value),
