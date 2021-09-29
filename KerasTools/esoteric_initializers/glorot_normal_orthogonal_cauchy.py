@@ -1,13 +1,7 @@
 import math
 import numpy as np
 
-from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import gen_linalg_ops
-from tensorflow.python.ops import math_ops
 import tensorflow as tf
-from tensorflow.python.keras.initializers.initializers_v2 import _compute_fans, _RandomGenerator, _validate_kwargs, \
-    _assert_float_dtype, _get_dtype
-
 import tensorflow_probability as tfp
 
 tfd = tfp.distributions
@@ -23,16 +17,18 @@ def orthogonalize(initial_initializer):
     num_cols = shape[-1]
     flat_shape = (max(num_cols, num_rows), min(num_cols, num_rows))
 
-    a = array_ops.reshape(initial_initializer, flat_shape)
+    a = tf.reshape(initial_initializer, flat_shape)
     # Compute the qr factorization
-    q, r = gen_linalg_ops.qr(a, full_matrices=False)
+    q, r = tf.linalg.qr(a, full_matrices=False)
     # Make Q uniform
-    d = array_ops.tensor_diag_part(r)
-    q *= math_ops.sign(d)
+    d = tf.linalg.tensor_diag_part(r)
+    q *= tf.sign(d)
     if num_rows < num_cols:
-        q = array_ops.matrix_transpose(q)
-    orthogonal_initializer = array_ops.reshape(q, shape)
+        q = tf.linalg.matrix_transpose(q)
+    orthogonal_initializer = tf.reshape(q, shape)
     return orthogonal_initializer
+
+
 
 
 class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
@@ -71,7 +67,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
         self.distribution = distribution
         self.orthogonalize = orthogonalize
         self.seed = seed
-        self._random_generator = _RandomGenerator(seed)
+        self._random_generator = tf.random.Generator.from_seed(seed)
 
     def __call__(self, shape, dtype=None, **kwargs):
         """Returns a tensor object initialized as specified by the initializer.
@@ -84,8 +80,8 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
             `tf.keras.backend.set_floatx(float_dtype)`)
           **kwargs: Additional keyword arguments.
         """
-        _validate_kwargs(self.__class__.__name__, kwargs)
-        dtype = _assert_float_dtype(_get_dtype(dtype))
+        # _validate_kwargs(self.__class__.__name__, kwargs)
+        # dtype = _assert_float_dtype(_get_dtype(dtype))
         scale = self.scale
         fan_in, fan_out = _compute_fans(shape)
         if _PARTITION_SHAPE in kwargs:
