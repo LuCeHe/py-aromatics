@@ -8,6 +8,7 @@ class DummyConstantSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
         self.initial_learning_rate = initial_learning_rate
 
     def __call__(self, step):
+        step = tf.cast(step, tf.float32)
         return self.initial_learning_rate * tf.ones_like(step)
 
     def get_config(self):

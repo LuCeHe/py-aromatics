@@ -4,7 +4,7 @@ import tensorflow as tf
 class ContrastiveLossLayer(tf.keras.layers.Layer):
 
     def __init__(self, coef_disorder=.1, coef_random=.1, n_random=1,
-                 loss=tf.keras.losses.CategoricalCrossentropy(), **kwargs):
+                 loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), **kwargs):
         super().__init__(**kwargs)
         self.initial_coef_disorder = coef_disorder
         self.initial_coef_random = coef_random
@@ -52,7 +52,9 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
 
             # splits = tf.split(original_sentences, 2, axis=1)
             disordered_sentences = tf.concat([splits[1], splits[0]], axis=1)
-
+            # disordered_sentences = tf.argmax(disordered_sentences, axis=-1)
+            # print(disordered_sentences.shape)
+            # print(probs.shape)
             cl_d = - self.coef_disorder * self.loss(disordered_sentences, probs)
             self.add_loss(cl_d)
             self.add_metric(cl_d, name='contrastive_disorder', aggregation='mean')
@@ -61,8 +63,8 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
             for i in range(self.n_random):
                 if 'categorical' in self.loss.name:
                     p = tf.tile((1 / vocab_size)[None, None], [batch_size, vocab_size])
-                    ps = tf.random.categorical(tf.math.log(p), seq_len)
-                    random_words = tf.one_hot(ps, vocab_size)
+                    random_words = tf.random.categorical(tf.math.log(p), seq_len)
+                    # random_words = tf.one_hot(ps, vocab_size)
                 else:
                     std = tf.math.reduce_std(output_words)
                     random_words = std * tf.random.normal(shape=tf.shape(probs))

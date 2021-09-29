@@ -15,8 +15,8 @@ def get_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_d
         learning_rate = tf.keras.experimental.CosineDecayRestarts(learning_rate,
                                                                   first_decay_steps=int(total_steps / 6.5), alpha=.1)
     else:
-        # learning_rate = DummyConstantSchedule(learning_rate)
-        pass
+        learning_rate = DummyConstantSchedule(learning_rate)
+        # pass
 
     if 'warmup' in lr_schedule:
         if warmup_steps is None:

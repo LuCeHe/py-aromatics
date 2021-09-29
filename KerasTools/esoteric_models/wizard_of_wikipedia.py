@@ -10,8 +10,7 @@
 from tensorflow.keras.layers import *
 import tensorflow as tf
 
-from GenericTools.KerasTools.advanced_losses import sparse_f1_on_max, masked_sparse_crossentropy, \
-    masked_sparse_perplexity, masked_f1_on_max
+from GenericTools.KerasTools.advanced_losses import *
 from GenericTools.KerasTools.esoteric_layers.random_switch import RandomSwitch
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerDecoder as tf_TransformerDecoder
@@ -20,7 +19,7 @@ from GenericTools.KerasTools.esoteric_models.transformer import create_padding_m
 
 def metrics_wow(num_classes, mask_value):
     metrics = [
-        # sparse_perplexity,
+        sparse_perplexity,
         # sparse_f1_on_max(num_classes),
         masked_sparse_crossentropy(mask_value),
         masked_sparse_perplexity(mask_value),

@@ -75,8 +75,13 @@ def zeros_categorical_accuracy(y_true, y_pred):
     return n_right / n_tot
 
 
-def bpc(y_true, y_pred):
+def oh_bpc(y_true, y_pred):
     mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
+    bits_per_character = mean_xent / tf.math.log(2.)
+    return bits_per_character
+
+def bpc(y_true, y_pred):
+    mean_xent = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(y_true, y_pred)
     bits_per_character = mean_xent / tf.math.log(2.)
     return bits_per_character
 
@@ -120,11 +125,17 @@ def bound_c(y_true, y_pred):
     return bound
 
 
-def perplexity(y_true, y_pred):
+def oh_perplexity(y_true, y_pred):
     mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
     p = tf.exp(mean_xent)
     return p
 
+
+
+def perplexity(y_true, y_pred):
+    mean_xent = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(y_true, y_pred)
+    p = tf.exp(mean_xent)
+    return p
 
 def masked_sparse_crossentropy(mask_value):
     def masked_xent(y_true, y_pred):
