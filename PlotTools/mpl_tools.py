@@ -72,7 +72,7 @@ def load_plot_settings(mpl=None, pd=None, figsize=(6, 6)):
     if not pd is None:
         pd.set_option('display.max_columns', None)
         pd.set_option('max_colwidth', 1)
-        pd.set_option('precision', 4)
+        pd.set_option('precision', 2)
         pd.options.display.width = 500
         # pd.set_option('display.float_format', lambda x: '%.6f' % x)
         # pd.options.display.max_colwidth = 16
