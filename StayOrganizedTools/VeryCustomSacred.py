@@ -58,8 +58,7 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10, ingredie
     basic_folders = ['data', 'experiments', 'good_experiments']
     for path in basic_folders:
         complete_path = os.path.join(base_dir, path)
-        if not os.path.isdir(complete_path):
-            os.mkdir(complete_path)
+        os.makedirs(complete_path, exist_ok=True)
 
     gitignore_path = os.path.join(base_dir, '.gitignore')
     if not os.path.isfile(gitignore_path):
