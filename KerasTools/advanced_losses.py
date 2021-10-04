@@ -49,6 +49,15 @@ def mode_accuracy(y_true, y_pred):
     acc = tf.reduce_mean(equal)
     return acc
 
+def sparse_mode_accuracy(y_true, y_pred):
+    vocab = tf.shape(y_pred)[-1]
+    y_true = tf.one_hot(tf.cast(y_true, tf.int32), vocab)
+    true = tf.cast(tf.argmax(tf.reduce_sum(y_true, axis=1), axis=1), tf.float32)
+    pred = tf.cast(tf.argmax(tf.reduce_sum(y_pred, axis=1), axis=1), tf.float32)
+    equal = tf.cast(tf.math.equal(pred, true), tf.float32)
+    acc = tf.reduce_mean(equal)
+    return acc
+
 
 def second_half(tensor):
     time_steps = tf.shape(tensor)[1]
@@ -73,7 +82,6 @@ def zeros_categorical_accuracy(y_true, y_pred):
     new_t = y_true * tf.one_hot(tf.math.argmax(y_pred, axis=2), depth=depth)
     n_right = tf.reduce_sum(new_t, axis=[1, 2])
     return n_right / n_tot
-
 
 def oh_bpc(y_true, y_pred):
     mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
