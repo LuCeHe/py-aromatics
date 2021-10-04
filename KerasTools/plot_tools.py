@@ -4,7 +4,7 @@ import numpy as np
 
 
 def plot_history(histories, plot_filename, epochs, method_names=None, save=True, show=False, bkg_color='white',
-                 metrics_to_show=[], column_id=[], colors=None, figsize=None, ylims={}):
+                 metrics_to_show=[], column_id=[], colors=None, figsize=None, ylims={}, vertical=True, legend=True):
     if not isinstance(histories, list): histories = [histories]
     if isinstance(histories[0], dict):
         old_histories = histories
@@ -28,10 +28,18 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
         if metrics_to_show:
             keys = [k for k in keys if k in metrics_to_show]
 
-        n_columns = len(column_id) if not len(column_id) == 0 else 1
+
+        if vertical:
+            n_columns = len(column_id) if not len(column_id) == 0 else 1
+            n_rows = len(keys)
+        else:
+            n_columns = len(keys)
+            n_rows = len(column_id) if not len(column_id) == 0 else 1
+
+        print(n_rows, n_columns)
         if figsize is None:
             figsize = (20, 5) if n_columns > 1 else (5, 20)
-        fig, axs = plt.subplots(len(keys), n_columns, figsize=figsize, gridspec_kw={'hspace': 0})
+        fig, axs = plt.subplots(n_rows, n_columns, figsize=figsize, gridspec_kw={'hspace': 0})
         axs = axs if type(axs) is np.ndarray else [axs]
 
         if colors is None:
@@ -72,9 +80,9 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
             ax.set_xlabel('epoch')
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-        fig.align_ylabels(axs[:, 0] if n_columns > 1 else axs[:])
+        # fig.align_ylabels(axs[:, 0] if n_columns > 1 else axs[:])
 
-        if not method_names is None:
+        if not method_names is None and legend:
             ax.legend(lines, method_names)
 
         if save:
