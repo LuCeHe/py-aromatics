@@ -115,6 +115,7 @@ def summarize(CDIR, track_params=[]):
     ds = sorted(ds)
     print(ds)
 
+    last_lines = []
     for d in tqdm(ds):
         update = False
         d_path = os.path.join(*[CDIR, d])
@@ -172,3 +173,17 @@ def summarize(CDIR, track_params=[]):
         f.write(last_line)
         f.write('\n\n')
         f.close()
+        last_lines.append(last_line)
+
+    import numpy as np
+    unique_last_lines, indices = np.unique(last_lines, return_index=True)
+    unique_outs = np.array(ds)[indices]
+    f = open(summary_file, "a")
+    f.write('\n\n')
+    f.write('\n       Unique Errors/Results\n')
+
+    for d, ll in zip(unique_outs, unique_last_lines):
+        f.write('\n' + d)
+        f.write(ll)
+
+    f.close()
