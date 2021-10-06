@@ -176,14 +176,14 @@ def summarize(CDIR, track_params=[]):
         last_lines.append(previous_line)
 
     import numpy as np
-    unique_last_lines, indices = np.unique(last_lines, return_index=True)
+    unique_last_lines, indices, counts = np.unique(last_lines, return_index=True, return_counts=True)
     unique_outs = np.array(ds)[indices]
     f = open(summary_file, "a")
     f.write('\n\n')
     f.write('\n       Unique Errors/Results\n')
 
-    for d, ll in zip(unique_outs, unique_last_lines):
-        f.write('\n' + d)
-        f.write(ll)
+    for d, ll, c in zip(unique_outs, unique_last_lines, counts):
+        f.write('\n{}  x{}'.format(d, c))
+        f.write('\n' + ll)
 
     f.close()
