@@ -3,6 +3,7 @@ import numpy as np
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow.python.keras.initializers.initializers_v2 import _RandomGenerator, _compute_fans
 
 tfd = tfp.distributions
 _PARTITION_SHAPE = 'partition_shape'
@@ -27,8 +28,6 @@ def orthogonalize(initial_initializer):
         q = tf.linalg.matrix_transpose(q)
     orthogonal_initializer = tf.reshape(q, shape)
     return orthogonal_initializer
-
-
 
 
 class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
@@ -57,7 +56,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
         if distribution == 'normal':
             distribution = 'truncated_normal'
         distributions_possible = ['uniform', 'truncated_normal', 'untruncated_normal', 'bi_gamma', 'bi_gamma_10',
-                                  'tanh_normal', 'cauchy']
+                                  'tanh_normal', 'cauchy', 'nozero_uniform']
         tanh_distributions = ['tanh_' + d for d in distributions_possible]
         distributions_possible.extend(tanh_distributions)
         if distribution not in distributions_possible:
@@ -67,9 +66,9 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
         self.distribution = distribution
         self.orthogonalize = orthogonalize
         self.seed = seed
-        self._random_generator = tf.random.Generator.from_seed(seed)
+        self._random_generator = _RandomGenerator(seed)
 
-    def __call__(self, shape, dtype=None, **kwargs):
+    def __call__(self, shape, dtype=tf.float32, **kwargs):
         """Returns a tensor object initialized as specified by the initializer.
 
         Args:
@@ -82,6 +81,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
         """
         # _validate_kwargs(self.__class__.__name__, kwargs)
         # dtype = _assert_float_dtype(_get_dtype(dtype))
+
         scale = self.scale
         fan_in, fan_out = _compute_fans(shape)
         if _PARTITION_SHAPE in kwargs:
@@ -122,6 +122,14 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
             dist = tfd.Cauchy(loc=0., scale=1.)
             stddev = math.sqrt(scale) / 2
             distribution = stddev * dist.sample(shape)
+
+        elif 'nozero_uniform' in self.distribution:
+            stddev = math.sqrt(3.0 * scale)
+            dist = tfd.Uniform(low=[-1.0, .25], high=[-.25, 1])
+            distribution = stddev * dist.sample(shape)
+            distribution = tf.reshape(distribution, (-1))
+            distribution = tf.random.shuffle(distribution)
+            distribution = tf.reshape(distribution, (*shape, 2))[..., 0]
 
         else:
             stddev = math.sqrt(3.0 * scale)
@@ -191,15 +199,29 @@ class GlorotOrthogonal(MoreVarianceScalingAndOrthogonal):
         super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed, orthogonalize=orthogonalize)
 
 
+class NoZeroGlorotOrthogonal(MoreVarianceScalingAndOrthogonal):
+    def __init__(self, scale=1.0, mode='fan_avg', distribution='nozero_uniform', orthogonalize=True, seed=None):
+        super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed, orthogonalize=orthogonalize)
+
+
+class NoZeroGlorot(MoreVarianceScalingAndOrthogonal):
+    def __init__(self, scale=1.0, mode='fan_avg', distribution='nozero_uniform', orthogonalize=False, seed=None):
+        super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed, orthogonalize=orthogonalize)
+
+
 if __name__ == '__main__':
     initializer = MoreVarianceScalingAndOrthogonal(
         scale=1.0,
         mode='fan_avg',
-        distribution='tanh_bi_gamma',
+        distribution='uniform',  # 'tanh_bi_gamma',
         orthogonalize=True,
-        seed=None)
+        seed=None
+    )
 
-    t = initializer((2, 3000)).numpy()
+    shape = (200, 30)
+    initializer = NoZeroGlorotOrthogonal()
+    t = initializer(shape).numpy()
+    print(t.shape)
 
     product = np.abs(np.dot(t, t.T))
     np.fill_diagonal(product, 0)

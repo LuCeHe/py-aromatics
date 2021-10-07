@@ -1,11 +1,12 @@
 import sys, inspect
 from GenericTools.KerasTools.esoteric_initializers.glorot_normal_orthogonal_cauchy import *
-from tensorflow.keras.initializers import *
+
+# from tensorflow.keras.initializers import *
 
 esoteric_initializers_list = [
-    'BiGamma', 'BiGamma10', 'BiGammaOrthogonal', 'CauchyOrthogonal', 'GlorotCauchyOrthogonal', 'GlorotOrthogonal',
-    'GlorotTanh', 'MoreVarianceScalingAndOrthogonal', 'TanhBiGamma10', 'TanhBiGamma10Orthogonal',
-    'GlorotBiGammaOrthogonal', 'GlorotBiGamma'
+    'BiGamma', 'BiGamma10', 'BiGammaOrthogonal', 'CauchyOrthogonal', 'GlorotBiGamma', 'GlorotBiGammaOrthogonal',
+    'GlorotCauchyOrthogonal', 'GlorotOrthogonal', 'GlorotTanh', 'MoreVarianceScalingAndOrthogonal', 'NoZeroGlorot',
+    'NoZeroGlorotOrthogonal', 'TanhBiGamma10', 'TanhBiGamma10Orthogonal'
 ]
 
 
@@ -13,13 +14,11 @@ def print_classes():
     cls = ''
     for name, obj in inspect.getmembers(sys.modules[__name__]):
         if inspect.isclass(obj):
-            cls += name + ','
-            print(name)
+            cls += name + "','"
     print(cls)
 
 
 # print_classes()
-
 
 thismodule = sys.modules[__name__]
 
