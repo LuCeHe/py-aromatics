@@ -47,7 +47,7 @@ class Multiple:
         return plt.FuncFormatter(multiple_formatter(self.denominator, self.number, self.latex))
 
 
-def load_plot_settings(mpl=None, pd=None, figsize=(6, 6)):
+def load_plot_settings(mpl=None, pd=None, figsize=(10, 10)):
     output = ()
     if not mpl is None:
         mpl.rcParams['font.family'] = 'serif'
