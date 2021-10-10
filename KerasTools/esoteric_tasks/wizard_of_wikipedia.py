@@ -144,12 +144,12 @@ def download(data_path, tokenizer_choice, n_dialogues):
                         wizard_count += 1
                         target = d['text']
 
-                        print('Target: ', target)
+                        # print('Target:  ', target)
                         output = tokenize(target, tokenizer, tokenizer_choice)
                         target_length = len(output)
                         targets.append(output[:safe_max_len])
 
-                        print('Context: ', context)
+                        # print('Context: ', context)
                         output = tokenize(context, tokenizer, tokenizer_choice)
                         context_length = len(output)
                         contexts.append(output[-safe_max_len:])
