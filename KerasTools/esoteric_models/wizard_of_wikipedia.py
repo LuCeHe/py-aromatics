@@ -12,7 +12,7 @@ import tensorflow as tf
 
 from GenericTools.KerasTools.advanced_losses import *
 from GenericTools.KerasTools.esoteric_layers.random_switch import RandomSwitch
-from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder
+from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder, GPT
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerDecoder as tf_TransformerDecoder
 from GenericTools.KerasTools.esoteric_models.transformer import create_padding_mask, create_look_ahead_mask
 
@@ -243,6 +243,27 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
     model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
     return model
 
+
+
+
+def EndToEndModel_noKnowledge(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_size=int(5e4),
+                  target_vocab_size=int(5e4), encoder_maxlen=1024, decoder_maxlen=1024,
+                  rate=.1, max_knowledge=5, pad_idx=0, datapath=''):
+
+    ckd = GPT(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff, target_vocab_size=input_vocab_size,
+                 maximum_position_encoding=decoder_maxlen, pad_idx=pad_idx, rate=rate)
+    # ckd = tf_ContextKnowledgeDecoder(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
+    #                                  input_vocab_size=input_vocab_size, maximum_position_encoding=decoder_maxlen,
+    #                                  rate=rate, pad_idx=pad_idx)
+
+    src_tokens = Input((None,))
+    tgt_tokens = Input((None,))
+    know_tokens = Input((max_knowledge, None))
+    chosen_knowledge = Input((1,))
+
+    logits = ckd(tgt_tokens, output_type='embedding_projection')
+    model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
+    return model
 
 def switch_external_knowledge(model, state='on'):
     if state == 'on':

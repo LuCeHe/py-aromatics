@@ -34,7 +34,7 @@ def download(data_path, tokenizer_choice, n_dialogues):
     safe_max_len = 256 if 'full' in n_dialogues else 512
     n_utterances_back = 4
     max_knowledge = 32
-    train_ratio = .8
+    train_ratio = .9
     DATAPATH = data_path
     DATADESTINATION = os.path.join(DATAPATH, tokenizer_choice)
     os.makedirs(DATADESTINATION, exist_ok=True)
@@ -206,12 +206,12 @@ def download(data_path, tokenizer_choice, n_dialogues):
             large_df = large_df.append(df)
             data_lists = {'targets': targets, 'contexts': contexts, 'choices': choices, 'knowledges': knowledges}
 
-            shuffled_indices = np.random.choice(l_0, l_0, replace=False)
+            # shuffled_indices = np.random.choice(l_0, l_0, replace=False)
 
             with h5py.File(h5_path, 'w') as f:
                 upto = None if not 'train' in h5_path else int(train_ratio * l_0)
                 for k, v in data_lists.items():
-                    f.create_dataset(k, data=v[shuffled_indices][:upto])
+                    f.create_dataset(k, data=v[:upto])
 
     if large_df.shape[0] == 5:
         print(large_df)
@@ -266,6 +266,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             data_path=None,
             tokenizer_choice='bpe',
             n_dialogues=-1,
+            shuffle=True,
     ):
         DATADESTINATION = os.path.join(data_path, tokenizer_choice)
 
@@ -278,7 +279,7 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             data_split=data_split,
             data_path=DATADESTINATION,
             tokenizer_choice=tokenizer_choice,
-            n_dialogues=n_dialogues,
+            n_dialogues=n_dialogues, shuffle=shuffle,
         )
 
         assert data_split in split_names
@@ -313,7 +314,8 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
                                '{}_{}_{}.h5'.format(self.data_split, self.tokenizer_choice, self.n_dialogues))
         self.data = h5py.File(h5_path, 'r')
         n_samples = len(self.data['choices'])
-        self.random_indices = np.random.choice(n_samples, n_samples, replace=False)
+        self.random_indices = np.random.choice(n_samples, n_samples, replace=False) \
+            if self.shuffle else range(n_samples)
 
         if self.steps_per_epoch == None:
             self.steps_per_epoch = int(n_samples / self.batch_size)
@@ -323,7 +325,8 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
             index = np.random.randint(0, self.steps_per_epoch)
         batch_indices = self.random_indices[index * self.batch_size:(index + 1) * self.batch_size]
         batch_indices = sorted(batch_indices)
-        reshuffled_indices = np.random.choice(self.batch_size, self.batch_size, replace=False)
+        reshuffled_indices = np.random.choice(self.batch_size, self.batch_size, replace=False) \
+            if self.shuffle else range(self.batch_size)
 
         targets = self.data['targets'][batch_indices]
         targets = unpad_sequence(targets, padding='post', value=self.pad_idx)[reshuffled_indices]
