@@ -36,7 +36,6 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
             n_columns = len(keys)
             n_rows = len(column_id) if not len(column_id) == 0 else 1
 
-        print(n_rows, n_columns)
         if figsize is None:
             figsize = (20, 5) if n_columns > 1 else (5, 20)
         fig, axs = plt.subplots(n_rows, n_columns, figsize=figsize, gridspec_kw={'hspace': 0})

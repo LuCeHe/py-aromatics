@@ -34,22 +34,14 @@ def download(data_path, tokenizer_choice, n_dialogues):
     safe_max_len = 256 if 'full' in n_dialogues else 512
     n_utterances_back = 4
     max_knowledge = 32
-    train_ratio = .9
+    train_ratio = 1.
     DATAPATH = data_path
     DATADESTINATION = os.path.join(DATAPATH, tokenizer_choice)
     os.makedirs(DATADESTINATION, exist_ok=True)
 
     random_or_full = str(n_dialogues)
 
-    if 'random' in n_dialogues:
-        n_dialogues = str2val(n_dialogues, 'random', int, default=None)
-        predict_wizards = lambda x: [np.random.choice(x)]
-    elif 'full' in n_dialogues:
-        n_dialogues = str2val(n_dialogues, 'full', int, default=None)
-        predict_wizards = lambda x: range(x)
-    else:
-        raise NotImplementedError
-
+    n_dialogues = str2val(n_dialogues, 'full', int, default=None)
 
     assert tokenizer_choice in ['bpe', 'gpt2']
     tokenizer_path = os.path.join(DATADESTINATION, 'tokenizer-{}.json'.format(tokenizer_choice))
@@ -106,7 +98,6 @@ def download(data_path, tokenizer_choice, n_dialogues):
         data_json = os.path.join(DATAPATH, split_name + '.json')
 
         if not os.path.isfile(h5_path):
-            print(split_name)
             with open(data_json) as f:
                 data = json.load(f)
 
@@ -117,7 +108,6 @@ def download(data_path, tokenizer_choice, n_dialogues):
             for dialogue_i in tqdm(range(len(data))[:n_dialogues]):
                 # print('-' * 59, dialogue_i)
                 context = data[dialogue_i]['chosen_topic']
-                target = ''
                 wizard_count = 0
                 chosen_topic_passage = [
                     data[dialogue_i]['chosen_topic'] + ': ' + ' '.join(data[dialogue_i]['chosen_topic_passage'])]
@@ -126,68 +116,60 @@ def download(data_path, tokenizer_choice, n_dialogues):
 
                 speakers = [d['speaker'] for d in data[dialogue_i]['dialog']]
                 wizard_utterances = speakers.count('1_Wizard') + speakers.count('0_Wizard')
-                predict_wizard = predict_wizards(wizard_utterances)
+                for d in data[dialogue_i]['dialog']:
 
-                for predict_wizard_i in predict_wizard:
-                    for d in data[dialogue_i]['dialog']:
-                        # print('-' * 39)
-                        if 'Wizard' in d['speaker']:
-                            wizard_count += 1
-                            target = d['text']
+                    flattened_knowledges = [k for dk in dialogue_knowledges[-n_utterances_back:] for k in dk]
+                    knowledge = ['no passages used'] + chosen_topic_passage + flattened_knowledges + zero_knowledge
+                    knowledge = knowledge[:max_knowledge]  # [:16]
+                    random.shuffle(knowledge)
 
-                        flattened_knowledges = [k for dk in dialogue_knowledges[-n_utterances_back:] for k in dk]
-                        knowledge = ['no passages used'] + chosen_topic_passage + flattened_knowledges + zero_knowledge
-                        knowledge = knowledge[:max_knowledge]  # [:16]
-                        random.shuffle(knowledge)
+                    rp = [list(l.keys())[0] + ': ' + ' '.join(list(l.values())[0]) for l in d['retrieved_passages']]
+                    dialogue_knowledges.append(rp)
 
-                        rp = [list(l.keys())[0] + ': ' + ' '.join(list(l.values())[0]) for l in d['retrieved_passages']]
-                        dialogue_knowledges.append(rp)
+                    if 'checked_sentence' in d.keys():
+                        chosen = list(d['checked_sentence'].values())[0] \
+                            if not len(d['checked_sentence']) == 0 else 'no passages used'
+                        chosen_i = None
+                        for i, s in enumerate(knowledge):
+                            if chosen.replace('_', ' ') in s.replace('_', ' '):
+                                chosen_i = i
 
-                        if 'checked_sentence' in d.keys():
-                            chosen = list(d['checked_sentence'].values())[0] \
-                                if not len(d['checked_sentence']) == 0 else 'no passages used'
-                            chosen_i = None
-                            for i, s in enumerate(knowledge):
-                                if chosen.replace('_', ' ') in s.replace('_', ' '):
-                                    chosen_i = i
+                        try:
+                            assert not chosen_i is None
+                        except:
+                            chosen_not_found += 1
+                            chosen_i = knowledge.index('no passages used')
 
-                            try:
-                                assert not chosen_i is None
-                            except:
-                                chosen_not_found += 1
-                                chosen_i = knowledge.index('no passages used')
+                    if 'Wizard' in d['speaker']:
+                        wizard_count += 1
+                        target = d['text']
 
-                        if wizard_count > predict_wizard_i: break
-                        speaker = 'me' if 'Wizard' in d['speaker'] else 'you'
-                        context += ' {}: {}'.format(speaker, d['text'])
+                        print('Target: ', target)
+                        output = tokenize(target, tokenizer, tokenizer_choice)
+                        target_length = len(output)
+                        targets.append(output[:safe_max_len])
 
-                    # print(target)
-                    # print(context)
-                    # print('Target:')
-                    output = tokenize(target, tokenizer, tokenizer_choice)
-                    target_length = len(output)
-                    targets.append(output[:safe_max_len])
+                        print('Context: ', context)
+                        output = tokenize(context, tokenizer, tokenizer_choice)
+                        context_length = len(output)
+                        contexts.append(output[-safe_max_len:])
 
-                    # print('Context:')
-                    output = tokenize(context, tokenizer, tokenizer_choice)
-                    context_length = len(output)
-                    contexts.append(output[-safe_max_len:])
+                        # print('Knowledge:')
+                        k_ids = [tokenize(k, tokenizer, tokenizer_choice)[-safe_max_len:] for k in knowledge]
+                        knowledge_lengths = [len(k) for k in k_ids]
+                        knowledges.append(k_ids)
 
-                    # print('Knowledge:')
-                    k_ids = [tokenize(k, tokenizer, tokenizer_choice)[-safe_max_len:] for k in knowledge]
-                    knowledge_lengths = [len(k) for k in k_ids]
-                    if not len(knowledge_lengths) == 32:
-                        print(chosen_topic_passage)
-                        print(len(knowledge_lengths))
-                    knowledges.append(k_ids)
+                        # print('Knowledge id:')
+                        choices.append(chosen_i)
 
-                    # print('Knowledge id:')
-                    choices.append(chosen_i)
+                        max_target_length = max(target_length, max_target_length)
+                        max_context_length = max(context_length, max_context_length)
+                        max_knowledge_length = max(max(knowledge_lengths), max_knowledge_length)
+                        max_knowledge_items = max(len(knowledge_lengths), max_knowledge_items)
 
-                    max_target_length = max(target_length, max_target_length)
-                    max_context_length = max(context_length, max_context_length)
-                    max_knowledge_length = max(max(knowledge_lengths), max_knowledge_length)
-                    max_knowledge_items = max(len(knowledge_lengths), max_knowledge_items)
+                    # if wizard_count > predict_wizard_i: break
+                    speaker = 'me' if 'Wizard' in d['speaker'] else 'you'
+                    context += ' {}: {}'.format(speaker, d['text'])
 
             targets = pad_sequences(targets, padding='post', value=pad_idx)[:, :safe_max_len]
             contexts = pad_sequences(contexts, value=pad_idx)[:, -safe_max_len:]
