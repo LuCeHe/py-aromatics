@@ -173,10 +173,14 @@ def summarize(CDIR, track_params=[]):
         f.write(last_line)
         f.write('\n\n')
         f.close()
+        last_lines.append(previous_line_2)
         last_lines.append(previous_line)
+        last_lines.append(last_line)
 
     import numpy as np
     unique_last_lines, indices, counts = np.unique(last_lines, return_index=True, return_counts=True)
+    ds = np.repeat(ds, 3)
+
     unique_outs = np.array(ds)[indices]
     f = open(summary_file, "a")
     f.write('\n\n')
