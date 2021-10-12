@@ -50,11 +50,9 @@ def mode_accuracy(y_true, y_pred):
     return acc
 
 def sparse_mode_accuracy(y_true, y_pred):
-    vocab = tf.shape(y_pred)[-1]
-    y_true = tf.one_hot(tf.cast(y_true, tf.int32), vocab)
-    true = tf.cast(tf.argmax(tf.reduce_sum(y_true, axis=1), axis=1), tf.float32)
-    pred = tf.cast(tf.argmax(tf.reduce_sum(y_pred, axis=1), axis=1), tf.float32)
-    equal = tf.cast(tf.math.equal(pred, true), tf.float32)
+    y_pred = tf.cast(tf.argmax(tf.reduce_sum(y_pred, axis=1), axis=1), tf.float32)
+    y_true = tf.cast(tf.reduce_mean(y_true, axis=1), tf.float32)
+    equal = tf.cast(tf.math.equal(y_pred, y_true), tf.float32)
     acc = tf.reduce_mean(equal)
     return acc
 
