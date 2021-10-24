@@ -35,6 +35,7 @@ def _log_grads(self, epoch):
 
     self._train_writer.flush()
 
+
 def _log_weights_individual(self, epoch):
     """Logs the weights of the Model to TensorBoard."""
     if epoch == 0:
@@ -60,6 +61,7 @@ def _log_weights_individual(self, epoch):
                         self._log_weight_as_image(weight, weight_name, epoch)
             self._train_writer.flush()
 
+
 class GradientTensorBoard(tf.keras.callbacks.TensorBoard):
     # https://medium.com/@leenabora1/how-to-keep-a-track-of-gradients-vanishing-exploding-gradients-b0bbaa1dcb93
     def __init__(self, validation_data, *args, **kwargs):
@@ -77,22 +79,21 @@ class GradientTensorBoard(tf.keras.callbacks.TensorBoard):
 
 
 class IndividualWeightsTensorBoard(tf.keras.callbacks.TensorBoard):
-    n_individual_weight_samples  = 5
+    n_individual_weight_samples = 5
 
     def _log_weights(self, epoch):
         _log_weights_individual(self, epoch)
 
 
-
 class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
     # https://medium.com/@leenabora1/how-to-keep-a-track-of-gradients-vanishing-exploding-gradients-b0bbaa1dcb93
-    def __init__(self, validation_data, *args, **kwargs):
+    def __init__(self, validation_data, n_individual_weight_samples=3, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # here we use test data to calculate the gradients
         self._x_batch = validation_data[0]
         self._y_batch = validation_data[1]
-
+        self.n_individual_weight_samples = n_individual_weight_samples
 
     def on_epoch_end(self, epoch, logs=None):
         super().on_epoch_end(epoch, logs=logs)
