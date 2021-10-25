@@ -10,7 +10,10 @@ def _log_grads(self, epoch):
 
         # Calculate loss for given current state of weights
         _y_pred = self.model(self._x_batch)
-        loss = self.model.compiled_loss(y_true=self._y_batch, y_pred=_y_pred)
+        # loss = self.model.compiled_loss(y_true=self._y_batch, y_pred=_y_pred)
+        loss = self.model.compiled_loss(
+            y_true=self._y_batch, y_pred=_y_pred, sample_weight=None, regularization_losses=self.model.losses
+        )
 
     # Calculate Grads wrt current weights
     grads = [tape.gradient(loss, l.trainable_weights) for l in self.model.layers]
@@ -69,7 +72,7 @@ class GradientTensorBoard(tf.keras.callbacks.TensorBoard):
 
         # here we use test data to calculate the gradients
         self._x_batch = validation_data[0]
-        self._y_batch = validation_data[1]
+        self._y_batch = validation_data[1] if len(validation_data) == 2 else None
 
     def on_epoch_end(self, epoch, logs=None):
         super().on_epoch_end(epoch, logs=logs)
@@ -92,14 +95,14 @@ class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
 
         # here we use test data to calculate the gradients
         self._x_batch = validation_data[0]
-        self._y_batch = validation_data[1]
+        self._y_batch = validation_data[1] if len(validation_data) == 2 else None
         self.n_individual_weight_samples = n_individual_weight_samples
 
     def on_epoch_end(self, epoch, logs=None):
         super().on_epoch_end(epoch, logs=logs)
 
         if self.histogram_freq and epoch % self.histogram_freq == 0:
-            self._log_grads(epoch)
+            _log_grads(self, epoch)
 
     def _log_weights(self, epoch):
         _log_weights_individual(self, epoch)
