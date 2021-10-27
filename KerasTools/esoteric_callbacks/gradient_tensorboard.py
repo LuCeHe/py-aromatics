@@ -12,12 +12,12 @@ def _log_grads(self, epoch):
 
         # Calculate loss for given current state of weights
         _y_pred = self.model(self._x_batch)
-        # loss = self.model.compiled_loss(y_true=self._y_batch, y_pred=_y_pred)
+
         loss = self.model.compiled_loss(
             y_true=self._y_batch, y_pred=_y_pred, sample_weight=None, regularization_losses=self.model.losses
         )
 
-    # Calculate Grads wrt current weights
+    # Calculate grads wrt current weights
     grads = [tape.gradient(loss, l.trainable_weights) for l in self.model.layers]
     names = [l.name for l in self.model.layers]
     del tape
@@ -30,11 +30,9 @@ def _log_grads(self, epoch):
                     for i, curr_grad in enumerate(g):
                         if len(curr_grad) > 0:
                             nc = 'bias' if len(curr_grad.shape) == 1 else 'weight'
-                            # curr_grad(g)
+
                             mean = tf.reduce_mean(tf.abs(curr_grad))
-                            # tf.summary.scalar('grad_mean_{}_{}'.format(n, i + 1), mean)
                             summary_ops_v2.scalar('grad_mean_{}_{}_{}'.format(n, i + 1, nc), mean, step=epoch)
-                            # tf.summary.histogram('grad_histogram_{}_{}'.format(n, i + 1), curr_grad)
                             summary_ops_v2.histogram('grad_histogram_{}_{}_{}'.format(n, i + 1, nc), curr_grad,
                                                      step=epoch)
 
@@ -52,7 +50,8 @@ def _log_weights_individual(self, epoch):
                     weight_name = weight.name.replace(':', '_')
                     summary_ops_v2.histogram(weight_name, weight, step=epoch)
 
-                    # I add these 3 lines to record some of the weights individually
+                    # what preceeds is the standard Tensorboard behavior while the lines that follow
+                    # record some of the weights individually
                     for i in range(self.n_individual_weight_samples):
                         scalar_name = '{}_{}'.format(weight.name.replace(':', '_'), i)
                         if epoch == 0:
@@ -68,7 +67,6 @@ def _log_weights_individual(self, epoch):
 
 
 class GradientTensorBoard(tf.keras.callbacks.TensorBoard):
-    # https://medium.com/@leenabora1/how-to-keep-a-track-of-gradients-vanishing-exploding-gradients-b0bbaa1dcb93
     def __init__(self, validation_data, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
