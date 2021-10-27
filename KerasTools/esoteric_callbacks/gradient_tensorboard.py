@@ -2,6 +2,8 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.python.ops import summary_ops_v2
 
+# original for grads recording: https://medium.com/@leenabora1/how-to-keep-a-track-of-gradients-vanishing-exploding-gradients-b0bbaa1dcb93
+# that was extended to handle general models, with general inputs and general losses
 
 def _log_grads(self, epoch):
     with tf.GradientTape(persistent=True) as tape:
@@ -89,7 +91,6 @@ class IndividualWeightsTensorBoard(tf.keras.callbacks.TensorBoard):
 
 
 class ExtendedTensorBoard(tf.keras.callbacks.TensorBoard):
-    # https://medium.com/@leenabora1/how-to-keep-a-track-of-gradients-vanishing-exploding-gradients-b0bbaa1dcb93
     def __init__(self, validation_data, n_individual_weight_samples=3, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
