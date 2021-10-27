@@ -26,6 +26,20 @@ def probabilistic_exponential_annealing(epoch, epochs, value):
     return new_value
 
 
+hard_annealing=lambda epoch, epochs, value: 0 if epoch < epochs / 2 else 1
+
+
+def get_annealing_schedule(annealing_schedule):
+    if annealing_schedule in ['probabilistic_exponential_annealing', 'pea']:
+        return probabilistic_exponential_annealing
+    elif annealing_schedule in ['exponential_annealing', 'ea']:
+        return exponential_annealing
+    elif annealing_schedule in ['hard_annealing', 'ha']:
+        return hard_annealing
+    else:
+        raise NotImplementedError
+
+
 class AnnealingCallback(Callback):
     """
 
@@ -45,7 +59,8 @@ class AnnealingCallback(Callback):
         super().__init__()
         self.epochs = epochs
         self.variables_to_anneal = variables_to_anneal
-        self.annealing_schedule = annealing_schedule
+        self.annealing_schedule = annealing_schedule if not isinstance(annealing_schedule, str) \
+            else get_annealing_schedule(annealing_schedule)
 
     def set_model(self, model):
         """Sets Keras model and writes graph if specified."""

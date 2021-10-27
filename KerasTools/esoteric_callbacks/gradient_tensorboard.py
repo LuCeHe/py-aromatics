@@ -28,7 +28,7 @@ def _log_grads(self, epoch):
             for g, n in zip(grads, names):
                 if len(g) > 0:
                     for i, curr_grad in enumerate(g):
-                        if len(curr_grad) > 0:
+                        if not curr_grad is None and len(curr_grad) > 0:
                             nc = 'bias' if len(curr_grad.shape) == 1 else 'weight'
 
                             mean = tf.reduce_mean(tf.abs(curr_grad))
