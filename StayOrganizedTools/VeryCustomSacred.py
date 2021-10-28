@@ -80,6 +80,9 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10, ingredie
 
 
 def ChooseGPU(GPU=None, memory_growth=True):
+    if GPU == -1:
+        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
     gpus = tf.config.experimental.list_physical_devices('GPU')
     if gpus:
         try:
@@ -96,8 +99,6 @@ def ChooseGPU(GPU=None, memory_growth=True):
 
         sess = tf.compat.v1.Session(config=config)  # tf.Session(config=config)
 
-    if GPU == -1:
-        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
 def remove_folder(folder_path):
