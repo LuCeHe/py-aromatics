@@ -112,7 +112,9 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
             distribution = stddev * samples * flip / 10
 
         elif 'bi_gamma' in self.distribution:
-            dist = tfd.Gamma(concentration=3.0, rate=2.0)
+            alpha = 3
+            beta = 2
+            dist = tfd.Gamma(concentration=alpha, rate=beta)
             samples = dist.sample(shape)
             flip = 2 * np.random.choice(2, shape) - 1
             stddev = 2 * math.sqrt(scale)
@@ -212,14 +214,14 @@ class NoZeroGlorot(MoreVarianceScalingAndOrthogonal):
 if __name__ == '__main__':
     initializer = MoreVarianceScalingAndOrthogonal(
         scale=1.0,
-        mode='fan_avg',
-        distribution='uniform',  # 'tanh_bi_gamma',
+        mode='no_fan',
+        distribution='bi_gamma',  # 'tanh_bi_gamma',
         orthogonalize=True,
         seed=None
     )
 
     shape = (200, 30)
-    initializer = NoZeroGlorotOrthogonal()
+    # initializer = NoZeroGlorotOrthogonal()
     t = initializer(shape).numpy()
     print(t.shape)
 
@@ -233,6 +235,7 @@ if __name__ == '__main__':
         print('Not Orthogonal! ')
         print(product)
 
+    print('Variance: ', np.std(t)**2)
     import matplotlib.pyplot as plt
 
     n, bins, patches = plt.hist(x=t.flatten(), bins=50, color='#0504aa', alpha=0.7, rwidth=0.85)
