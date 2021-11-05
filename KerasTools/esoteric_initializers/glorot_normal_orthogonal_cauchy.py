@@ -1,9 +1,9 @@
-import math
+
 import numpy as np
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow.python.keras.initializers.initializers_v2 import _RandomGenerator, _compute_fans
+from tensorflow.python.keras.initializers.initializers_v2 import _RandomGenerator, _compute_fans, Orthogonal
 
 tfd = tfp.distributions
 _PARTITION_SHAPE = 'partition_shape'
@@ -96,19 +96,19 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
             scale /= max(1., (fan_in + fan_out) / 2.)
 
         if 'untruncated_normal' in self.distribution:
-            stddev = math.sqrt(scale)
+            stddev = tf.sqrt(scale)
             distribution = self._random_generator.random_normal(shape, 0.0, stddev, dtype)
 
         elif 'truncated_normal' in self.distribution:
             # constant from scipy.stats.truncnorm.std(a=-2, b=2, loc=0., scale=1.)
-            stddev = math.sqrt(scale) / .87962566103423978
+            stddev = tf.sqrt(scale) / .87962566103423978
             distribution = self._random_generator.truncated_normal(shape, 0.0, stddev, dtype)
 
         elif 'bi_gamma_10' in self.distribution:
             dist = tfd.Gamma(concentration=10.0, rate=10.0)
             samples = dist.sample(shape)
             flip = 2 * np.random.choice(2, shape) - 1
-            stddev = 2 * math.sqrt(scale)
+            stddev = 2 * tf.sqrt(scale)
             distribution = stddev * samples * flip / 10
 
         elif 'bi_gamma' in self.distribution:
@@ -117,16 +117,18 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
             dist = tfd.Gamma(concentration=alpha, rate=beta)
             samples = dist.sample(shape)
             flip = 2 * np.random.choice(2, shape) - 1
-            stddev = 2 * math.sqrt(scale)
+            stddev = tf.sqrt((beta ** 2) / (alpha * (alpha + 1)))
             distribution = stddev * samples * flip
+            stddev = tf.sqrt(scale)
+            distribution = stddev * distribution
 
         elif 'cauchy' in self.distribution:
             dist = tfd.Cauchy(loc=0., scale=1.)
-            stddev = math.sqrt(scale) / 2
+            stddev = tf.sqrt(scale) / 2
             distribution = stddev * dist.sample(shape)
 
         elif 'nozero_uniform' in self.distribution:
-            stddev = math.sqrt(3.0 * scale)
+            stddev = tf.sqrt(3.0 * scale)
             dist = tfd.Uniform(low=[-1.0, .25], high=[-.25, 1])
             distribution = stddev * dist.sample(shape)
             distribution = tf.reshape(distribution, (-1))
@@ -134,14 +136,17 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
             distribution = tf.reshape(distribution, (*shape, 2))[..., 0]
 
         else:
-            stddev = math.sqrt(3.0 * scale)
+            stddev = tf.sqrt(3.0 * scale)
             distribution = self._random_generator.random_uniform(shape, -stddev, stddev, dtype)
 
         if 'tanh' in self.distribution:
             distribution = stddev * tf.math.tanh(distribution)
 
         if self.orthogonalize:
+            # std = tf.math.reduce_std(distribution)
             distribution = orthogonalize(distribution)
+            # new_std = tf.math.reduce_std(distribution)
+            # distribution = distribution*std/new_std
 
         return distribution
 
@@ -221,7 +226,7 @@ if __name__ == '__main__':
     )
 
     shape = (200, 30)
-    # initializer = NoZeroGlorotOrthogonal()
+    # initializer = Orthogonal()
     t = initializer(shape).numpy()
     print(t.shape)
 
@@ -230,12 +235,12 @@ if __name__ == '__main__':
 
     if np.all(product < 1e-7):
         print('Orthogonal! ')
-        print(product)
+        # print(product)
     else:
         print('Not Orthogonal! ')
-        print(product)
+        # print(product)
 
-    print('Variance: ', np.std(t)**2)
+    print('Variance: ', np.std(t) ** 2)
     import matplotlib.pyplot as plt
 
     n, bins, patches = plt.hist(x=t.flatten(), bins=50, color='#0504aa', alpha=0.7, rwidth=0.85)
