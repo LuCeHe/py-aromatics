@@ -4,8 +4,11 @@ from GenericTools.KerasTools.esoteric_layers.add_metrics_layer import AddMetrics
 from GenericTools.KerasTools.esoteric_layers.close_graph import CloseGraph
 from GenericTools.KerasTools.esoteric_layers.contrastive_loss_language import ContrastiveLossLayer
 from GenericTools.KerasTools.esoteric_layers.dropword import DropWord
+from GenericTools.KerasTools.esoteric_layers.factorized_dense import FactorizedDense
 from GenericTools.KerasTools.esoteric_layers.positional_embedding import SymbolAndPositionEmbedding
 from GenericTools.KerasTools.esoteric_layers.layer_supervision import LayerSupervision
 from GenericTools.KerasTools.esoteric_layers.convenience_layers import *
 from GenericTools.KerasTools.esoteric_layers.resizing_1d import Resizing1D
 from GenericTools.KerasTools.esoteric_layers.stochastic_depth import StochasticDepth
+from GenericTools.KerasTools.esoteric_layers.surrogated_step import SurrogatedStep
+
