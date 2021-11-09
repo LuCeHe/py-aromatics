@@ -96,16 +96,16 @@ class tf_ContextKnowledgeEncoder(tf.keras.layers.Layer):
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-                 maximum_position_encoding=1024, rate=0.1, pad_idx=0, **kwargs):
+                 maximum_position_encoding=1024, rate=0.1, pad_idx=0, mha_type='original_transformer', **kwargs):
         super().__init__(**kwargs)
 
         self.init_args = dict(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
                               input_vocab_size=input_vocab_size, maximum_position_encoding=maximum_position_encoding,
-                              rate=rate, pad_idx=pad_idx)
+                              rate=rate, pad_idx=pad_idx, mha_type=mha_type)
         self.__dict__.update(self.init_args)
 
         self.transformer_encoder = tf_TransformerEncoder(num_layers, d_model, num_heads, dff, input_vocab_size,
-                                                         maximum_position_encoding, rate)
+                                                         maximum_position_encoding, rate, mha_type=mha_type)
         self.knowledge_dropout = KnowledgeDropout()
 
     def build(self, input_shape):
@@ -175,16 +175,16 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-                 maximum_position_encoding, rate=0.1, pad_idx=0, **kwargs):
+                 maximum_position_encoding, rate=0.1, pad_idx=0, mha_type='original_transformer', **kwargs):
         super().__init__(**kwargs)
 
         self.init_args = dict(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
                               input_vocab_size=input_vocab_size, maximum_position_encoding=maximum_position_encoding,
-                              rate=rate, pad_idx=pad_idx)
+                              rate=rate, pad_idx=pad_idx, mha_type=mha_type)
         self.__dict__.update(self.init_args)
 
         self.transformer_decoder = tf_TransformerDecoder(num_layers, d_model, num_heads, dff, input_vocab_size,
-                                                         maximum_position_encoding, rate)
+                                                         maximum_position_encoding, rate, mha_type=mha_type)
 
     def call(self, inputs, output_type='embedding_projection', *args, **kwargs):
         tgt_tokens, encoder_state = inputs
@@ -224,13 +224,13 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
 
 def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_size=int(5e4),
                   target_vocab_size=int(5e4), encoder_maxlen=1024, decoder_maxlen=1024,
-                  rate=.1, max_knowledge=5, pad_idx=0, datapath=''):
+                  rate=.1, max_knowledge=5, pad_idx=0, mha_type='original_transformer'):
     cke = tf_ContextKnowledgeEncoder(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
                                      input_vocab_size=input_vocab_size, maximum_position_encoding=encoder_maxlen,
-                                     rate=rate, pad_idx=pad_idx)
+                                     rate=rate, pad_idx=pad_idx, mha_type=mha_type)
     ckd = tf_ContextKnowledgeDecoder(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
                                      input_vocab_size=input_vocab_size, maximum_position_encoding=decoder_maxlen,
-                                     rate=rate, pad_idx=pad_idx)
+                                     rate=rate, pad_idx=pad_idx, mha_type=mha_type)
 
     src_tokens = Input((None,))
     tgt_tokens = Input((None,))

@@ -56,7 +56,7 @@ def FastSigmoidSpikeFunction(v_scaled, dampening_factor, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
-        xabs = tf.abs(2 * v_scaled * sharpness)
+        xabs = tf.abs(2. * v_scaled * sharpness)
         dz_dv_scaled = 1 / (1 + xabs) ** 2
         return [dy * dz_dv_scaled, tf.zeros_like(dampening_factor), tf.zeros_like(sharpness)]
 
@@ -220,9 +220,9 @@ def switchSpikeFunction(v_scaled, dampening_factor):
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
-def ChoosePseudoHeaviside(v_sc, dampening_factor=1, config=''):
-    sharpness = str2val(config, 'sharpn', float, default=1)
-    dampening_factor = str2val(config, 'dampf', float, default=dampening_factor)
+def ChoosePseudoHeaviside(v_sc, config=''):
+    sharpness = str2val(config, 'sharpn', float, default=1.)
+    dampening_factor = str2val(config, 'dampf', float, default=1.)
 
     if 'gaussianpseudod' in config:
         z = SpikeFunctionGauss(v_sc, dampening_factor, sharpness)
@@ -282,8 +282,8 @@ class SurrogatedStep(tf.keras.layers.Layer):
         self.init_args = dict(string_config=string_config)
         self.__dict__.update(self.init_args)
 
-        sharpness = str2val(string_config, 'sharpn', float, default=1)
-        dampening_factor = str2val(string_config, 'dampf', float, default=1)
+        sharpness = str2val(string_config, 'sharpn', float, default=1.)
+        dampening_factor = str2val(string_config, 'dampf', float, default=1.)
         self.soft_spike = lambda x: dampening_factor * tf.nn.sigmoid(sharpness * x)
 
         if 'randompseudod' in string_config:
@@ -293,7 +293,7 @@ class SurrogatedStep(tf.keras.layers.Layer):
             self.random_switch = RandomSwitch([1 / len(spike_functions)] * len(spike_functions))
             self.hard_spike = lambda x: self.random_switch(spikes(x))
         else:
-            self.hard_spike = lambda x: ChoosePseudoHeaviside(x, dampening_factor=1, config=string_config)
+            self.hard_spike = lambda x: ChoosePseudoHeaviside(x, config=string_config)
 
     def build(self, input_shape):
         self.hard_heaviside = self.add_weight(

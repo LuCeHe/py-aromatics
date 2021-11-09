@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf
 
-
 # positional encoding
+from GenericTools.KerasTools.esoteric_layers import SurrogatedStep
 
 
 def get_angles(pos, i, d_model):
@@ -93,7 +93,7 @@ class PaddingLookAheadMasks(tf.keras.layers.Layer):
 
 # attention and ff
 
-def scaled_dot_product_attention(q, k, v, mask):
+def scaled_dot_product_attention_original(q, k, v, mask):
     """Calculate the attention weights.
     q, k, v must have matching leading dimensions.
     k, v must have matching penultimate dimension, i.e.: seq_len_k = seq_len_v.
@@ -130,8 +130,61 @@ def scaled_dot_product_attention(q, k, v, mask):
     return output, attention_weights
 
 
+def scaled_dot_product_attention_spiking(q, k, v, mask):
+    """Calculate the attention weights.
+    q, k, v must have matching leading dimensions.
+    k, v must have matching penultimate dimension, i.e.: seq_len_k = seq_len_v.
+    The mask has different shapes depending on its type(padding or look ahead)
+    but it must be broadcastable for addition.
+
+    Args:
+      q: query shape == (..., seq_len_q, depth)
+      k: key shape == (..., seq_len_k, depth)
+      v: value shape == (..., seq_len_v, depth_v)
+      mask: Float tensor with shape broadcastable
+            to (..., seq_len_q, seq_len_k). Defaults to None.
+
+    Returns:
+      output, attention_weights
+    """
+
+    matmul_qk = tf.matmul(q, k, transpose_b=True)  # (..., seq_len_q, seq_len_k)
+    # scale matmul_qk
+    dk = tf.cast(tf.shape(k)[-1], tf.float32)
+    # scaled_attention_logits = matmul_qk / tf.math.sqrt(dk)
+    scaled_attention_logits = matmul_qk / dk
+
+    # add the mask to the scaled tensor.
+    if mask is not None:
+        scaled_attention_logits += (mask * -1e9)
+
+    # softmax is normalized on the last axis (seq_len_k) so that the scores
+    # add up to 1.
+    # attention_weights = tf.nn.softmax(scaled_attention_logits, axis=-1)  # (..., seq_len_q, seq_len_k)
+    attention_weights = scaled_attention_logits  # (..., seq_len_q, seq_len_k)
+
+    output = tf.matmul(attention_weights, v)  # (..., seq_len_q, depth_v)
+
+    return output, attention_weights
+
+
+def choose_attention(attention_type):
+    if attention_type == 'original_transformer':
+        scaled_dot_product_attention = scaled_dot_product_attention_original
+    elif 'spiking_attention' in attention_type:
+
+        surrogated_step_I = SurrogatedStep(attention_type)
+        surrogated_step_II = SurrogatedStep(attention_type)
+        scaled_dot_product_attention = lambda q, k, v, mask: scaled_dot_product_attention_spiking(
+            surrogated_step_I(q), surrogated_step_II(k), v, mask)
+    else:
+        raise NotImplementedError
+
+    return scaled_dot_product_attention
+
+
 class MultiHeadAttention(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads):
+    def __init__(self, d_model, num_heads, mha_type='original_transformer'):
         super(MultiHeadAttention, self).__init__()
         self.num_heads = num_heads
         self.d_model = d_model
@@ -145,6 +198,8 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         self.wv = tf.keras.layers.Dense(d_model)
 
         self.dense = tf.keras.layers.Dense(d_model)
+
+        self.scaled_dot_product_attention = choose_attention(mha_type)
 
     def split_heads(self, x, batch_size):
         """Split the last dimension into (num_heads, depth).
@@ -166,7 +221,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
         # scaled_attention.shape == (batch_size, num_heads, seq_len_q, depth)
         # attention_weights.shape == (batch_size, num_heads, seq_len_q, seq_len_k)
-        scaled_attention, attention_weights = scaled_dot_product_attention(q, k, v, mask)
+        scaled_attention, attention_weights = self.scaled_dot_product_attention(q, k, v, mask)
 
         # (batch_size, seq_len_q, num_heads, depth)
         scaled_attention = tf.transpose(scaled_attention, perm=[0, 2, 1, 3])
@@ -190,10 +245,10 @@ def point_wise_feed_forward_network(d_model, dff):
 # encoder and decoder
 
 class EncoderLayer(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads, dff, rate=0.1):
+    def __init__(self, d_model, num_heads, dff, rate=0.1, mha_type='original_transformer'):
         super(EncoderLayer, self).__init__()
 
-        self.mha = MultiHeadAttention(d_model, num_heads)
+        self.mha = MultiHeadAttention(d_model, num_heads, mha_type=mha_type)
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
@@ -215,11 +270,11 @@ class EncoderLayer(tf.keras.layers.Layer):
 
 
 class DecoderLayer(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads, dff, rate=0.1):
+    def __init__(self, d_model, num_heads, dff, rate=0.1, mha_type='original_transformer'):
         super(DecoderLayer, self).__init__()
 
-        self.mha1 = MultiHeadAttention(d_model, num_heads)
-        self.mha2 = MultiHeadAttention(d_model, num_heads)
+        self.mha1 = MultiHeadAttention(d_model, num_heads, mha_type=mha_type)
+        self.mha2 = MultiHeadAttention(d_model, num_heads, mha_type=mha_type)
 
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
@@ -252,10 +307,10 @@ class DecoderLayer(tf.keras.layers.Layer):
 
 
 class GPTBlock(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads, dff, rate=0.1):
+    def __init__(self, d_model, num_heads, dff, rate=0.1, mha_type='original_transformer'):
         super().__init__()
 
-        self.mha1 = MultiHeadAttention(d_model, num_heads)
+        self.mha1 = MultiHeadAttention(d_model, num_heads, mha_type=mha_type)
 
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
@@ -281,7 +336,7 @@ class GPTBlock(tf.keras.layers.Layer):
 
 class TransformerEncoder(tf.keras.layers.Layer):
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-                 maximum_position_encoding, rate=0.1):
+                 maximum_position_encoding, rate=0.1, mha_type='original_transformer'):
         super().__init__()
 
         self.d_model = d_model
@@ -291,7 +346,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
         self.pos_encoding = positional_encoding(maximum_position_encoding,
                                                 self.d_model)
 
-        self.enc_layers = [EncoderLayer(d_model, num_heads, dff, rate)
+        self.enc_layers = [EncoderLayer(d_model, num_heads, dff, rate, mha_type=mha_type)
                            for _ in range(num_layers)]
 
         self.dropout = tf.keras.layers.Dropout(rate)
@@ -314,7 +369,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
 
 class TransformerDecoder(tf.keras.layers.Layer):
     def __init__(self, num_layers, d_model, num_heads, dff, target_vocab_size,
-                 maximum_position_encoding, rate=0.1):
+                 maximum_position_encoding, rate=0.1, mha_type='original_transformer'):
         super().__init__()
 
         self.d_model = d_model
@@ -323,7 +378,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
         self.embedding = tf.keras.layers.Embedding(target_vocab_size, d_model)
         self.pos_encoding = positional_encoding(maximum_position_encoding, d_model)
 
-        self.dec_layers = [DecoderLayer(d_model, num_heads, dff, rate)
+        self.dec_layers = [DecoderLayer(d_model, num_heads, dff, rate, mha_type=mha_type)
                            for _ in range(num_layers)]
         self.dropout = tf.keras.layers.Dropout(rate)
 
@@ -356,13 +411,12 @@ class GPT(tf.keras.layers.Layer):
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
     def __init__(self, num_layers, d_model, num_heads, dff, target_vocab_size,
-                 maximum_position_encoding, pad_idx, rate=0.1, **kwargs):
+                 maximum_position_encoding, pad_idx, rate=0.1, mha_type='original_transformer', **kwargs):
         super().__init__(**kwargs)
 
         self.init_args = dict(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
                               target_vocab_size=target_vocab_size, maximum_position_encoding=maximum_position_encoding,
-                              rate=rate, pad_idx=pad_idx)
-
+                              rate=rate, pad_idx=pad_idx, mha_type=mha_type)
 
         self.d_model = d_model
         self.num_layers = num_layers
@@ -371,7 +425,7 @@ class GPT(tf.keras.layers.Layer):
         self.embedding = tf.keras.layers.Embedding(target_vocab_size, d_model)
         self.pos_encoding = positional_encoding(maximum_position_encoding, d_model)
 
-        self.dec_layers = [GPTBlock(d_model, num_heads, dff, rate)
+        self.dec_layers = [GPTBlock(d_model, num_heads, dff, rate, mha_type=mha_type)
                            for _ in range(num_layers)]
         self.dropout = tf.keras.layers.Dropout(rate)
 
@@ -400,13 +454,13 @@ class GPT(tf.keras.layers.Layer):
 
 class Transformer(tf.keras.Model):
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-                 target_vocab_size, pe_input, pe_target, pad_idx, rate=0.1):
+                 target_vocab_size, pe_input, pe_target, pad_idx, rate=0.1, mha_type='original_transformer'):
         super().__init__()
         self.encoder = TransformerEncoder(num_layers, d_model, num_heads, dff,
-                                          input_vocab_size, pe_input, rate)
+                                          input_vocab_size, pe_input, rate, mha_type=mha_type)
 
         self.decoder = TransformerDecoder(num_layers, d_model, num_heads, dff,
-                                          target_vocab_size, pe_target, rate)
+                                          target_vocab_size, pe_target, rate, mha_type=mha_type)
 
         self.final_layer = tf.keras.layers.Dense(target_vocab_size)
         self.pad_idx = pad_idx
