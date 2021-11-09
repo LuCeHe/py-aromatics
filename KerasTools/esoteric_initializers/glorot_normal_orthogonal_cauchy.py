@@ -225,21 +225,13 @@ if __name__ == '__main__':
         seed=None
     )
 
-    shape = (200, 30)
-    # initializer = Orthogonal()
+    shape = (20, 30)
     t = initializer(shape).numpy()
-    print(t.shape)
 
-    product = np.abs(np.dot(t, t.T))
-    np.fill_diagonal(product, 0)
+    tt = np.dot(t, t.T)
+    product = np.abs(tt) - np.eye(tt.shape[-1])
 
-    if np.all(product < 1e-7):
-        print('Orthogonal! ')
-        # print(product)
-    else:
-        print('Not Orthogonal! ')
-        # print(product)
-
+    print('{}Orthogonal! '.format('' if np.all(product < 1e-6) else 'Not '))
     print('Variance: ', np.std(t) ** 2)
     import matplotlib.pyplot as plt
 

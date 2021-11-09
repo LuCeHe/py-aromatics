@@ -3,7 +3,7 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 
 
-def plot_history(histories, plot_filename, epochs, method_names=None, save=True, show=False, bkg_color='white',
+def plot_history(histories, epochs, plot_filename=None, method_names=None, show=False, bkg_color='white',
                  metrics_to_show=[], column_id=[], colors=None, figsize=None, ylims={}, vertical=True, legend=True):
     if not isinstance(histories, list): histories = [histories]
     if isinstance(histories[0], dict):
@@ -27,7 +27,6 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
 
         if metrics_to_show:
             keys = [k for k in keys if k in metrics_to_show]
-
 
         if vertical:
             n_columns = len(column_id) if not len(column_id) == 0 else 1
@@ -84,7 +83,7 @@ def plot_history(histories, plot_filename, epochs, method_names=None, save=True,
         if not method_names is None and legend:
             ax.legend(lines, method_names)
 
-        if save:
+        if not plot_filename is None:
             fig.savefig(plot_filename, bbox_inches='tight')
 
         if show:
