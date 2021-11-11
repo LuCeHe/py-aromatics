@@ -46,7 +46,8 @@ def download(data_path, tokenizer_choice, n_dialogues):
     assert tokenizer_choice in ['bpe', 'gpt2']
     tokenizer_path = os.path.join(DATADESTINATION, 'tokenizer-{}.json'.format(tokenizer_choice))
 
-    if len(os.listdir(DATAPATH)) == 0:
+    data_json = os.path.join(DATAPATH, 'valid_random_split.json')
+    if not os.path.isfile(data_json):
         url = 'http://parl.ai/downloads/wizard_of_wikipedia/wizard_of_wikipedia.tgz'
         download_and_unzip([url], DATAPATH)
 
