@@ -92,30 +92,20 @@ def plot_history(histories, epochs, plot_filename=None, method_names=None, show=
         return fig, axs
 
 
-def TensorboardToNumpy(event_filename: str):
+def TensorboardToNumpy(event_filename: str, id_selection='', field ='histo'):
     # original:
     # https://stackoverflow.com/questions/47232779/how-to-extract-and-save-images-from-tensorboard-event-summary
-
+    assert field in ['image', 'histo', 'audio', 'tensor', 'simple_value']
     import tensorflow as tf
+    from tensorboard.compat.proto import event_pb2
+
     # topic_counter = defaultdict(lambda: 0)
 
     serialized_examples = tf.data.TFRecordDataset(event_filename)
+    numpys = []
     for serialized_example in serialized_examples:
-        print(serialized_example)
-        # event = event_pb2.Event.FromString(serialized_example.numpy())
-        # for v in event.summary.value:
-        #     print(v)
-        #     # if v.tag in image_tags:
-        #     #
-        #     #     if v.HasField('tensor'):  # event for images using tensor field
-        #     #         s = v.tensor.string_val[2]  # first elements are W and H
-        #     #
-        #     #         tf_img = tf.image.decode_image(s)  # [H, W, C]
-        #     #         np_img = tf_img.numpy()
-        #     #
-        #     #         topic_counter[v.tag] += 1
-        #     #
-        #     #         cnt = topic_counter[v.tag]
-        #     #         tbi = TensorBoardImage(topic=v.tag, image=np_img, cnt=cnt)
-        #     #
-        #     #         yield tbi
+        event = event_pb2.Event.FromString(serialized_example.numpy())
+        for v in event.summary.value:
+            if id_selection in v.tag and v.HasField(field):
+                numpys.append(v.__getattribute__(field))
+    return numpys
