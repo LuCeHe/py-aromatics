@@ -10,7 +10,7 @@
 from tensorflow.keras.layers import *
 import tensorflow as tf
 
-from GenericTools.KerasTools.advanced_losses import *
+from GenericTools.KerasTools.esoteric_losses.advanced_losses import *
 from GenericTools.KerasTools.esoteric_layers.random_switch import RandomSwitch
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder, GPT
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerDecoder as tf_TransformerDecoder
