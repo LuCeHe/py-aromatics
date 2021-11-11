@@ -1,6 +1,5 @@
 import tensorflow as tf
 
-Callback = tf.keras.callbacks.Callback
 
 
 def exponential_annealing(epoch, epochs, value):
@@ -40,7 +39,7 @@ def get_annealing_schedule(annealing_schedule):
         raise NotImplementedError
 
 
-class AnnealingCallback(Callback):
+class AnnealingCallback(tf.keras.callbacks.Callback):
     """
 
     # exponential decay
