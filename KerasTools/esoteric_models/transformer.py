@@ -151,8 +151,11 @@ def scaled_dot_product_attention_spiking(q, k, v, mask):
     matmul_qk = tf.matmul(q, k, transpose_b=True)  # (..., seq_len_q, seq_len_k)
     # scale matmul_qk
     dk = tf.cast(tf.shape(k)[-1], tf.float32)
+    L = tf.cast(tf.shape(matmul_qk)[-1], tf.float32)
+    print(L)
     # scaled_attention_logits = matmul_qk / tf.math.sqrt(dk)
-    scaled_attention_logits = matmul_qk / dk
+    scaled_attention_logits = matmul_qk / L / dk
+    print(scaled_attention_logits)
 
     # add the mask to the scaled tensor.
     if mask is not None:
@@ -162,7 +165,6 @@ def scaled_dot_product_attention_spiking(q, k, v, mask):
     # add up to 1.
     # attention_weights = tf.nn.softmax(scaled_attention_logits, axis=-1)  # (..., seq_len_q, seq_len_k)
     attention_weights = scaled_attention_logits  # (..., seq_len_q, seq_len_k)
-
     output = tf.matmul(attention_weights, v)  # (..., seq_len_q, depth_v)
 
     return output, attention_weights
