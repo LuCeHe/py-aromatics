@@ -1,4 +1,3 @@
-
 import numpy as np
 
 import tensorflow as tf
@@ -163,6 +162,11 @@ class BiGamma(MoreVarianceScalingAndOrthogonal):
 
 class GlorotBiGamma(MoreVarianceScalingAndOrthogonal):
     def __init__(self, scale=1.0, mode='fan_avg', distribution='bi_gamma', seed=None):
+        super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed)
+
+
+class HeBiGamma(MoreVarianceScalingAndOrthogonal):
+    def __init__(self, scale=2.0, mode='fan_in', distribution='bi_gamma', seed=None):
         super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed)
 
 

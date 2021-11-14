@@ -152,10 +152,8 @@ def scaled_dot_product_attention_spiking(q, k, v, mask):
     # scale matmul_qk
     dk = tf.cast(tf.shape(k)[-1], tf.float32)
     L = tf.cast(tf.shape(matmul_qk)[-1], tf.float32)
-    print(L)
     # scaled_attention_logits = matmul_qk / tf.math.sqrt(dk)
     scaled_attention_logits = matmul_qk / L / dk
-    print(scaled_attention_logits)
 
     # add the mask to the scaled tensor.
     if mask is not None:
