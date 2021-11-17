@@ -1,6 +1,6 @@
 import os, itertools
 
-def run_experiments(experiments, init_command='python language_main.py with ',
+def run_experiments(experiments=None, init_command='python language_main.py with ',
                     run_string='sbatch run_tf2.sh ', is_argparse=False):
     if not experiments is None:
         ds = dict2iter(experiments)
