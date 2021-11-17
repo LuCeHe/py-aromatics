@@ -1,5 +1,6 @@
 import os, itertools
 
+
 def run_experiments(experiments=None, init_command='python language_main.py with ',
                     run_string='sbatch run_tf2.sh ', is_argparse=False):
     if not experiments is None:
@@ -17,8 +18,8 @@ def run_experiments(experiments=None, init_command='python language_main.py with
 
         command = run_string + "'{}'".format(command)
         command = command.replace('  ', ' ')
-        print('{}/{}'.format(i+1, len(ds)), command)
-        os.system(command)
+        print('{}/{}'.format(i + 1, len(ds)), command)
+        # os.system(command)
     print('Number jobs: {}'.format(len(ds)))
 
 
