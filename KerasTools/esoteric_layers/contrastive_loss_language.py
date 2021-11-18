@@ -1,6 +1,34 @@
 import tensorflow as tf
 
 
+def contrastive_disorder(self, output_words, probs):
+    time_steps = tf.shape(output_words)[1]
+    half_time = tf.cast(time_steps / 2, tf.int32)
+    splits = tf.split(output_words, [half_time, time_steps - half_time], axis=1)
+
+    # splits = tf.split(original_sentences, 2, axis=1)
+    disordered_sentences = tf.concat([splits[1], splits[0]], axis=1)
+    # disordered_sentences = tf.argmax(disordered_sentences, axis=-1)
+    # print(disordered_sentences.shape)
+    # print(probs.shape)
+    # cl_d = - self.coef_disorder * self.loss(disordered_sentences, probs)
+    cl_d = - self.coef_disorder * tf.sigmoid(tf.keras.losses.CategoricalCrossentropy(from_logits=True)(disordered_sentences, probs))
+    self.add_loss(cl_d)
+    self.add_metric(cl_d, name='contrastive_disorder', aggregation='mean')
+
+def contrastive_random(self, probs):
+    batch_size = tf.shape(probs)[0]
+    seq_len = tf.shape(probs)[1]
+    vocab_size = tf.shape(probs)[2]
+
+    for i in range(self.n_random):
+        p = tf.tile((1 / vocab_size)[None, None], [batch_size, vocab_size])
+        random_words = tf.random.categorical(tf.math.log(p), seq_len)
+
+        cl_r = - self.coef_random * tf.sigmoid(self.loss(random_words, probs))
+        self.add_loss(cl_r)
+        self.add_metric(cl_r, name='contrastive_random_{}'.format(i), aggregation='mean')
+
 class ContrastiveLossLayer(tf.keras.layers.Layer):
 
     def __init__(self, coef_disorder=.1, coef_random=.1, n_random=1,
@@ -18,6 +46,8 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
             raise NotImplementedError
 
         self.loss = loss
+        self.disorder = lambda s, x, y: contrastive_disorder(s, x, y) if coef_disorder > 0 else None
+        self.random = lambda s, x: contrastive_random(s, x) if coef_random > 0 else None
 
     def build(self, input_shape):
         self.coef_disorder = self.add_weight(name='coef_disorder',
@@ -32,46 +62,15 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
 
         self.built = True
 
-    def call(self, inputs, training=None):
-        output_words, probs = inputs
+    def call(self, inputs, **kwargs):
 
-        batch_size = tf.shape(probs)[0]
-        seq_len = tf.shape(probs)[1]
-        vocab_size = tf.shape(probs)[2]
+        if isinstance(inputs, list) and len(inputs) == 2:
+            output_words, probs = inputs
+        else:
+            output_words, probs = inputs, inputs
 
-        if self.coef_disorder > 0:
-            if 'categorical' in self.loss.name:
-                input_words = output_words #tf.one_hot(tf.cast(tf.squeeze(input_words, axis=-1), tf.int32), vocab_size)
-                original_sentences = tf.cast(input_words, dtype=tf.float32)
-            else:
-                original_sentences = output_words #input_words
-
-            time_steps = tf.shape(original_sentences)[1]
-            half_time = tf.cast(time_steps / 2, tf.int32)
-            splits = tf.split(original_sentences, [half_time, time_steps - half_time], axis=1)
-
-            # splits = tf.split(original_sentences, 2, axis=1)
-            disordered_sentences = tf.concat([splits[1], splits[0]], axis=1)
-            # disordered_sentences = tf.argmax(disordered_sentences, axis=-1)
-            # print(disordered_sentences.shape)
-            # print(probs.shape)
-            cl_d = - self.coef_disorder * self.loss(disordered_sentences, probs)
-            self.add_loss(cl_d)
-            self.add_metric(cl_d, name='contrastive_disorder', aggregation='mean')
-
-        if self.coef_random > 0:
-            for i in range(self.n_random):
-                if 'categorical' in self.loss.name:
-                    p = tf.tile((1 / vocab_size)[None, None], [batch_size, vocab_size])
-                    random_words = tf.random.categorical(tf.math.log(p), seq_len)
-                    # random_words = tf.one_hot(ps, vocab_size)
-                else:
-                    std = tf.math.reduce_std(output_words)
-                    random_words = std * tf.random.normal(shape=tf.shape(probs))
-
-                cl_r = - self.coef_random * self.loss(random_words, probs)
-                self.add_loss(cl_r)
-                self.add_metric(cl_r, name='contrastive_random_{}'.format(i), aggregation='mean')
+        self.disorder(self, output_words, probs)
+        self.random(self, probs)
 
         return probs
 
