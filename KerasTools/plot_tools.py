@@ -102,10 +102,60 @@ def TensorboardToNumpy(event_filename: str, id_selection='', field ='histo'):
     # topic_counter = defaultdict(lambda: 0)
 
     serialized_examples = tf.data.TFRecordDataset(event_filename)
-    numpys = []
+    means = {}
+    stds = {}
     for serialized_example in serialized_examples:
+
         event = event_pb2.Event.FromString(serialized_example.numpy())
+
+        if event.step not in means.keys():
+            means[event.step] = {}
+            stds[event.step] = {}
+
         for v in event.summary.value:
             if id_selection in v.tag and v.HasField(field):
-                numpys.append(v.__getattribute__(field))
-    return numpys
+                item = v.__getattribute__(field)
+                mean = item.sum/item.num
+                ex2 = item.sum_squares/item.num
+                variance = ex2 - mean**2
+
+                means[event.step].update({v.tag: mean})
+                stds[event.step][v.tag] = np.sqrt(variance)
+
+    means  = {k: means[k] for k in sorted(means.keys())}
+    stds  = {k: stds[k] for k in sorted(stds.keys())}
+    return means, stds
+
+
+def TensorboardToNumpy_new(event_filename: str, id_selection='', field ='histo'):
+    from tensorboard.backend.event_processing.event_file_loader import EventFileLoader
+    # Just in case, PATH_OF_FILE is the path of the file, not the folder
+    loader = EventFileLoader(event_filename)
+
+    # Where to store values
+    wtimes, steps, actions = [], [], []
+    for event in loader.Load():
+        wtime = event.wall_time
+        step = event.step
+        if len(event.summary.value) > 0:
+            summary = event.summary.value[0]
+            if id_selection in summary.tag:
+                print('-' * 50)
+                print(step, wtime)
+                print(summary.tag)
+
+                # if summary.tag == HISTOGRAM_TAG:
+                wtimes += [wtime] * int(summary.histo.num)
+                steps += [step] * int(summary.histo.num)
+                print(summary)
+                print(summary.DESCRIPTOR)
+                print(summary.__dir__())
+                print(summary.histo.__dir__())
+                print(summary.histo)
+                print(summary.tensor)
+                print(summary.histo.bucket)
+                for num, val in zip(summary.histo.bucket, summary.histo.bucket_limit):
+                    actions += [val] * int(num)
+                    print(num)
+
+                print(actions)
