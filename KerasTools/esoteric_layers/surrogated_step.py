@@ -344,26 +344,42 @@ def draw_pseudods():
 
     import matplotlib.pyplot as plt
 
-    fig, axs = plt.subplots(1, 1, gridspec_kw={'wspace': .15})
+    fig, axs = plt.subplots(1, 2, gridspec_kw={'wspace': .15}, sharey=True)
 
     for k in possible_pseudod:
         x = tf.cast(tf.constant(np.linspace(0, 1.5, 1000)), tf.float32)
         with tf.GradientTape() as tape:
             tape.watch(x)
-            y = ChoosePseudoHeaviside(x, 1., k + ':1')
+            y = ChoosePseudoHeaviside(x, k + ':1')
         grad = tape.gradient(y, x)
         print(k)
         print(np.mean(grad) * 4)
 
-        axs.plot(x, grad, color=pseudod_color(k), label=clean_pseudo_name(k))
-    axs.set_xlabel('input to gradient')
-    axs.set_ylabel('surrogate gradient\namplitude')
-    axs.legend(loc='upper right')
-    for pos in ['right', 'left', 'bottom', 'top']:
-        axs.spines[pos].set_visible(False)
-    axs.set_xticks([0, 1])
-    axs.set_yticks([0, 1])
-    plot_filename = r'../experiments/pseudods.pdf'
+        axs[0].plot(x, grad, color=pseudod_color(k), label=clean_pseudo_name(k))
+
+    exponents = 10**np.linspace(-2, 1.2, 7)+1
+    print(exponents)
+    for i, k in enumerate(exponents):
+        cm = plt.get_cmap('Oranges')
+        c = cm(.4 + (i - 1) / (len(exponents) - 1) * .4)
+        print(k)
+        x = tf.cast(tf.constant(np.linspace(0, 1.5, 1000)), tf.float32)
+        with tf.GradientTape() as tape:
+            tape.watch(x)
+            y = ChoosePseudoHeaviside(x, 'ntailpseudod_tailvalue:' + str(k))
+        grad = tape.gradient(y, x)
+
+        axs[1].plot(x, grad, color=c)
+
+    axs[0].set_xlabel('input to gradient')
+    axs[0].set_ylabel('surrogate gradient\namplitude')
+    axs[0].legend(loc='upper right')
+    for ax in axs:
+        for pos in ['right', 'left', 'bottom', 'top']:
+            ax.spines[pos].set_visible(False)
+    axs[0].set_xticks([0, 1])
+    axs[0].set_yticks([0, 1])
+    plot_filename = r'pseudods.pdf'
     fig.savefig(plot_filename, bbox_inches='tight')
     plt.show()
 
