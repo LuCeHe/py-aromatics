@@ -220,7 +220,7 @@ class NoZeroGlorot(MoreVarianceScalingAndOrthogonal):
         super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed, orthogonalize=orthogonalize)
 
 
-if __name__ == '__main__':
+def test_1():
     initializer = MoreVarianceScalingAndOrthogonal(
         scale=1.0,
         mode='no_fan',
@@ -244,3 +244,60 @@ if __name__ == '__main__':
 
     n, bins, patches = plt.hist(x=t.flatten(), bins=50, color='#0504aa', alpha=0.7, rwidth=0.85)
     plt.show()
+
+
+def test_2():
+    import matplotlib.pyplot as plt
+    shape = (200, 300)
+    from scipy.stats import gamma, norm, uniform
+    x = np.linspace(-.25, .25, 1000)
+    # a = 3
+
+    for type in ['he', 'glorot']:
+        if type == 'he':
+            variance = 2. / (shape[0])
+            c = '#C6D5A1'
+        elif type == 'glorot':
+            variance = 1.0 / (shape[0] + shape[1])
+            c = '#A1BDD5'
+        else:
+            raise NotImplementedError
+
+        for distribution in ['bi_gamma', 'normal', 'uniform']:
+            if distribution == 'bi_gamma':
+                alpha = 3
+                beta = np.sqrt((alpha * (alpha + 1))/variance)
+                pdf = gamma.pdf(x, a=alpha, loc=0, scale= 1/beta)/2 + gamma.pdf(-x, a=alpha, loc=0, scale=1/beta)/2
+                linestyle = '-'
+                # pdf = 0*x
+            elif distribution == 'normal':
+                pdf = norm.pdf(x, loc=0, scale=np.sqrt(variance))
+                # pdf = 0*x
+                linestyle = '--'
+            elif distribution == 'uniform':
+                pdf = uniform.pdf(x, loc=-np.sqrt(3*variance), scale=2*np.sqrt(3*variance))
+                linestyle = ':'
+            else:
+                pdf = 0*x
+                linestyle = 'o'
+
+            plt.plot(x, pdf, linestyle, lw=2, alpha=1, color=c, label=type + distribution)
+
+    plt.ylabel('$p(x)$')
+    plt.xlabel('$x$')
+
+    # for pos in ['right', 'left', 'bottom', 'top']:
+    #     plt.spines[pos].set_visible(False)
+
+    # plt.legend()
+    plt.axis('off')
+    plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off',
+                    labelright='off', labelbottom='off')
+
+    plot_filename = 'distributions.pdf'
+    plt.savefig(plot_filename, bbox_inches='tight')
+    plt.show()
+
+
+if __name__ == '__main__':
+    test_2()
