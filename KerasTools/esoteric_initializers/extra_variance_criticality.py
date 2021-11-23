@@ -294,8 +294,8 @@ def test_2():
     plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off',
                     labelright='off', labelbottom='off')
 
-    plot_filename = 'distributions.pdf'
-    plt.savefig(plot_filename, bbox_inches='tight')
+    plot_filename = 'distributions.png'
+    # plt.savefig(plot_filename, bbox_inches='tight', dpi=512, transparent=True)
     plt.show()
 
 
