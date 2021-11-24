@@ -284,7 +284,7 @@ class SurrogatedStep(tf.keras.layers.Layer):
 
         sharpness = str2val(string_config, 'sharpn', float, default=1.)
         dampening_factor = str2val(string_config, 'dampf', float, default=1.)
-        self.soft_spike = lambda x: dampening_factor * tf.nn.sigmoid(sharpness * x)
+        self.soft_spike = lambda x: dampening_factor * tf.nn.sigmoid(sharpness * x) if 'annealing' in string_config else 0
 
         if 'randompseudod' in string_config:
             spike_functions = [SpikeFunctionGauss, SpikeFunctionCauchy, SpikeFunction, SpikeFunctionSigmoid,
