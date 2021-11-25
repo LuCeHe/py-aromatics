@@ -7,6 +7,8 @@ from tensorflow.python.keras.initializers.initializers_v2 import _RandomGenerato
 tfd = tfp.distributions
 _PARTITION_SHAPE = 'partition_shape'
 
+distributions_possible = ['uniform', 'truncated_normal', 'untruncated_normal', 'bi_gamma', 'bi_gamma_10',
+                          'tanh_normal', 'cauchy', 'nozero_uniform']
 
 def orthogonalize(initial_initializer):
     shape = initial_initializer.shape
@@ -54,8 +56,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
         # Compatibility with keras-team/keras.
         if distribution == 'normal':
             distribution = 'truncated_normal'
-        distributions_possible = ['uniform', 'truncated_normal', 'untruncated_normal', 'bi_gamma', 'bi_gamma_10',
-                                  'tanh_normal', 'cauchy', 'nozero_uniform']
+
         tanh_distributions = ['tanh_' + d for d in distributions_possible]
         distributions_possible.extend(tanh_distributions)
         if distribution not in distributions_possible:
@@ -224,12 +225,12 @@ def test_1():
     initializer = MoreVarianceScalingAndOrthogonal(
         scale=1.0,
         mode='no_fan',
-        distribution='bi_gamma',  # 'tanh_bi_gamma',
+        distribution='untruncated_normal',  # 'tanh_bi_gamma', untruncated_normal bi_gamma
         orthogonalize=True,
         seed=None
     )
 
-    shape = (20, 30)
+    shape = (10, 100)
     t = initializer(shape).numpy()
 
     tt_1 = np.dot(t, t.T)
@@ -237,9 +238,15 @@ def test_1():
     # tt_2 = np.dot(t.T, t)
     # product_2 = np.abs(tt_2) - np.eye(tt_2.shape[-1])
 
-    # print(product_2)
+    print(product_1)
+
     print('{}Orthogonal! '.format('' if np.all(product_1 < 1e-6) else 'Not '))
     print('Variance: ', np.std(t) ** 2)
+    print('Orthogonal Theoretical Variance: ')
+    print('         1/n_in + 1/n_in**2:   ', 1 / shape[0] + 1 / shape[0] ** 2)
+    print('         1/n_in:               ', 1 / shape[0])
+    print('         1/n_out + 1/n_out**2: ', 1 / shape[1] + 1 / shape[1] ** 2)
+    print('         1/n_out:              ', 1 / shape[1])
     import matplotlib.pyplot as plt
 
     n, bins, patches = plt.hist(x=t.flatten(), bins=50, color='#0504aa', alpha=0.7, rwidth=0.85)
@@ -266,8 +273,9 @@ def test_2():
         for distribution in ['bi_gamma', 'normal', 'uniform']:
             if distribution == 'bi_gamma':
                 alpha = 3
-                beta = np.sqrt((alpha * (alpha + 1))/variance)
-                pdf = gamma.pdf(x, a=alpha, loc=0, scale= 1/beta)/2 + gamma.pdf(-x, a=alpha, loc=0, scale=1/beta)/2
+                beta = np.sqrt((alpha * (alpha + 1)) / variance)
+                pdf = gamma.pdf(x, a=alpha, loc=0, scale=1 / beta) / 2 + gamma.pdf(-x, a=alpha, loc=0,
+                                                                                   scale=1 / beta) / 2
                 linestyle = '-'
                 # pdf = 0*x
             elif distribution == 'normal':
@@ -275,10 +283,10 @@ def test_2():
                 # pdf = 0*x
                 linestyle = '--'
             elif distribution == 'uniform':
-                pdf = uniform.pdf(x, loc=-np.sqrt(3*variance), scale=2*np.sqrt(3*variance))
+                pdf = uniform.pdf(x, loc=-np.sqrt(3 * variance), scale=2 * np.sqrt(3 * variance))
                 linestyle = ':'
             else:
-                pdf = 0*x
+                pdf = 0 * x
                 linestyle = 'o'
 
             plt.plot(x, pdf, linestyle, lw=2, alpha=1, color=c, label=type + distribution)
@@ -300,4 +308,4 @@ def test_2():
 
 
 if __name__ == '__main__':
-    test_2()
+    test_1()
