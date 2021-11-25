@@ -8,8 +8,15 @@ CDIR = os.path.dirname(os.path.realpath(__file__))
 
 def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_folders=[], except_files=[],
                     unzip_what=None):
-    tmp_ds = [os.path.join(*[exp_origin, e]) for e in os.listdir(exp_origin) if 'zip' in e]
-    if not os.path.isdir(exp_destination): os.mkdir(exp_destination)
+    if not isinstance(exp_origin, list):
+        exp_origin = [exp_origin]
+
+    tmp_ds = []
+    for eo in exp_origin:
+        ttds = [os.path.join(*[eo, e]) for e in os.listdir(eo) if 'zip' in e]
+        tmp_ds.extend(ttds)
+
+    os.makedirs(exp_destination, exist_ok=True)
 
     ds = []
     for d in tmp_ds:

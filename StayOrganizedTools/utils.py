@@ -170,11 +170,13 @@ def move_mouse():
             break  # finishing the loop
 
 
-def str2val(comments, x, f, default=None, split_symbol='_', equality_symbol=':'):
-    if '{}:'.format(x) in comments:
-        output = f(
+def str2val(comments, flag, output_type=float, default=None, split_symbol='_', equality_symbol=':', remove_flag=True):
+    if '{}{}'.format(flag, equality_symbol) in comments:
+        output = output_type(
             [s for s in comments.split(split_symbol)
-             if '{}{}'.format(x, equality_symbol) in s][0].replace('{}:'.format(x), '')
+             if '{}{}'.format(flag, equality_symbol) in s][0].replace(
+                '{}{}'.format(flag if remove_flag else '', equality_symbol), ''
+            )
         )
     else:
         output = default

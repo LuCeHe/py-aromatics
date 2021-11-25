@@ -284,7 +284,8 @@ class SurrogatedStep(tf.keras.layers.Layer):
 
         sharpness = str2val(string_config, 'sharpn', float, default=1.)
         dampening_factor = str2val(string_config, 'dampf', float, default=1.)
-        self.soft_spike = lambda x: dampening_factor * tf.nn.sigmoid(sharpness * x) if 'annealing' in string_config else 0
+        self.soft_spike = lambda x: dampening_factor * tf.nn.sigmoid(
+            sharpness * x) if 'annealing' in string_config else 0
 
         if 'randompseudod' in string_config:
             spike_functions = [SpikeFunctionGauss, SpikeFunctionCauchy, SpikeFunction, SpikeFunctionSigmoid,
@@ -357,7 +358,7 @@ def draw_pseudods():
 
         axs[0].plot(x, grad, color=pseudod_color(k), label=clean_pseudo_name(k))
 
-    exponents = 10**np.linspace(-2, 1.2, 7)+1
+    exponents = 10 ** np.linspace(-2, 1.2, 7) + 1
     print(exponents)
     for i, k in enumerate(exponents):
         cm = plt.get_cmap('Oranges')
@@ -380,9 +381,45 @@ def draw_pseudods():
     axs[0].set_xticks([0, 1])
     axs[0].set_yticks([0, 1])
     plot_filename = r'pseudods.pdf'
-    fig.savefig(plot_filename, bbox_inches='tight')
+    # fig.savefig(plot_filename, bbox_inches='tight')
+    plt.show()
+
+
+def clean_pseudname(name):
+    name = name.replace('pseudod', '').replace('original', 'ReLU')
+    name = name.replace('fastsigmoid', '$\partial$ fast sigmoid')
+    name = name.replace('sigmoidal', '$\partial$ sigmoid')
+    name = name.replace('cappedskip', 'skip & cap')
+    return name
+
+
+def draw_legend():
+    from matplotlib.lines import Line2D
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    mpl = load_plot_settings(mpl=mpl)
+
+    legend_elements = [Line2D([0], [0], color=pseudod_color(n), lw=4, label=clean_pseudname(n))
+                       for n in possible_pseudod]
+
+    # Create the figure
+    fig, ax = plt.subplots(figsize=(3, 3))
+    for pos in ['right', 'left', 'bottom', 'top']:
+        ax.spines[pos].set_visible(False)
+    # ax.tick_params(axis='both', which='both', bottom='off', top='off', labelbottom='off', right='off', left='off',
+    #                 labelleft='off')
+
+    ax.legend(handles=legend_elements, loc='center')
+
+    plt.axis('off')
+    plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off',
+                    labelright='off', labelbottom='off')
+
+    plot_filename = r'legend.pdf'
+    # fig.savefig(plot_filename, bbox_inches='tight')
     plt.show()
 
 
 if __name__ == '__main__':
-    draw_pseudods()
+    # draw_pseudods()
+    draw_legend()
