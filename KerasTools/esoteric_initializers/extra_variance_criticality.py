@@ -230,7 +230,7 @@ def test_1():
         seed=None
     )
 
-    shape = (10, 100)
+    shape = (2000, 3000)
     t = initializer(shape).numpy()
 
     tt_1 = np.dot(t, t.T)
