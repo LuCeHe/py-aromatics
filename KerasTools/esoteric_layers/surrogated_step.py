@@ -351,7 +351,7 @@ def draw_pseudods():
         x = tf.cast(tf.constant(np.linspace(0, 1.5, 1000)), tf.float32)
         with tf.GradientTape() as tape:
             tape.watch(x)
-            y = ChoosePseudoHeaviside(x, k + ':1')
+            y = ChoosePseudoHeaviside(x, k + '_sharpn:2.1')
         grad = tape.gradient(y, x)
         print(k)
         print(np.mean(grad) * 4)
@@ -421,5 +421,5 @@ def draw_legend():
 
 
 if __name__ == '__main__':
-    # draw_pseudods()
-    draw_legend()
+    draw_pseudods()
+    # draw_legend()
