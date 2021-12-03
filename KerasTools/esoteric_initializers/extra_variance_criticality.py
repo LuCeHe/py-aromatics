@@ -39,14 +39,16 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
             'mode': self.mode,
             'distribution': self.distribution,
             'seed': self.seed,
-            'orthogonalize': self.orthogonalize
+            'orthogonalize': self.orthogonalize,
+            'mean': self.mean,
         }
 
     def __init__(self,
                  scale=1.0,
-                 mode='fan_in',
+                 mode='fan_avg',
                  distribution='truncated_normal',
                  orthogonalize=False,
+                 mean = 0,
                  seed=None):
         if scale <= 0.:
             raise ValueError('`scale` must be positive float.')
@@ -65,6 +67,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
         self.mode = mode
         self.distribution = distribution
         self.orthogonalize = orthogonalize
+        self.mean = mean
         self.seed = seed
         self._random_generator = _RandomGenerator(seed)
 
@@ -142,6 +145,8 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
         if 'tanh' in self.distribution:
             distribution = stddev * tf.math.tanh(distribution)
 
+        distribution += self.mean
+
         if self.orthogonalize:
             # std = tf.math.reduce_std(distribution)
             distribution = orthogonalize(distribution)
@@ -150,6 +155,8 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
 
         return distribution
 
+
+PluriInitializerI = MoreVarianceScalingAndOrthogonal
 
 class GlorotTanh(MoreVarianceScalingAndOrthogonal):
     def __init__(self, scale=1.0, mode='fan_avg', distribution='tanh_normal', seed=None):
