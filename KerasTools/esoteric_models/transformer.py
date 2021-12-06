@@ -169,16 +169,14 @@ def scaled_dot_product_attention_spiking(q, k, v, mask):
 
 
 def choose_attention(attention_type):
-    if attention_type == 'original_transformer':
-        scaled_dot_product_attention = scaled_dot_product_attention_original
-    elif 'spiking_attention' in attention_type:
+    if 'spiking_attention' in attention_type:
 
         surrogated_step_I = SurrogatedStep(attention_type)
         surrogated_step_II = SurrogatedStep(attention_type)
         scaled_dot_product_attention = lambda q, k, v, mask: scaled_dot_product_attention_spiking(
             surrogated_step_I(q), surrogated_step_II(k), v, mask)
     else:
-        raise NotImplementedError
+        scaled_dot_product_attention = scaled_dot_product_attention_original
 
     return scaled_dot_product_attention
 

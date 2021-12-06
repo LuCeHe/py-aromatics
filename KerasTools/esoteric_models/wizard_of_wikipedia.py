@@ -10,6 +10,7 @@
 from tensorflow.keras.layers import *
 import tensorflow as tf
 
+from GenericTools.KerasTools.esoteric_layers import ContrastiveLossLayer, AddLossLayer, AddMetricsLayer
 from GenericTools.KerasTools.esoteric_losses.advanced_losses import *
 from GenericTools.KerasTools.esoteric_layers.random_switch import RandomSwitch
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder, GPT
@@ -224,34 +225,39 @@ class tf_ContextKnowledgeDecoder(tf.keras.layers.Layer):
 
 def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_size=int(5e4),
                   target_vocab_size=int(5e4), encoder_maxlen=1024, decoder_maxlen=1024,
-                  rate=.1, max_knowledge=5, pad_idx=0, mha_type='original_transformer'):
+                  rate=.1, max_knowledge=5, pad_idx=0, comments='original_transformer'):
     cke = tf_ContextKnowledgeEncoder(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
                                      input_vocab_size=input_vocab_size, maximum_position_encoding=encoder_maxlen,
-                                     rate=rate, pad_idx=pad_idx, mha_type=mha_type)
+                                     rate=rate, pad_idx=pad_idx, mha_type=comments)
     ckd = tf_ContextKnowledgeDecoder(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
                                      input_vocab_size=input_vocab_size, maximum_position_encoding=decoder_maxlen,
-                                     rate=rate, pad_idx=pad_idx, mha_type=mha_type)
+                                     rate=rate, pad_idx=pad_idx, mha_type=comments)
 
     src_tokens = Input((None,))
     tgt_tokens = Input((None,))
     know_tokens = Input((max_knowledge, None))
     chosen_knowledge = Input((1,))
+    output_tokens = Input((None,))
 
     code = cke([src_tokens, know_tokens, chosen_knowledge])
-
     logits = ckd([tgt_tokens, code], output_type='embedding_projection')
-    model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
+
+    if 'contrastive' in comments:
+        c = ContrastiveLossLayer(coef_disorder=.0, coef_random=.0, n_random=1, string_config=comments)
+        logits = c(logits)
+
+    logits = AddLossLayer(loss=sparse_perplexity)([output_tokens, logits])
+    # logits = AddMetricsLayer(metrics=metrics_wow(num_classes=input_vocab_size, mask_value=pad_idx))([output_tokens, logits])
+
+    model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens, output_tokens], logits)
     return model
 
 
-
-
 def EndToEndModel_noKnowledge(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_size=int(5e4),
-                  target_vocab_size=int(5e4), encoder_maxlen=1024, decoder_maxlen=1024,
-                  rate=.1, max_knowledge=5, pad_idx=0, datapath=''):
-
+                              target_vocab_size=int(5e4), encoder_maxlen=1024, decoder_maxlen=1024,
+                              rate=.1, max_knowledge=5, pad_idx=0, datapath=''):
     ckd = GPT(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff, target_vocab_size=input_vocab_size,
-                 maximum_position_encoding=decoder_maxlen, pad_idx=pad_idx, rate=rate)
+              maximum_position_encoding=decoder_maxlen, pad_idx=pad_idx, rate=rate)
     # ckd = tf_ContextKnowledgeDecoder(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
     #                                  input_vocab_size=input_vocab_size, maximum_position_encoding=decoder_maxlen,
     #                                  rate=rate, pad_idx=pad_idx)
@@ -264,6 +270,7 @@ def EndToEndModel_noKnowledge(num_layers=5, d_model=256, num_heads=2, dff=512, i
     logits = ckd(tgt_tokens, output_type='embedding_projection')
     model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens], logits)
     return model
+
 
 def switch_external_knowledge(model, state='on'):
     if state == 'on':

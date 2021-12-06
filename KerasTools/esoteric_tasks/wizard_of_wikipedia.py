@@ -343,9 +343,9 @@ class WikipediaWizardGenerator(tf.keras.utils.Sequence):
                    batch['contexts'],
                    batch['knowledges'],
                    batch['choices'],
-                   batch['targets']
-               ], \
-               batch['output_targets']
+                   batch['targets'],
+                   batch['output_targets']
+               ], batch['output_targets']
 
 
 if __name__ == '__main__':

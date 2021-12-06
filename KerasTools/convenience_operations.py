@@ -63,8 +63,19 @@ def log_base_n(x, n=2):
     return numerator / denominator
 
 
+# https://stackoverflow.com/questions/39875674/is-there-a-built-in-function-in-tensorflow-for-shuffling-or-permutating-tensors
+def tf_shuffle_axis(value, axis=0, seed=None, name=None):
+    perm = list(range(len(value.shape)))
+    tf_perm = tf.range(tf.rank(value))
+    perm[axis], perm[0] = perm[0], perm[axis]
+    new_perm = tf.gather(tf_perm, perm)
+    # new_perm = tf.concat([perm[0], perm[axis]], axis=0)
+    value = tf.random.shuffle(tf.transpose(value, perm=new_perm))
+    value = tf.transpose(value, perm=perm)
+    return value
 
-def snake(logits, frequency = 1):
+
+def snake(logits, frequency=1):
     """Snake activation to learn periodic functions.
     https://arxiv.org/abs/2006.08195
 
@@ -81,3 +92,10 @@ def snake(logits, frequency = 1):
     frequency = tf.cast(frequency, logits.dtype)
 
     return logits + (1 - tf.cos(2 * frequency * logits)) / (2 * frequency)
+
+
+if __name__ == '__main__':
+    t = tf.random.uniform((2, 3, 4)).numpy()
+    st = tf_shuffle_axis(t, axis=2)
+    print(t)
+    print(st)
