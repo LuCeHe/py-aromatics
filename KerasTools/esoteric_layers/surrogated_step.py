@@ -345,13 +345,13 @@ def draw_pseudods():
 
     import matplotlib.pyplot as plt
 
-    fig, axs = plt.subplots(1, 2, gridspec_kw={'wspace': .15}, sharey=True)
+    fig, axs = plt.subplots(1, 2, gridspec_kw={'wspace': .15}, sharey=True, figsize=(20, 5))
 
     for k in possible_pseudod:
         x = tf.cast(tf.constant(np.linspace(0, 1.5, 1000)), tf.float32)
         with tf.GradientTape() as tape:
             tape.watch(x)
-            y = ChoosePseudoHeaviside(x, k + '_sharpn:2.1')
+            y = ChoosePseudoHeaviside(x, k + '_sharpn:1')
         grad = tape.gradient(y, x)
         print(k)
         print(np.mean(grad) * 4)
@@ -379,6 +379,7 @@ def draw_pseudods():
         for pos in ['right', 'left', 'bottom', 'top']:
             ax.spines[pos].set_visible(False)
     axs[0].set_xticks([0, 1])
+    axs[1].set_xticks([0, 1])
     axs[0].set_yticks([0, 1])
     plot_filename = r'pseudods.pdf'
     # fig.savefig(plot_filename, bbox_inches='tight')
