@@ -70,7 +70,8 @@ def tf_shuffle_axis(value, axis=0, seed=None, name=None):
     perm[axis], perm[0] = perm[0], perm[axis]
     new_perm = tf.gather(tf_perm, perm)
     # new_perm = tf.concat([perm[0], perm[axis]], axis=0)
-    value = tf.random.shuffle(tf.transpose(value, perm=new_perm))
+    batch = tf.transpose(value, perm=new_perm)
+    value = tf.gather(batch, tf.random.shuffle(tf.range(tf.shape(batch)[0])))
     value = tf.transpose(value, perm=perm)
     return value
 

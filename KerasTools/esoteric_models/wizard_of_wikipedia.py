@@ -243,8 +243,8 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
     logits = ckd([tgt_tokens, code], output_type='embedding_projection')
 
     if 'contrastive' in comments:
-        c = ContrastiveLossLayer(coef_disorder=.0, coef_random=.0, n_random=1, string_config=comments)
-        logits = c(logits)
+        c = ContrastiveLossLayer(string_config=comments)
+        logits = c([output_tokens, logits])
 
     logits = AddLossLayer(loss=sparse_perplexity)([output_tokens, logits])
     # logits = AddMetricsLayer(metrics=metrics_wow(num_classes=input_vocab_size, mask_value=pad_idx))([output_tokens, logits])
