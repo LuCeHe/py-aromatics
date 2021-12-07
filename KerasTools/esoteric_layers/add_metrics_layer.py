@@ -8,7 +8,6 @@ class AddMetricsLayer(tf.keras.layers.Layer):
     def __init__(self, metrics, prefix_id='', **kwargs):
         super().__init__(**kwargs)
         self.additional_metrics = metrics
-        print(self.additional_metrics)
         # self.additional_metrics = [get_loss(l) if isinstance(l,str) else l for l in self.additional_metrics]
         self.prefix_id = prefix_id
 
