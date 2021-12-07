@@ -1,4 +1,4 @@
-import logging, os, pathlib, shutil, time
+import logging, os, pathlib, shutil, time, json
 import datetime
 from tqdm import tqdm
 from time import strftime, localtime
@@ -9,9 +9,25 @@ from sacred.observers import FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
 
 from GenericTools.StayOrganizedTools.utils import setReproducible, timeStructured
+from typing import Optional
+from sacred.utils import PathType
+
+DEFAULT_FILE_STORAGE_PRIORITY = 20
 
 
 class CustomFileStorageObserver(FileStorageObserver):
+
+    def __init__(
+            self,
+            basedir: PathType,
+            main_filename: PathType,
+            resource_dir: Optional[PathType] = None,
+            source_dir: Optional[PathType] = None,
+            template: Optional[PathType] = None,
+            priority: int = DEFAULT_FILE_STORAGE_PRIORITY,
+    ):
+        self.main_filename = main_filename
+        super().__init__(basedir, resource_dir, source_dir, template, priority)
 
     def started_event(self, ex_info, command, host_info, start_time, config, meta_info, _id):
         if _id is None:
@@ -36,6 +52,10 @@ class CustomFileStorageObserver(FileStorageObserver):
             self.__dict__.update(relative_path=absolute_path)
             os.mkdir(absolute_path)
 
+        print(json.dumps(config, indent=4))
+        print(json.dumps(self.updated_config, indent=4))
+        print('experiment: ', self.basedir)
+        print(self.main_filename)
         return super().started_event(ex_info, command, host_info, start_time, config, meta_info, _id)
 
     def save_comments(self, comments=''):
@@ -44,13 +64,32 @@ class CustomFileStorageObserver(FileStorageObserver):
             with open(comments_txt, "w") as text_file:
                 text_file.write(comments)
 
+    def completed_event(self, stop_time, result):
+        super().completed_event(stop_time, result)
+        shutil.make_archive(self.basedir, 'zip', self.basedir)
+
+
+class ExtendedExperiment(Experiment):
+
+    def __init__(self, **kwargs):
+        self.main_filename = None
+        super().__init__(**kwargs)
+
+    def automain(self, function):
+        import inspect
+        self.main_filename = inspect.getfile(function)
+        print(self.main_filename) # FIXME: figure out how to save it in the experiment
+
+        a = super().automain(function)
+        return a
+
 
 def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10, ingredients=[]):
     import numpy as np
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)]) + '-'
-    ex = Experiment(name=random_string + experiment_name, base_dir=base_dir, ingredients=ingredients,
-                    save_git_info=False)
-    ex.observers.append(CustomFileStorageObserver("experiments"))
+    ex = ExtendedExperiment(name=random_string + experiment_name, base_dir=base_dir, ingredients=ingredients,
+                            save_git_info=False)
+    ex.observers.append(CustomFileStorageObserver("experiments", ex.main_filename))
 
     ex.captured_out_filter = apply_backspaces_and_linefeeds
 
@@ -98,7 +137,6 @@ def ChooseGPU(GPU=None, memory_growth=True):
         config.gpu_options.allow_growth = True
 
         sess = tf.compat.v1.Session(config=config)  # tf.Session(config=config)
-
 
 
 def remove_folder(folder_path):
