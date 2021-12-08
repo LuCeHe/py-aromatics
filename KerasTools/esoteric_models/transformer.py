@@ -1,17 +1,6 @@
 # source https://www.tensorflow.org/text/tutorials/transformer
 
-import collections
-import logging
-import os
-import pathlib
-import re
-import string
-import sys
-import time
-
 import numpy as np
-import matplotlib.pyplot as plt
-
 import tensorflow as tf
 
 # positional encoding
