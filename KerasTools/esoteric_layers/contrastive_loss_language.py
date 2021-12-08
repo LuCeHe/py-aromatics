@@ -1,4 +1,5 @@
 import tensorflow as tf
+from functools import *
 
 from GenericTools.KerasTools.convenience_operations import tf_shuffle_axis
 from GenericTools.StayOrganizedTools.utils import str2val
@@ -21,7 +22,7 @@ def contrastive_disorder(self, y_true, y_pred, ):
     self.add_metric(contrastive_loss, name='contrastive_disorder', aggregation='mean')
 
 
-def contrastive_random(self, y_pred):
+def contrastive_random(self, y_true, y_pred):
     batch_size = tf.shape(y_pred)[0]
     seq_len = tf.shape(y_pred)[1]
     vocab_size = tf.shape(y_pred)[2]
@@ -43,7 +44,7 @@ def axis_shuffle(self, y_true, y_pred, axis):
     self.add_metric(contrastive_loss, name='contrastive_inaxis', aggregation='mean')
 
 
-def self_shuffle(self, y_pred, axis):
+def self_shuffle(self, y_true, y_pred, axis):
     sprobs = tf_shuffle_axis(y_pred, axis=axis)
 
     contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.square(sprobs - y_pred)))
@@ -80,31 +81,40 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
         self.loss = loss
         self.coef = str2val(string_config, 'coefcontrastive', output_type=float, default=1)
 
-        self.disorder = lambda s, x, y: contrastive_disorder(s, x, y) if 'disordercontrastive' in string_config else None
-        self.random = lambda s, x: contrastive_random(s, x) if 'randomcontrastive' in string_config else None
+        self.contrastives = []
 
+        if 'disordercontrastive' in string_config:
+            self.contrastives.append(contrastive_disorder)
+
+        if 'randomcontrastive' in string_config:
+            self.contrastives.append(contrastive_random)
 
         # in batch contrastive is equivalent to inaxis with axis=0
-        self.inaxis_shuffle = lambda s, t, p: None
         # variation of the idea from https://arxiv.org/pdf/2004.13637.pdf
         if 'inaxiscontrastive' in string_config:
             axis = str2val(string_config, 'inaxiscontrastive', output_type=int)
-            self.inaxis_shuffle = lambda s, t, p: axis_shuffle(s, t, p, axis)
+            axis = [axis] if not isinstance(axis, list) else axis
+            for ax in axis:
+                c = partial(axis_shuffle, axis=ax)
+                self.contrastives.append(c)
 
-        self.self_shuffle = lambda s, p: None
         # variation of the idea from https://arxiv.org/pdf/2004.13637.pdf
         if 'selfcontrastive' in string_config:
             axis = str2val(string_config, 'selfcontrastive', output_type=int)
-            self.self_shuffle = lambda s, p: self_shuffle(s, p, axis)
+            axis = [axis] if not isinstance(axis, list) else axis
+            for ax in axis:
+                c = partial(self_shuffle, axis=ax)
+                self.contrastives.append(c)
 
-        self.contrastive_common = lambda s, p: contrastive_common(s, p) \
+        c = lambda s, t, p: contrastive_common(s, p) \
             if 'contrastivecommon' in string_config else None
+        self.contrastives.append(c)
 
     def build(self, input_shape):
         self.coef = self.add_weight(name='contrastivecoef',
-                                             shape=(),
-                                             initializer=tf.keras.initializers.Constant(self.coef),
-                                             trainable=False)
+                                    shape=(),
+                                    initializer=tf.keras.initializers.Constant(self.coef),
+                                    trainable=False)
 
         self.built = True
 
@@ -115,12 +125,8 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
         else:
             output_words, probs = inputs, inputs
 
-        self.disorder(self, output_words, probs)
-        self.random(self, probs)
-
-        self.inaxis_shuffle(self, output_words, probs)
-        self.self_shuffle(self, probs)
-        self.contrastive_common(self, probs)
+        for c in self.contrastives:
+            c(self, output_words, probs)
 
         return probs
 
