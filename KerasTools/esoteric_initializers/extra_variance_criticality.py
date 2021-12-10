@@ -46,7 +46,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
     def __init__(self,
                  scale=1.0,
                  mode='fan_avg',
-                 distribution='truncated_normal',
+                 distribution='uniform',
                  orthogonalize=False,
                  mean = 0,
                  seed=None):
