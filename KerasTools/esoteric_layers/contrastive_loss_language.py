@@ -63,6 +63,17 @@ def contrastive_common(self, y_pred):
     self.add_metric(contrastive_loss, name='contrastive_common', aggregation='mean')
 
 
+# def promote_unlikely_words(self, y_true, y_pred):
+#     most_common_words = tf.reduce_mean(tf.reduce_mean(y_true, axis=0), axis=0)
+#
+#     mean = tf.reduce_mean(most_common_words)
+#     silence_words = tf.cast(most_common_words > mean, tf.float32)[None, None]
+#
+#     contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.square(silence_words * y_pred)))
+#     self.add_loss(contrastive_loss)
+#     self.add_metric(contrastive_loss, name='contrastive_common', aggregation='mean')
+
+
 class ContrastiveLossLayer(tf.keras.layers.Layer):
 
     def __init__(self, n_random=1,
