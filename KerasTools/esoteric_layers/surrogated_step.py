@@ -30,119 +30,119 @@ def NelsonSpike(v_sc, old_v_sc, thr):
 
 
 @tf.custom_gradient
-def SpikeFunction(v_scaled, dampening_factor, sharpness):
+def SpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
-        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled * sharpness), 0) * dampening_factor
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening_factor), tf.zeros_like(sharpness)]
+        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled * sharpness), 0) * dampening
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
 @tf.custom_gradient
-def ExpSpikeFunction(v_scaled, dampening_factor, sharpness):
+def ExpSpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
-        dz_dv_scaled = tf.math.exp(-tf.abs(2 * v_scaled * sharpness)) * dampening_factor
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening_factor), tf.zeros_like(sharpness)]
+        dz_dv_scaled = tf.math.exp(-tf.abs(2 * v_scaled * sharpness)) * dampening
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
 @tf.custom_gradient
-def FastSigmoidSpikeFunction(v_scaled, dampening_factor, sharpness):
+def FastSigmoidSpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
         xabs = tf.abs(2. * v_scaled * sharpness)
         dz_dv_scaled = 1 / (1 + xabs) ** 2
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening_factor), tf.zeros_like(sharpness)]
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
 @tf.custom_gradient
-def NTailSpikeFunction(v_scaled, dampening_factor, sharpness, tail):
+def NTailSpikeFunction(v_scaled, dampening, sharpness, tail):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
         xabs = tf.abs(v_scaled * sharpness)
         factor = (tail - 1) / 2
         dz_dv_scaled = 1 / (1 + xabs / factor) ** tail
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening_factor), tf.zeros_like(sharpness), tf.zeros_like(tail)]
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness), tf.zeros_like(tail)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
 @tf.custom_gradient
-def CappedSkipSpikeFunction(v_scaled, dampening_factor, sharpness):
+def CappedSkipSpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
         cap = tf.cast(tf.less(tf.abs(2 * sharpness * v_scaled), 1), dtype=tf.float32)
-        return [dy * cap, tf.zeros_like(dampening_factor), tf.zeros_like(sharpness)]
+        return [dy * cap, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
 @tf.custom_gradient
-def SpikeFunctionDamp(v_scaled, dampening_factor):
+def SpikeFunctionDamp(v_scaled, dampening):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
-        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled), 0) * dampening_factor
+        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled), 0) * dampening
         return [
             dy * dz_dv_scaled,
-            tf.reduce_mean(dy * dz_dv_scaled) * tf.ones_like(dampening_factor)
+            tf.reduce_mean(dy * dz_dv_scaled) * tf.ones_like(dampening)
         ]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
 @tf.custom_gradient
-def SpikeFunctionSigmoid(v_scaled, dampening_factor, sharpness):
+def SpikeFunctionSigmoid(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
 
     def grad(dy):  # best m found 25
         x = 4 * v_scaled * sharpness
-        dz_dv_scaled = 4 * tf.math.sigmoid(x) * (1 - tf.math.sigmoid(x)) * dampening_factor
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening_factor), tf.zeros_like(sharpness)]
+        dz_dv_scaled = 4 * tf.math.sigmoid(x) * (1 - tf.math.sigmoid(x)) * dampening
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
 @tf.custom_gradient
-def SpikeFunctionGauss(v_scaled, dampening_factor, sharpness):
+def SpikeFunctionGauss(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
 
     def grad(dy):  # 10 best multiplicative factors found
-        dz_dv_scaled = tf.exp(-math.pi * tf.pow(v_scaled * sharpness, 2)) * dampening_factor
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening_factor), tf.zeros_like(sharpness)]
+        dz_dv_scaled = tf.exp(-math.pi * tf.pow(v_scaled * sharpness, 2)) * dampening
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
 @tf.custom_gradient
-def SpikeFunctionCauchy(v_scaled, dampening_factor, sharpness):
+def SpikeFunctionCauchy(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
 
     def grad(dy):  # 20 best multiplicative factors found
-        dz_dv_scaled = 1 / (1 + tf.pow(math.pi * v_scaled * sharpness, 2)) * dampening_factor
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening_factor), tf.zeros_like(sharpness)]
+        dz_dv_scaled = 1 / (1 + tf.pow(math.pi * v_scaled * sharpness, 2)) * dampening
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
 @tf.custom_gradient
-def SpikeFunctionDeltaDirac(v_scaled, dampening_factor):
+def SpikeFunctionDeltaDirac(v_scaled, dampening):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
 
     def grad(dy):
         dz_dv_scaled = tf.cast(tf.math.equal(v_scaled, 0), tf.keras.backend.floatx())
         # dz_dv_scaled = 0
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening_factor)]
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening)]
 
     return tf.identity(z_, name="SpikeFunctionDeltaDirac"), grad
 
@@ -169,12 +169,12 @@ def isi2SpikeFunction(v_scaled, last_spike_distance):
 
 
 @tf.custom_gradient
-def SpikeFunction_new(v_scaled, dampening_factor, spike_dropout):
+def SpikeFunction_new(v_scaled, dampening, spike_dropout):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
-        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled), 0) * dampening_factor
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening_factor), tf.zeros_like(spike_dropout)]
+        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled), 0) * dampening
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(spike_dropout)]
 
     n_neurons = tf.shape(z_)[1]
     batch_size = tf.shape(z_)[0]
@@ -186,83 +186,86 @@ def SpikeFunction_new(v_scaled, dampening_factor, spike_dropout):
 # new derivatives ================================================================
 
 @tf.custom_gradient
-def idSpikeFunction(v_scaled, dampening_factor):
+def idSpikeFunction(v_scaled, dampening):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
-        return [dy, tf.zeros_like(dampening_factor)]
+        return [dy, tf.zeros_like(dampening)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
 @tf.custom_gradient
-def strangeSpikeFunction(v_scaled, dampening_factor):
+def strangeSpikeFunction(v_scaled, dampening):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
         dz_dv_scaled = 1 / (1 + tf.exp(-1 / v_scaled))
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening_factor)]
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
 @tf.custom_gradient
-def switchSpikeFunction(v_scaled, dampening_factor):
+def switchSpikeFunction(v_scaled, dampening):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
         aa_zeros = tf.cast(tf.random.categorical(tf.math.log([[.8, .2]]), 1), dtype=tf.float32)
 
-        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled), 0) * dampening_factor
+        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled), 0) * dampening
         dz_dv = (1 - aa_zeros) * dy * dz_dv_scaled + aa_zeros * dy
-        return [dz_dv, tf.zeros_like(dampening_factor)]
+        return [dz_dv, tf.zeros_like(dampening)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
-def ChoosePseudoHeaviside(v_sc, config=''):
-    sharpness = str2val(config, 'sharpn', float, default=1.)
-    dampening_factor = str2val(config, 'dampf', float, default=1.)
+def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
+    sharpness = str2val(config, 'sharpn', float, default=sharpness)
+    dampening = str2val(config, 'dampf', float, default=dampening)
+    print('inside ChoosePseudoHeaviside!')
+    print(dampening)
+    print(sharpness)
 
     if 'gaussianpseudod' in config:
-        z = SpikeFunctionGauss(v_sc, dampening_factor, sharpness)
+        z = SpikeFunctionGauss(v_sc, dampening, sharpness)
 
     elif 'cauchypseudod' in config:
-        z = SpikeFunctionCauchy(v_sc, dampening_factor, sharpness)
+        z = SpikeFunctionCauchy(v_sc, dampening, sharpness)
 
     elif 'originalpseudod' in config:
-        z = SpikeFunction(v_sc, dampening_factor, sharpness)
+        z = SpikeFunction(v_sc, dampening, sharpness)
 
     elif 'sigmoidalpseudod' in config:
-        z = SpikeFunctionSigmoid(v_sc, dampening_factor, sharpness)
+        z = SpikeFunctionSigmoid(v_sc, dampening, sharpness)
 
     elif 'exponentialpseudod' in config:
-        z = ExpSpikeFunction(v_sc, dampening_factor, sharpness)
+        z = ExpSpikeFunction(v_sc, dampening, sharpness)
 
     elif 'cappedskippseudod' in config:
-        z = CappedSkipSpikeFunction(v_sc, dampening_factor, sharpness)
+        z = CappedSkipSpikeFunction(v_sc, dampening, sharpness)
 
     elif 'fastsigmoidpseudod' in config:
-        z = FastSigmoidSpikeFunction(v_sc, dampening_factor, sharpness)
+        z = FastSigmoidSpikeFunction(v_sc, dampening, sharpness)
 
     elif 'ntailpseudod' in config:
         tail = str2val(config, 'tailvalue', float, default=1.1)
-        z = NTailSpikeFunction(v_sc, dampening_factor, sharpness, tail)
+        z = NTailSpikeFunction(v_sc, dampening, sharpness, tail)
 
     elif 'reluspike' in config:
-        z = dampening_factor * tf.nn.relu(sharpness * v_sc)
+        z = dampening * tf.nn.relu(sharpness * v_sc)
 
     elif 'ssnu' in config:
-        z = dampening_factor * tf.nn.sigmoid(sharpness * v_sc)
+        z = dampening * tf.nn.sigmoid(sharpness * v_sc)
 
     elif 'geluspike' in config:
-        z = dampening_factor * tf.nn.gelu(sharpness * v_sc)
+        z = dampening * tf.nn.gelu(sharpness * v_sc)
 
     elif 'softplusspike' in config:
-        z = dampening_factor * tf.math.softplus(sharpness * v_sc)
+        z = dampening * tf.math.softplus(sharpness * v_sc)
 
     else:
-        z = FastSigmoidSpikeFunction(v_sc, dampening_factor, sharpness)
+        z = FastSigmoidSpikeFunction(v_sc, dampening, sharpness)
 
     return z
 
@@ -276,25 +279,26 @@ class SurrogatedStep(tf.keras.layers.Layer):
         base_config = super().get_config()
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
-    def __init__(self, string_config='', **kwargs):
+    def __init__(self, string_config='', dampening=1, sharpness=1, **kwargs):
         super().__init__(**kwargs)
 
         self.init_args = dict(string_config=string_config)
         self.__dict__.update(self.init_args)
 
-        sharpness = str2val(string_config, 'sharpn', float, default=1.)
-        dampening_factor = str2val(string_config, 'dampf', float, default=1.)
-        self.soft_spike = lambda x: dampening_factor * tf.nn.sigmoid(
+        sharpness = str2val(string_config, 'sharpn', float, default=sharpness)
+        dampening = str2val(string_config, 'dampf', float, default=dampening)
+        self.soft_spike = lambda x: dampening * tf.nn.sigmoid(
             sharpness * x) if 'annealing' in string_config else 0
 
         if 'randompseudod' in string_config:
             spike_functions = [SpikeFunctionGauss, SpikeFunctionCauchy, SpikeFunction, SpikeFunctionSigmoid,
                                ExpSpikeFunction, CappedSkipSpikeFunction, FastSigmoidSpikeFunction]
-            spikes = lambda x: [s(x, dampening_factor, sharpness) for s in spike_functions]
+            spikes = lambda x: [s(x, dampening, sharpness) for s in spike_functions]
             self.random_switch = RandomSwitch([1 / len(spike_functions)] * len(spike_functions))
             self.hard_spike = lambda x: self.random_switch(spikes(x))
         else:
-            self.hard_spike = lambda x: ChoosePseudoHeaviside(x, config=string_config)
+            self.hard_spike = lambda x: ChoosePseudoHeaviside(x, config=string_config, sharpness=sharpness,
+                                                              dampening=dampening)
 
     def build(self, input_shape):
         self.hard_heaviside = self.add_weight(
