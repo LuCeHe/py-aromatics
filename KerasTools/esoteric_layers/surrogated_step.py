@@ -223,9 +223,6 @@ def switchSpikeFunction(v_scaled, dampening):
 def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
     sharpness = str2val(config, 'sharpn', float, default=sharpness)
     dampening = str2val(config, 'dampf', float, default=dampening)
-    print('inside ChoosePseudoHeaviside!')
-    print(dampening)
-    print(sharpness)
 
     if 'gaussianpseudod' in config:
         z = SpikeFunctionGauss(v_sc, dampening, sharpness)
