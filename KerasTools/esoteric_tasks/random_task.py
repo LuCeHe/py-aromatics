@@ -60,7 +60,6 @@ class RandomTask(tf.keras.utils.Sequence):
 
 
 def random_batch(batch_type, batch_shape, max_value):
-    print(batch_shape)
     if batch_type == 'int':
         batch = np.random.choice(max_value, size=batch_shape)
 
