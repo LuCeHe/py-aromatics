@@ -10,6 +10,13 @@ https://github.com/LIVIAETS/surface-loss/issues/14#issuecomment-546342163
 """
 
 
+
+def log10(x):
+    numerator = tf.math.log(x)
+    denominator = tf.math.log(tf.constant(10, dtype=numerator.dtype))
+    return numerator / denominator
+
+
 def calc_dist_map(seg):
     res = np.zeros_like(seg)
     posmask = seg.astype(np.bool)
@@ -251,3 +258,26 @@ if __name__ == '__main__':
     # loss = masked_sparse_crossentropy(mask_value=pad_idx)(y_true, y_pred)
     loss = masked_f1_on_max(num_classes=vocab_size, mask_value=pad_idx)(y_true, y_pred)
     print(loss)
+
+
+
+
+def si_sdr_loss(y_true, y_pred):
+    # print("######## SI-SDR LOSS ########")
+    x = tf.cast(y_true, tf.float32)
+    y = tf.cast(y_pred, tf.float32)
+
+    # x = tf.squeeze(y_true, axis=-1)
+    # y = tf.squeeze(y_pred, axis=-1)
+    smallVal = 1e-9  # To avoid divide by zero
+    a = tf.reduce_sum(y * x, axis=1, keepdims=True) / (tf.reduce_sum(x * x, axis=1, keepdims=True) + smallVal)
+
+    xa = a * x
+    xay = xa - y
+    d = tf.reduce_sum(xa * xa, axis=1, keepdims=True) / (tf.reduce_sum(xay * xay, axis=1, keepdims=True) + smallVal)
+    # d1=tf.zeros(d.shape)
+    d1 = d == 0
+    d1 = 1 - tf.cast(d1, tf.float32)
+
+    d = -tf.reduce_mean(10 * d1 * log10(d + smallVal))
+    return d
