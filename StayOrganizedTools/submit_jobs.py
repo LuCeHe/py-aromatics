@@ -1,12 +1,32 @@
 import os, itertools
+from datetime import datetime, timedelta
 
 
-def run_experiments(experiments=None, init_command='python language_main.py with ',
-                    run_string='sbatch run_tf2.sh ', is_argparse=False):
+def run_experiments(
+        experiments=None, init_command='python language_main.py with ',
+        run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
+        duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training': False}
+):
+    delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=5)
+
+    # stop training 2 hours before the total allocated time, to run tests
+    stop_training = delta.total_seconds() - 2 * 3600
+
+    hours, remainder = divmod(delta.total_seconds(), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    sh_duration = "{}:{}:00".format(str(int(hours)).zfill(2), str(int(minutes)).zfill(2))
+
+    if run_string is None:
+        sh_name = create_sbatch_sh(sh_duration, sh_location, py_location, account)
+        run_string = 'sbatch ' + sh_name
+
+    print()
+    stop_training = '' if not duration['prestop_training'] else ' stop_time={} '.format(stop_training)
     if not experiments is None:
         ds = dict2iter(experiments)
     else:
         ds = ['']
+
     print('Number jobs: {}'.format(len(ds)))
     for i, d in enumerate(ds):
         if not experiments is None:
@@ -16,10 +36,10 @@ def run_experiments(experiments=None, init_command='python language_main.py with
         else:
             command = init_command
 
-        command = run_string + "'{}'".format(command)
+        command = "{} '{}'".format(run_string, command + stop_training)
         command = command.replace('  ', ' ')
         print('{}/{}'.format(i + 1, len(ds)), command)
-        os.system(command)
+        # os.system(command)
     print('Number jobs: {}'.format(len(ds)))
 
 
@@ -30,3 +50,27 @@ def dict2iter(experiments):
         ds = [{k: v for k, v in zip(experiment.keys(), i)} for i in c]
         full_ds.extend(ds)
     return full_ds
+
+
+def create_sbatch_sh(duration, sh_location, py_location, account):
+    import time
+    sh_name = '{0:010x}'.format(int(time.time() * 256))[:15] + '.sh'
+    sh_path = os.path.join(sh_location, sh_name)
+    with open(sh_path, 'w') as f:
+        f.write(sh_base(duration, account, py_location))
+    return sh_path
+
+
+sh_base = lambda time, account, py_location: """
+#!/bin/bash
+#SBATCH --time={}
+#SBATCH --account={}
+#SBATCH --mem 32G
+#SBATCH --cpus-per-task 4
+#SBATCH --gres=gpu:1
+
+module load StdEnv/2020  gcc/9.3.0  cuda/11.0 arrow/1.0.0 python/3.6 scipy-stack
+source ~/scratch/denv2/bin/activate
+cd {}
+$1
+""".format(time, account, py_location)

@@ -10,7 +10,6 @@ https://github.com/LIVIAETS/surface-loss/issues/14#issuecomment-546342163
 """
 
 
-
 def log10(x):
     numerator = tf.math.log(x)
     denominator = tf.math.log(tf.constant(10, dtype=numerator.dtype))
@@ -56,6 +55,7 @@ def mode_accuracy(y_true, y_pred):
     acc = tf.reduce_mean(equal)
     return acc
 
+
 def sparse_mode_accuracy(y_true, y_pred):
     y_pred = tf.cast(tf.argmax(tf.reduce_sum(y_pred, axis=1), axis=1), tf.float32)
     y_true = tf.cast(tf.reduce_mean(y_true, axis=1), tf.float32)
@@ -88,10 +88,12 @@ def zeros_categorical_accuracy(y_true, y_pred):
     n_right = tf.reduce_sum(new_t, axis=[1, 2])
     return n_right / n_tot
 
+
 def oh_bpc(y_true, y_pred):
     mean_xent = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
     bits_per_character = mean_xent / tf.math.log(2.)
     return bits_per_character
+
 
 def bpc(y_true, y_pred):
     mean_xent = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(y_true, y_pred)
@@ -144,11 +146,11 @@ def oh_perplexity(y_true, y_pred):
     return p
 
 
-
 def perplexity(y_true, y_pred):
     mean_xent = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(y_true, y_pred)
     p = tf.exp(mean_xent)
     return p
+
 
 def masked_sparse_crossentropy(mask_value):
     def masked_xent(y_true, y_pred):
@@ -211,7 +213,7 @@ def sparse_f1_on_max(num_classes):
 
 def masked_f1_on_max(num_classes, mask_value):
     def masked_f1_on_max(y_true, y_pred):
-        mask = 1-tf.cast(K.equal(y_true, mask_value), tf.float32)
+        mask = 1 - tf.cast(K.equal(y_true, mask_value), tf.float32)
         mask = tf.expand_dims(mask, -1)
 
         max_pred = tf.argmax(y_pred, -1)
@@ -260,8 +262,6 @@ if __name__ == '__main__':
     print(loss)
 
 
-
-
 def si_sdr_loss(y_true, y_pred):
     # print("######## SI-SDR LOSS ########")
     x = tf.cast(y_true, tf.float32)
@@ -281,3 +281,20 @@ def si_sdr_loss(y_true, y_pred):
 
     d = -tf.reduce_mean(10 * d1 * log10(d + smallVal))
     return d
+
+
+
+
+def pearson_r(y_true, y_pred):
+    # original: https://github.com/WenYanger/Keras_Metrics/
+    x = y_true
+    y = y_pred
+    mx = K.mean(x, axis=0)
+    my = K.mean(y, axis=0)
+    xm, ym = x - mx, y - my
+    r_num = K.sum(xm * ym)
+    x_square_sum = K.sum(xm * xm)
+    y_square_sum = K.sum(ym * ym)
+    r_den = K.sqrt(x_square_sum * y_square_sum)
+    r = r_num / r_den
+    return K.mean(r)
