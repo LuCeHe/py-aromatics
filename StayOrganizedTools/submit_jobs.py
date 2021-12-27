@@ -61,8 +61,7 @@ def create_sbatch_sh(duration, sh_location, py_location, account):
     return sh_path
 
 
-sh_base = lambda time, account, py_location: """
-#!/bin/bash
+sh_base = lambda time, account, py_location: """#!/bin/bash
 #SBATCH --time={}
 #SBATCH --account={}
 #SBATCH --mem 32G
