@@ -7,7 +7,7 @@ def run_experiments(
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
         duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training': False}
 ):
-    delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=5)
+    delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
 
     # stop training 2 hours before the total allocated time, to run tests
     stop_training = delta.total_seconds() - 2 * 3600
