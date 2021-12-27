@@ -28,10 +28,13 @@ def contrastive_random(self, y_true, y_pred):
     vocab_size = tf.shape(y_pred)[2]
 
     for i in range(self.n_random):
-        p = tf.tile((1 / vocab_size)[None, None], [batch_size, vocab_size])
-        random_words = tf.random.categorical(tf.math.log(p), seq_len)
+        if self.categorical:
+            p = tf.tile((1 / vocab_size)[None, None], [batch_size, vocab_size])
+            random = tf.random.categorical(tf.math.log(p), seq_len)
+        else:
+            random = tf.random.normal(tf.shape(y_pred))
 
-        contrastive_loss = - self.coef * tf.sigmoid(self.loss(random_words, y_pred))
+        contrastive_loss = - self.coef * tf.sigmoid(self.loss(random, y_pred))
         self.add_loss(contrastive_loss)
         self.add_metric(contrastive_loss, name='contrastive_random_{}'.format(i), aggregation='mean')
 
@@ -77,10 +80,11 @@ def contrastive_common(self, y_pred):
 class ContrastiveLossLayer(tf.keras.layers.Layer):
 
     def __init__(self, n_random=1,
-                 loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), string_config='', **kwargs):
+                 loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), categorical=True, string_config='', **kwargs):
         super().__init__(**kwargs)
         self.n_random = n_random
         self.string_config = string_config
+        self.categorical = categorical
 
         if hasattr(loss, 'name'):
             loss.name = loss.name
