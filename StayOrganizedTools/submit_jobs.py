@@ -21,7 +21,7 @@ def run_experiments(
         run_string = 'sbatch ' + sh_name
 
     print()
-    stop_training = '' if not duration['prestop_training'] else ' stop_time={} '.format(stop_training)
+    stop_training = '' if not duration['prestop_training'] else ' stop_time={} '.format(int(stop_training))
     if not experiments is None:
         ds = dict2iter(experiments)
     else:
