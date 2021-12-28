@@ -1,31 +1,49 @@
 import tensorflow as tf
 
+
 class AddLossLayer(tf.keras.layers.Layer):
 
     def __init__(self, loss, coef=1., prefix_id='', **kwargs):
         super().__init__(**kwargs)
-        self.coef = coef
-        self.loss = loss
+        # self.coef = coef
+        self.losses_to_add = loss if isinstance(loss, list) else [loss]
+        self.coefs = [coef for _ in self.losses_to_add]
         self.prefix_id = prefix_id
 
-        try:
-            self.loss_name = self.loss.name
-        except:
+        self.loss_names = []
+        for l in self.losses_to_add:
             try:
-                self.loss_name = self.loss.__name__
+                n = l.name
             except:
-                self.loss_name = str(loss)
+                try:
+                    n = l.__name__
+                except:
+                    n = str(l)
+            self.loss_names.append(self.prefix_id + n)
 
-        self.loss_name = self.prefix_id + self.loss_name
+    def build(self, input_shape):
+
+        if len(self.losses_to_add) > 1:
+            coefs = []
+            for i, ci in enumerate(list(self.coefs)):
+                c = self.add_weight(
+                    name='loss_' + str(i), shape=(), initializer=tf.keras.initializers.Constant(ci),
+                    trainable=False
+                )
+                coefs.append(c)
+            self.coefs = coefs
+
+        self.built = True
 
     def call(self, inputs, training=None):
         true_output, pred_output = inputs
 
-        loss = tf.reduce_sum(self.coef * self.loss(true_output, pred_output))
-        self.add_loss(loss)
-        self.add_metric(loss, name=self.loss_name, aggregation='mean')
-        return pred_output
+        for c, l, n in zip(self.coefs, self.losses_to_add, self.loss_names):
+            loss = tf.reduce_sum(c * l(true_output, pred_output))
+            self.add_loss(loss)
+            self.add_metric(loss, name=n, aggregation='mean')
 
+        return pred_output
 
     def get_config(self):
         config = {

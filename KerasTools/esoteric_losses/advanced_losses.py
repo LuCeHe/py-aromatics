@@ -283,8 +283,6 @@ def si_sdr_loss(y_true, y_pred):
     return d
 
 
-
-
 def pearson_r(y_true, y_pred):
     # original: https://github.com/WenYanger/Keras_Metrics/
     x = y_true
@@ -298,3 +296,7 @@ def pearson_r(y_true, y_pred):
     r_den = K.sqrt(x_square_sum * y_square_sum)
     r = r_num / r_den
     return K.mean(r)
+
+
+def pearson_loss(y_true, y_pred):
+    return - pearson_r(y_true, y_pred)

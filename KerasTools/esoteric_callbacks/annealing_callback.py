@@ -1,7 +1,6 @@
 import tensorflow as tf
 
 
-
 def exponential_annealing(epoch, epochs, value):
     if epoch == 0:
         new_value = 0
@@ -25,8 +24,10 @@ def probabilistic_exponential_annealing(epoch, epochs, value):
     return new_value
 
 
-hard_annealing=lambda epoch, epochs, value: 0 if epoch < epochs / 2 else 1
+hard_annealing = lambda epoch, epochs, value: 0 if epoch < epochs / 2 else 1
 
+
+inverse_hard_annealing = lambda epoch, epochs, value: 1 if epoch < epochs / 2 else 0
 
 def get_annealing_schedule(annealing_schedule):
     if annealing_schedule in ['probabilistic_exponential_annealing', 'pea']:
@@ -35,6 +36,8 @@ def get_annealing_schedule(annealing_schedule):
         return exponential_annealing
     elif annealing_schedule in ['hard_annealing', 'ha']:
         return hard_annealing
+    elif annealing_schedule in ['inverse_hard_annealing', 'iha']:
+        return inverse_hard_annealing
     else:
         raise NotImplementedError
 
@@ -53,13 +56,15 @@ class AnnealingCallback(tf.keras.callbacks.Callback):
     def __init__(self,
                  epochs,
                  variables_to_anneal=[],
-                 annealing_schedule=lambda epoch, value: 1,
+                 annealing_schedule=[lambda epoch, value: 1],
                  ):
         super().__init__()
         self.epochs = epochs
         self.variables_to_anneal = variables_to_anneal
-        self.annealing_schedule = annealing_schedule if not isinstance(annealing_schedule, str) \
-            else get_annealing_schedule(annealing_schedule)
+        annealing_schedule = annealing_schedule if isinstance(annealing_schedule, list) else [annealing_schedule]
+
+        self.annealing_schedule = [ans if not isinstance(ans, str) else get_annealing_schedule(ans)
+                                   for ans in annealing_schedule]
 
     def set_model(self, model):
         """Sets Keras model and writes graph if specified."""
@@ -76,7 +81,7 @@ class AnnealingCallback(tf.keras.callbacks.Callback):
 
     def on_batch_begin(self, batch, logs=None):
         self.batch = batch
-
-        for w in self.annealing_weights:
+        for w, ans in zip(self.annealing_weights, self.annealing_schedule):
             v = tf.keras.backend.get_value(w)
-            tf.keras.backend.set_value(w, self.annealing_schedule(self.epoch, self.epochs, v))
+            tf.keras.backend.set_value(w, ans(self.epoch, self.epochs, v))
+
