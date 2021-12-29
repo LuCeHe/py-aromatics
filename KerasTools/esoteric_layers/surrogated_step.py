@@ -375,7 +375,11 @@ def draw_pseudods():
 
     axs[0].set_xlabel('input to gradient')
     axs[0].set_ylabel('surrogate gradient\namplitude')
-    axs[0].legend(loc='upper right')
+
+    from matplotlib.lines import Line2D
+    legend_elements = [Line2D([0], [0], color=pseudod_color(n), lw=4, label=clean_pseudname(n))
+                       for n in possible_pseudod]
+    axs[0].legend(handles=legend_elements, loc='upper right')
     for ax in axs:
         for pos in ['right', 'left', 'bottom', 'top']:
             ax.spines[pos].set_visible(False)
@@ -383,12 +387,12 @@ def draw_pseudods():
     axs[1].set_xticks([0, 1])
     axs[0].set_yticks([0, 1])
     plot_filename = r'pseudods.pdf'
-    # fig.savefig(plot_filename, bbox_inches='tight')
+    fig.savefig(plot_filename, bbox_inches='tight')
     plt.show()
 
 
 def clean_pseudname(name):
-    name = name.replace('pseudod', '').replace('original', 'ReLU')
+    name = name.replace('pseudod', '').replace('original', 'triangular')
     name = name.replace('fastsigmoid', '$\partial$ fast sigmoid')
     name = name.replace('sigmoidal', '$\partial$ sigmoid')
     name = name.replace('cappedskip', 'skip & cap')
