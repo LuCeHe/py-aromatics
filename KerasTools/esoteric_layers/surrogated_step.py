@@ -373,7 +373,7 @@ def draw_pseudods():
 
         axs[1].plot(x, grad, color=c)
 
-    axs[0].set_xlabel('input to gradient')
+    axs[0].set_xlabel('centered voltage')
     axs[0].set_ylabel('surrogate gradient\namplitude')
 
     from matplotlib.lines import Line2D
