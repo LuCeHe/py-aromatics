@@ -9,7 +9,7 @@ from GenericTools.KerasTools.esoteric_optimizers.AdamW import AdamW
 def get_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_decay=False, clipnorm=False,
                   exclude_from_weight_decay=[], warmup_steps=None):
     learning_rate = lr
-    if 'cosine_no_restarts' in lr_schedule:
+    if 'cosine_no_restarts' in lr_schedule or 'cnr' in lr_schedule:
         learning_rate = tf.keras.experimental.CosineDecay(learning_rate, decay_steps=int(4 * total_steps / 5), alpha=.1)
     elif 'cosine_restarts' in lr_schedule:
         learning_rate = tf.keras.experimental.CosineDecayRestarts(learning_rate,
