@@ -313,9 +313,14 @@ def smape_loss(y_true, y_pred):
 
 
 def smape_loss_b(y_true, y_pred):
-    # by PigSpdr:
-    # https://datascience.stackexchange.com/questions/41093/using-smape-as-a-loss-function-for-an-lstm
-    epsilon = 0.1
+    epsilon = 1e-6
     summ = K.abs(y_true) + K.abs(y_pred) + epsilon
     smape = K.abs(y_pred - y_true) / summ * 2.0
+    return tf.reduce_sum(smape)
+
+
+def smape_loss_c(y_true, y_pred):
+    epsilon = 1e-6
+    summ = tf.square(y_true) + tf.square(y_pred) + epsilon
+    smape = tf.square(y_pred - y_true) / summ * 2.0
     return tf.reduce_sum(smape)
