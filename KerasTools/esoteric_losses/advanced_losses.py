@@ -287,8 +287,23 @@ def pearson_r(y_true, y_pred):
     # original: https://github.com/WenYanger/Keras_Metrics/
     x = y_true
     y = y_pred
-    mx = K.mean(x, axis=1)
-    my = K.mean(y, axis=1)
+    mx = tf.reduce_mean(x, axis=1, keepdims=True)
+    my = tf.reduce_mean(y, axis=1, keepdims=True)
+    xm, ym = x - mx, y - my
+    r_num = K.sum(xm * ym)
+    x_square_sum = K.sum(xm * xm)
+    y_square_sum = K.sum(ym * ym)
+    r_den = K.sqrt(x_square_sum * y_square_sum)
+    r = r_num / r_den
+    return K.mean(r)
+
+
+def pearson_r_a(y_true, y_pred):
+    # original: https://github.com/WenYanger/Keras_Metrics/
+    x = y_true
+    y = y_pred
+    mx = K.mean(x, axis=0)
+    my = K.mean(y, axis=0)
     xm, ym = x - mx, y - my
     r_num = K.sum(xm * ym)
     x_square_sum = K.sum(xm * xm)
@@ -301,26 +316,3 @@ def pearson_r(y_true, y_pred):
 def pearson_loss(y_true, y_pred):
     return - pearson_r(y_true, y_pred)
 
-
-
-def smape_loss(y_true, y_pred):
-    # by PigSpdr:
-    # https://datascience.stackexchange.com/questions/41093/using-smape-as-a-loss-function-for-an-lstm
-    epsilon = 0.1
-    summ = K.maximum(K.abs(y_true) + K.abs(y_pred) + epsilon, 0.5 + epsilon)
-    smape = K.abs(y_pred - y_true) / summ * 2.0
-    return smape
-
-
-def smape_loss_b(y_true, y_pred):
-    epsilon = 1e-6
-    summ = K.abs(y_true) + K.abs(y_pred) + epsilon
-    smape = K.abs(y_pred - y_true) / summ * 2.0
-    return tf.reduce_sum(smape)
-
-
-def smape_loss_c(y_true, y_pred):
-    epsilon = 1e-6
-    summ = tf.square(y_true) + tf.square(y_pred) + epsilon
-    smape = tf.square(y_pred - y_true) / summ * 2.0
-    return tf.reduce_sum(smape)

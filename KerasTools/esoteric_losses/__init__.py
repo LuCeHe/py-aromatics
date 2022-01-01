@@ -1,6 +1,7 @@
 import sys
 
 from GenericTools.KerasTools.esoteric_losses.advanced_losses import *
+from GenericTools.KerasTools.esoteric_losses.forecasting import *
 
 thismodule = sys.modules[__name__]
 
