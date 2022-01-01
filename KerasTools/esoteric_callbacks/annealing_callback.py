@@ -25,8 +25,6 @@ def probabilistic_exponential_annealing(epoch, epochs, value):
 
 
 hard_annealing = lambda epoch, epochs, value: 0 if epoch < epochs / 2 else 1
-
-
 inverse_hard_annealing = lambda epoch, epochs, value: 1 if epoch < epochs / 2 else 0
 
 def get_annealing_schedule(annealing_schedule):
@@ -34,9 +32,9 @@ def get_annealing_schedule(annealing_schedule):
         return probabilistic_exponential_annealing
     elif annealing_schedule in ['exponential_annealing', 'ea']:
         return exponential_annealing
-    elif annealing_schedule in ['hard_annealing', 'ha']:
+    elif annealing_schedule in ['hard_annealing', 'ha', 'switch_on']:
         return hard_annealing
-    elif annealing_schedule in ['inverse_hard_annealing', 'iha']:
+    elif annealing_schedule in ['inverse_hard_annealing', 'iha', 'switch_off']:
         return inverse_hard_annealing
     else:
         raise NotImplementedError

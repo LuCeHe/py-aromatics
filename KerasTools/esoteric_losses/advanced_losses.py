@@ -287,8 +287,8 @@ def pearson_r(y_true, y_pred):
     # original: https://github.com/WenYanger/Keras_Metrics/
     x = y_true
     y = y_pred
-    mx = K.mean(x, axis=0)
-    my = K.mean(y, axis=0)
+    mx = K.mean(x, axis=1)
+    my = K.mean(y, axis=1)
     xm, ym = x - mx, y - my
     r_num = K.sum(xm * ym)
     x_square_sum = K.sum(xm * xm)
