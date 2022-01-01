@@ -1,10 +1,11 @@
 import sys, inspect
 from GenericTools.KerasTools.esoteric_initializers.extra_variance_criticality import *
 
-# from tensorflow.keras.initializers import *
+from tensorflow.keras.initializers import *
 
 esoteric_initializers_list = [
-    'BiGamma', 'BiGamma10', 'BiGammaOrthogonal', 'CauchyOrthogonal', 'GlorotBiGamma', 'HeBiGamma',
+    'BiGamma', 'BiGamma10', 'BiGammaOrthogonal', 'BiGamma10Orthogonal',
+    'CauchyOrthogonal', 'GlorotBiGamma', 'HeBiGamma',
     'GlorotBiGammaOrthogonal',
     'GlorotCauchyOrthogonal', 'GlorotOrthogonal', 'GlorotTanh', 'MoreVarianceScalingAndOrthogonal', 'NoZeroGlorot',
     'NoZeroGlorotOrthogonal', 'TanhBiGamma10', 'TanhBiGamma10Orthogonal'

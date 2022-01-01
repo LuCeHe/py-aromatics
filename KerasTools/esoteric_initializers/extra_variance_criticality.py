@@ -193,6 +193,11 @@ class BiGamma10(MoreVarianceScalingAndOrthogonal):
         super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed)
 
 
+class BiGamma10Orthogonal(MoreVarianceScalingAndOrthogonal):
+    def __init__(self, scale=1.0, mode='fan_avg', distribution='bi_gamma_10', seed=None):
+        super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed, orthogonalize=True)
+
+
 class TanhBiGamma10(MoreVarianceScalingAndOrthogonal):
     def __init__(self, scale=1.0, mode='fan_avg', distribution='tanh_bi_gamma_10', seed=None):
         super().__init__(scale=scale, mode=mode, distribution=distribution, seed=seed)
@@ -236,6 +241,8 @@ def test_1():
         orthogonalize=True,
         seed=None
     )
+
+    initializer= BiGamma10()
 
     shape = (2000, 3000)
     t = initializer(shape).numpy()
