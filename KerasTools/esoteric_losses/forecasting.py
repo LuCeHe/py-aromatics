@@ -18,6 +18,23 @@ def smape_loss(y_true, y_pred):
     return smape
 
 
+
+def true_smape_loss(y_true, y_pred):
+    # https://en.wikipedia.org/wiki/Symmetric_mean_absolute_percentage_error
+    epsilon = 1e-6
+    den = K.abs(y_true) + K.abs(y_pred) + epsilon
+    smape = K.abs(y_pred - y_true) / den
+    return tf.reduce_mean(smape)
+
+
+
+def true_smape_loss_b(y_true, y_pred):
+    # https://en.wikipedia.org/wiki/Symmetric_mean_absolute_percentage_error
+    epsilon = 1e-6
+    den = tf.reduce_mean(K.abs(y_true + y_pred) + epsilon)
+    smape = K.abs(y_pred - y_true) / den
+    return tf.reduce_mean(smape)
+
 def smape_loss_b(y_true, y_pred):
     epsilon = 1e-6
     summ = K.abs(y_true) + K.abs(y_pred) + epsilon
