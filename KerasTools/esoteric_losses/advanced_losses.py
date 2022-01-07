@@ -4,6 +4,8 @@ import tensorflow as tf
 from scipy.ndimage import distance_transform_edt as distance
 import tensorflow_addons as tfa
 
+from GenericTools.KerasTools.esoteric_losses.forecasting import smape_loss
+
 """
 sources:
 https://github.com/LIVIAETS/surface-loss/issues/14#issuecomment-546342163
@@ -172,6 +174,11 @@ def sparse_perplexity(y_true, y_pred):
     p = tf.exp(mean_xent)
     return p
 
+def sparse_smape(y_true, y_pred):
+    vocab_size = y_pred.shape[-1]
+    oh_true = tf.one_hot(tf.cast(y_true, tf.int32), vocab_size)
+    loss = smape_loss(oh_true, y_pred)
+    return loss
 
 def masked_sparse_perplexity(mask_value):
     mxent = masked_sparse_crossentropy(mask_value)

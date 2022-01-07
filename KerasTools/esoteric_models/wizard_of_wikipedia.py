@@ -11,6 +11,7 @@ from tensorflow.keras.layers import *
 import tensorflow as tf
 
 from GenericTools.KerasTools.esoteric_layers import ContrastiveLossLayer, AddLossLayer, AddMetricsLayer
+from GenericTools.KerasTools.esoteric_losses import smape_loss
 from GenericTools.KerasTools.esoteric_losses.advanced_losses import *
 from GenericTools.KerasTools.esoteric_layers.random_switch import RandomSwitch
 from GenericTools.KerasTools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder, GPT
@@ -246,7 +247,8 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
         c = ContrastiveLossLayer(string_config=comments)
         logits = c([output_tokens, logits])
 
-    logits = AddLossLayer(loss=sparse_perplexity)([output_tokens, logits])
+    # logits = AddLossLayer(loss=sparse_perplexity)([output_tokens, logits])
+    logits = AddLossLayer(loss=sparse_smape)([output_tokens, logits])
     # logits = AddMetricsLayer(metrics=metrics_wow(num_classes=input_vocab_size, mask_value=pad_idx))([output_tokens, logits])
 
     model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens, output_tokens], logits)
