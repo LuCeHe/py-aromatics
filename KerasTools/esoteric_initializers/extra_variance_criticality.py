@@ -50,7 +50,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
                  orthogonalize=False,
                  mean = 0,
                  seed=None):
-        if scale <= 0.:
+        if np.any(scale <= 0.):
             raise ValueError('`scale` must be positive float.')
         if mode not in {'fan_in', 'fan_out', 'fan_avg', 'no_fan'}:
             raise ValueError('Invalid `mode` argument:', mode)
