@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name='GenericTools',
+    name='esoteric_tensors',
     version='0.0.1',
     author='Luca Herrtti',
     author_email='luca.herrtti@gmail.com',
