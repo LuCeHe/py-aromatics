@@ -19,6 +19,7 @@ setup(
         "Bug Tracker": "https://github.com/lucehe/GenericTools/issues"
     },
     license='MIT',
-    packages=required,
-    install_requires=[],
+    python_requires=">=3.6",
+    packages=find_packages(),
+    install_requires=required,
 )
