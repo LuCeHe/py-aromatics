@@ -1,9 +1,9 @@
-import setuptools
+from setuptools import find_packages, setup
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-setuptools.setup(
+setup(
     name='GenericTools',
     version='0.0.1',
     author='Luca Herrtti',
@@ -16,6 +16,6 @@ setuptools.setup(
         "Bug Tracker": "https://github.com/lucehe/GenericTools/issues"
     },
     license='MIT',
-    packages=['GenericTools'],
+    packages=find_packages(),
     install_requires=[],
 )
