@@ -22,4 +22,10 @@ setup(
     python_requires=">=3.6",
     packages=find_packages(),
     install_requires=required,
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Programming Language :: Python :: 3 :: Only",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
 )
