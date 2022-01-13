@@ -3,6 +3,9 @@ from setuptools import find_packages, setup
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+with open('requirements.txt') as f:
+    required = f.read().splitlines()
+    
 setup(
     name='GenericTools',
     version='0.0.1',
@@ -16,6 +19,6 @@ setup(
         "Bug Tracker": "https://github.com/lucehe/GenericTools/issues"
     },
     license='MIT',
-    packages=find_packages(),
+    packages=required,
     install_requires=[],
 )
