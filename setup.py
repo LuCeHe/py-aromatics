@@ -13,9 +13,9 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url='https://github.com/lucehe/GenericTools',
     project_urls = {
-        "Bug Tracker": "https://github.com/mike-huls/GenericTools/issues"
+        "Bug Tracker": "https://github.com/lucehe/GenericTools/issues"
     },
     license='MIT',
     packages=['GenericTools'],
-    install_requires=['tensorflow', 'sacred', 'matplotlib'],
+    install_requires=[],
 )
