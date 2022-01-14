@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from GenericTools.KerasTools.esoteric_layers.rate_voltage_reg import RateVoltageRegularization
+from GenericTools.keras_tools.esoteric_layers.rate_voltage_reg import RateVoltageRegularization
 
 
 @tf.custom_gradient

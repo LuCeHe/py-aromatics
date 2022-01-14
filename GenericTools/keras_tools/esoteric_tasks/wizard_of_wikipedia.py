@@ -9,8 +9,8 @@ import pandas as pd
 
 from GenericTools.LeanguageTreatmentTools.unpadding import unpad_sequence
 from GenericTools.PlotTools.mpl_tools import load_plot_settings
-from GenericTools.StayOrganizedTools.download_utils import download_and_unzip
-from GenericTools.StayOrganizedTools.utils import str2val
+from GenericTools.stay_organized.download_utils import download_and_unzip
+from GenericTools.stay_organized.utils import str2val
 
 pd = load_plot_settings(pd=pd)
 

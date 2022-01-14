@@ -9,7 +9,7 @@ import tensorflow.keras.backend as K
 import numpy as np
 import matplotlib.pyplot as plt
 
-from GenericTools.StayOrganizedTools.utils import timeStructured
+from GenericTools.stay_organized.utils import timeStructured
 
 
 class LRFinder(Callback):

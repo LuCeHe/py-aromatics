@@ -1,8 +1,8 @@
 import os
 
-from GenericTools.KerasTools.esoteric_tasks.random_task import RandomTask
-from GenericTools.KerasTools.esoteric_tasks.wizard_of_wikipedia import WikipediaWizardGenerator
-from GenericTools.StayOrganizedTools.utils import str2val
+from GenericTools.keras_tools.esoteric_tasks.random_task import RandomTask
+from GenericTools.keras_tools.esoteric_tasks.wizard_of_wikipedia import WikipediaWizardGenerator
+from GenericTools.stay_organized.utils import str2val
 #
 # FILENAME = os.path.realpath(__file__)
 # CDIR = os.path.dirname(FILENAME)

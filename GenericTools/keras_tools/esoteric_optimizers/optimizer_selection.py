@@ -1,9 +1,9 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from GenericTools.KerasTools.learning_rate_schedules import AddWarmUpToSchedule, DummyConstantSchedule
-from GenericTools.KerasTools.esoteric_optimizers.AdaBelief import AdaBelief
-from GenericTools.KerasTools.esoteric_optimizers.AdamW import AdamW
+from GenericTools.keras_tools.learning_rate_schedules import AddWarmUpToSchedule, DummyConstantSchedule
+from GenericTools.keras_tools.esoteric_optimizers.AdaBelief import AdaBelief
+from GenericTools.keras_tools.esoteric_optimizers.AdamW import AdamW
 
 
 def get_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_decay=False, clipnorm=False,

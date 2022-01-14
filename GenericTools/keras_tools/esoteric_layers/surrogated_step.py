@@ -1,9 +1,10 @@
 import tensorflow as tf
 import math
 
-from GenericTools.KerasTools.esoteric_layers.random_switch import RandomSwitch
-from GenericTools.PlotTools.mpl_tools import load_plot_settings
-from GenericTools.StayOrganizedTools.utils import str2val
+from GenericTools.keras_tools.esoteric_layers.random_switch import RandomSwitch
+from GenericTools.stay_organized.utils import str2val
+
+from GenericTools.stay_organized.mpl_tools import load_plot_settings
 
 
 @tf.custom_gradient

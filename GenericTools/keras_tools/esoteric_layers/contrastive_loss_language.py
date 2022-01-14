@@ -1,8 +1,8 @@
 import tensorflow as tf
 from functools import *
 
-from GenericTools.KerasTools.convenience_operations import tf_shuffle_axis
-from GenericTools.StayOrganizedTools.utils import str2val
+from GenericTools.keras_tools.convenience_operations import tf_shuffle_axis
+from GenericTools.stay_organized.utils import str2val
 
 
 def contrastive_disorder(self, y_true, y_pred, ):

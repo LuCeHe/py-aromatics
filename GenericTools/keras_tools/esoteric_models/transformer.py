@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 # positional encoding
-from GenericTools.KerasTools.esoteric_layers import SurrogatedStep
+from GenericTools.keras_tools.esoteric_layers import SurrogatedStep
 
 
 def get_angles(pos, i, d_model):

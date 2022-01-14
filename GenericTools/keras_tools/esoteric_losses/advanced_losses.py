@@ -4,7 +4,7 @@ import tensorflow as tf
 from scipy.ndimage import distance_transform_edt as distance
 import tensorflow_addons as tfa
 
-from GenericTools.KerasTools.esoteric_losses.forecasting import smape_loss
+from GenericTools.keras_tools.esoteric_losses.forecasting import smape_loss
 
 """
 sources:

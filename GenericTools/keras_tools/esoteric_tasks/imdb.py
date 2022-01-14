@@ -6,7 +6,7 @@ from os import listdir
 from nltk.corpus import stopwords
 from keras.preprocessing.text import Tokenizer
 import tensorflow.keras as keras
-from GenericTools.StayOrganizedTools.download_utils import download_url
+from GenericTools.stay_organized.download_utils import download_url
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
 DATADIR = os.path.abspath(os.path.join(*[CDIR, '..', 'data']))

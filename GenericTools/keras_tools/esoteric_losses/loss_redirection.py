@@ -1,4 +1,4 @@
-from GenericTools.KerasTools.esoteric_losses.focal_loss import categorical_focal_loss
+from GenericTools.keras_tools.esoteric_losses.focal_loss import categorical_focal_loss
 import tensorflow_addons as tfa
 import tensorflow as tf
 

@@ -1,5 +1,5 @@
 import sys, inspect
-from GenericTools.KerasTools.esoteric_initializers.extra_variance_criticality import *
+from GenericTools.keras_tools.esoteric_initializers.extra_variance_criticality import *
 
 from tensorflow.keras.initializers import *
 

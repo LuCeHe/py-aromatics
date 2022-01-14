@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from GenericTools.KerasTools.esoteric_losses import get_loss
+from GenericTools.keras_tools.esoteric_losses import get_loss
 
 
 class AddMetricsLayer(tf.keras.layers.Layer):

@@ -10,7 +10,7 @@ import tensorflow as tf
 
 from typing import Callable, Optional, Union
 
-from GenericTools.KerasTools.configuration_performer_attention import PerformerKernel, \
+from GenericTools.keras_tools.configuration_performer_attention import PerformerKernel, \
     PerformerAttentionConfig, OrthogonalFeatureAlgorithm
 
 KERNEL_CALLABLES = {

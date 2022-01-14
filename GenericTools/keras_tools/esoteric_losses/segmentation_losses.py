@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from GenericTools.KerasTools.advanced_losses import surface_loss
+from GenericTools.keras_tools.advanced_losses import surface_loss
 
 try:
     from segmentation_models.base import Loss

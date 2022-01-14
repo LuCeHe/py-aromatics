@@ -1,7 +1,7 @@
 import tensorflow as tf
 from transformers.generation_tf_utils import TFGenerationMixin
 
-from GenericTools.KerasTools.esoteric_models.wizard_of_wikipedia import EndToEndModel
+from GenericTools.keras_tools.esoteric_models.wizard_of_wikipedia import EndToEndModel
 from GenericTools.LeanguageTreatmentTools.random_language import random_indices
 
 
