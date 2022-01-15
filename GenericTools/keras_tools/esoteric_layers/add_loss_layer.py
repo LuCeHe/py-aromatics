@@ -5,7 +5,8 @@ class AddLossLayer(tf.keras.layers.Layer):
 
     def __init__(self, loss, coef=1., prefix_id='', **kwargs):
         super().__init__(**kwargs)
-        # self.coef = coef
+        self.loss = loss
+        self.coef = coef
         self.losses_to_add = loss if isinstance(loss, list) else [loss]
         self.coefs = [coef for _ in self.losses_to_add]
         self.prefix_id = prefix_id

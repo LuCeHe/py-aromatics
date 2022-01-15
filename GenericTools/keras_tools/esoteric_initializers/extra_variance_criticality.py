@@ -38,9 +38,9 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
             'scale': self.scale,
             'mode': self.mode,
             'distribution': self.distribution,
-            'seed': self.seed,
             'orthogonalize': self.orthogonalize,
             'mean': self.mean,
+            'seed': self.seed,
         }
 
     def __init__(self,

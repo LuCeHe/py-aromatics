@@ -2,6 +2,7 @@ import sys
 
 from GenericTools.keras_tools.esoteric_losses.advanced_losses import *
 from GenericTools.keras_tools.esoteric_losses.forecasting import *
+from tensorflow.keras.losses import *
 
 thismodule = sys.modules[__name__]
 
