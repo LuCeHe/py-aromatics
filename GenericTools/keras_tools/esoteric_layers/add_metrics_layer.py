@@ -16,9 +16,12 @@ class AddMetricsLayer(tf.keras.layers.Layer):
 
         for m in self.additional_metrics:
             print(m)
-            m_output = m(true_output, pred_output)
-            name = m.name if hasattr(m, 'name') else m.__name__
-            self.add_metric(m_output, name=self.prefix_id + name, aggregation='mean')
+            try:
+                m_output = m(true_output, pred_output)
+                name = m.name if hasattr(m, 'name') else m.__name__
+                self.add_metric(m_output, name=self.prefix_id + name, aggregation='mean')
+            except Exception as e:
+                print(e)
         return pred_output
 
     def get_config(self):
