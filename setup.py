@@ -21,7 +21,7 @@ setup(
     license='MIT',
     python_requires=">=3.6",
     packages=find_packages(),
-    install_requires=required,
+    install_requires=[],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Programming Language :: Python :: 3 :: Only",
