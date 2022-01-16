@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+from GenericTools.keras_tools.esoteric_losses import get_loss
+
 
 class AddLossLayer(tf.keras.layers.Layer):
 
@@ -8,6 +10,8 @@ class AddLossLayer(tf.keras.layers.Layer):
         self.loss = loss
         self.coef = coef
         self.losses_to_add = loss if isinstance(loss, list) else [loss]
+        self.losses_to_add = [get_loss(l) if isinstance(l, str) else l for l in self.losses_to_add]
+
         self.coefs = [coef for _ in self.losses_to_add]
         self.prefix_id = prefix_id
 

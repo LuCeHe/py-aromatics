@@ -174,7 +174,7 @@ def sparse_perplexity(y_true, y_pred):
     p = tf.exp(mean_xent)
     return p
 
-def sparse_smape(y_true, y_pred):
+def sparsesmape(y_true, y_pred):
     vocab_size = y_pred.shape[-1]
     oh_true = tf.one_hot(tf.cast(y_true, tf.int32), vocab_size)
     loss = smape_loss(oh_true, y_pred)
