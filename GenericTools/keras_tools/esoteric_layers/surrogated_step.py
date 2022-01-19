@@ -347,7 +347,7 @@ def draw_pseudods():
 
     import matplotlib.pyplot as plt
 
-    fig, axs = plt.subplots(1, 2, gridspec_kw={'wspace': .15}, sharey=True, figsize=(20, 5))
+    fig, axs = plt.subplots(1, 2, gridspec_kw={'wspace': .1}, sharey=False, figsize=(10, 5))
 
     for k in possible_pseudod:
         x = tf.cast(tf.constant(np.linspace(0, 1.5, 1000)), tf.float32)
@@ -360,12 +360,12 @@ def draw_pseudods():
 
         axs[0].plot(x, grad, color=pseudod_color(k), label=clean_pseudo_name(k))
 
-    exponents = 10 ** np.linspace(-2, 1.2, 7) + 1
-    print(exponents)
+    n_exps = 7
+    exponents = 10 ** np.linspace(-2, 1.2, n_exps) + 1
+
+    cm = plt.get_cmap('Oranges')
     for i, k in enumerate(exponents):
-        cm = plt.get_cmap('Oranges')
-        c = cm(.4 + (i - 1) / (len(exponents) - 1) * .4)
-        print(k)
+        c = cm(.4 + i / (len(exponents) - 1) * .4)
         x = tf.cast(tf.constant(np.linspace(0, 1.5, 1000)), tf.float32)
         with tf.GradientTape() as tape:
             tape.watch(x)
@@ -374,19 +374,48 @@ def draw_pseudods():
 
         axs[1].plot(x, grad, color=c)
 
+    n_grad = 100
+    gradient = np.linspace(.4, .8, n_grad)[::-1]
+    gradient = np.vstack((gradient, gradient))
+
+    ax = fig.add_axes([.92, 0.2, .02, .6])
+    ax.imshow(gradient.T, aspect='auto', cmap=cm)
+    ax.text(-0.01, 0.5, '$n$-tail \t', va='center', ha='right', fontsize=16,
+            transform=ax.transAxes)
+    ax.set_yticks([])
+    ax.set_xticks([])
+
+    loc = [-.5 + i / (n_exps - 1) * n_grad for i in range(n_exps)]
+    exponents = [round(e, 2) for e in 10 ** np.linspace(-2, 1.2, n_exps) + 1][::-1]
+
+    ax.set_yticks(loc)
+    ax.set_yticklabels(exponents)
+
+    ax.yaxis.tick_right()
+    ax.yaxis.set_label_position("right")
+
+    for pos in ['right', 'left', 'bottom', 'top']:
+        ax.spines[pos].set_visible(False)
+
+    # ax.text(-0.01, 0.5, name, va='center', ha='right', fontsize=10,
+    #         transform=ax.transAxes)
+
     axs[0].set_xlabel('centered voltage')
     axs[0].set_ylabel('surrogate gradient\namplitude')
 
     from matplotlib.lines import Line2D
     legend_elements = [Line2D([0], [0], color=pseudod_color(n), lw=4, label=clean_pseudname(n))
                        for n in possible_pseudod]
-    axs[0].legend(handles=legend_elements, loc='upper right')
+    axs[0].legend(handles=legend_elements, loc='best', bbox_to_anchor=(0.4, 0.5, 0.4, 0.5))
     for ax in axs:
         for pos in ['right', 'left', 'bottom', 'top']:
             ax.spines[pos].set_visible(False)
     axs[0].set_xticks([0, 1])
     axs[1].set_xticks([0, 1])
+    axs[1].set_yticks([])
+    axs[1].set_yticks([], minor=True)
     axs[0].set_yticks([0, 1])
+
     plot_filename = r'pseudods.pdf'
     fig.savefig(plot_filename, bbox_inches='tight')
     plt.show()
@@ -396,7 +425,7 @@ def clean_pseudname(name):
     name = name.replace('pseudod', '').replace('original', 'triangular')
     name = name.replace('fastsigmoid', '$\partial$ fast sigmoid')
     name = name.replace('sigmoidal', '$\partial$ sigmoid')
-    name = name.replace('cappedskip', 'skip & cap')
+    name = name.replace('cappedskip', 'rectangular')
     return name
 
 
