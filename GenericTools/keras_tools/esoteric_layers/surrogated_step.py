@@ -452,10 +452,10 @@ def draw_legend():
                     labelright='off', labelbottom='off')
 
     plot_filename = r'legend.pdf'
-    # fig.savefig(plot_filename, bbox_inches='tight')
+    fig.savefig(plot_filename, bbox_inches='tight')
     plt.show()
 
 
 if __name__ == '__main__':
-    draw_pseudods()
-    # draw_legend()
+    # draw_pseudods()
+    draw_legend()

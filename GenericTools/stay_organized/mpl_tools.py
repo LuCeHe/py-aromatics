@@ -63,8 +63,8 @@ def load_plot_settings(mpl=None, pd=None, figsize=(10, 10)):
                   'legend.fontsize': med,
                   'figure.figsize': figsize,
                   'axes.labelsize': large,
-                  'xtick.labelsize': med,
-                  'ytick.labelsize': med,
+                  'xtick.labelsize': small,
+                  'ytick.labelsize': small,
                   'figure.titlesize': large}
         mpl.rcParams.update(params)
         output += (mpl,)
