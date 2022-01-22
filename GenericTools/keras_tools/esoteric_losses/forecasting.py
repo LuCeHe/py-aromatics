@@ -18,7 +18,6 @@ def smape_loss(y_true, y_pred):
     return smape
 
 
-
 def true_smape_loss(y_true, y_pred):
     # https://en.wikipedia.org/wiki/Symmetric_mean_absolute_percentage_error
     epsilon = 1e-6
@@ -27,13 +26,13 @@ def true_smape_loss(y_true, y_pred):
     return tf.reduce_mean(smape)
 
 
-
 def true_smape_loss_b(y_true, y_pred):
     # https://en.wikipedia.org/wiki/Symmetric_mean_absolute_percentage_error
     epsilon = 1e-6
     den = tf.reduce_mean(K.abs(y_true + y_pred) + epsilon)
     smape = K.abs(y_pred - y_true) / den
     return tf.reduce_mean(smape)
+
 
 def smape_loss_b(y_true, y_pred):
     epsilon = 1e-6
@@ -51,3 +50,17 @@ def smape_loss_c(y_true, y_pred):
 
 def owa(y_true, y_pred):
     return mase(y_true, y_pred) + smape_loss(y_true, y_pred)
+
+
+def match_directions_rate(y_true, y_pred):
+    st = tf.math.sign(y_true)
+    sp = tf.math.sign(y_pred)
+    equals = tf.cast(tf.math.equal(st, sp), tf.float32)
+    return tf.reduce_mean(equals)
+
+if __name__ == '__main__':
+    t = tf.random.normal((2,3))
+    p = tf.random.normal((2,3))
+
+    l = match_directions_rate(t,p)
+    print(l)
