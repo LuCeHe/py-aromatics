@@ -1,9 +1,14 @@
 from tensorflow.keras.losses import mean_absolute_error
 
+from GenericTools.stay_organized.utils import rename
+
 
 def maechannel(channel):
-    def msac(y_true, y_pred):
+    @rename('msac{}'.format(channel))
+    def maec(y_true, y_pred):
         yt = y_true[..., channel]
         yp = y_pred[..., channel]
         return mean_absolute_error(yt, yp)
-    return msac
+
+    return maec
+

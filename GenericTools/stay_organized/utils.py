@@ -175,10 +175,10 @@ def str2val(comments, flag, output_type=float, default=None, split_symbol='_', e
     if replace is None:
         if '{}{}'.format(flag, equality_symbol) in comments:
             flags_detected = [s.replace(
-                    '{}{}'.format(flag if remove_flag else '', equality_symbol), ''
-                )
-                              for s in comments.split(split_symbol)
-                 if '{}{}'.format(flag, equality_symbol) in s]
+                '{}{}'.format(flag if remove_flag else '', equality_symbol), ''
+            )
+                for s in comments.split(split_symbol)
+                if '{}{}'.format(flag, equality_symbol) in s]
             flags_detected = sorted([output_type(f) for f in flags_detected])
             output = flags_detected[0] if len(flags_detected) == 1 else flags_detected
         else:
@@ -187,6 +187,14 @@ def str2val(comments, flag, output_type=float, default=None, split_symbol='_', e
         splits = [s for s in comments.split(split_symbol) if not flag in s]
         output = split_symbol.join(splits) + split_symbol + flag + equality_symbol + str(replace)
     return output
+
+
+def rename(newname):
+    def decorator(f):
+        f.__name__ = newname
+        return f
+
+    return decorator
 
 
 if __name__ == '__main__':
