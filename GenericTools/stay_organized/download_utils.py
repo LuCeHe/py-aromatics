@@ -68,10 +68,12 @@ def download_and_unzip(data_links, destination_dir):
                 with ZipFile(destination, 'r') as zipObj:
                     # Extract all the contents of zip file in different directory
                     zipObj.extractall(destination_dir)
-        try:
-            os.remove(destination)
-        except Exception as e:
-            print(e)
+
+        if any([f in destination for f in ['.zip', '.tar', '.tgz']] ):
+            try:
+                os.remove(destination)
+            except Exception as e:
+                print(e)
 
 
 if __name__ == '__main__':
