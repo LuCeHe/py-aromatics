@@ -2,6 +2,7 @@ import tensorflow as tf
 from functools import *
 
 from GenericTools.keras_tools.convenience_operations import tf_shuffle_axis
+from GenericTools.keras_tools.esoteric_losses import get_loss
 from GenericTools.stay_organized.utils import str2val
 
 
@@ -85,6 +86,7 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
         self.n_random = n_random
         self.string_config = string_config
         self.categorical = categorical
+        loss = get_loss(loss) if isinstance(loss, str) else loss
 
         if hasattr(loss, 'name'):
             loss.name = loss.name
