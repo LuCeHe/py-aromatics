@@ -4,6 +4,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow.python.keras.initializers.initializers_v2 import _RandomGenerator, _compute_fans, Orthogonal
 
+
 tfd = tfp.distributions
 _PARTITION_SHAPE = 'partition_shape'
 
@@ -266,6 +267,8 @@ def test_1():
     n, bins, patches = plt.hist(x=t.flatten(), bins=50, color='#0504aa', alpha=0.7, rwidth=0.85)
     plt.show()
 
+hecolor = '#FF5733'
+glorotcolor = '#98975D'
 
 def test_2():
     import matplotlib.pyplot as plt
@@ -277,10 +280,10 @@ def test_2():
     for type in ['he', 'glorot']:
         if type == 'he':
             variance = 2. / (shape[0])
-            c = '#C6D5A1'
+            c = hecolor
         elif type == 'glorot':
             variance = 1.0 / (shape[0] + shape[1])
-            c = '#A1BDD5'
+            c = glorotcolor
         else:
             raise NotImplementedError
 
@@ -316,10 +319,52 @@ def test_2():
     plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off',
                     labelright='off', labelbottom='off')
 
-    plot_filename = 'distributions.png'
-    # plt.savefig(plot_filename, bbox_inches='tight', dpi=512, transparent=True)
+    plot_filename = 'distributions.pdf'
+    plt.savefig(plot_filename, bbox_inches='tight', dpi=512, transparent=True)
     plt.show()
 
 
+def draw_legend():
+    from matplotlib.lines import Line2D
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    from GenericTools.stay_organized.mpl_tools import load_plot_settings
+    from matplotlib.lines import Line2D
+
+    mpl = load_plot_settings(mpl=mpl)
+
+    # legend_elements = [
+    #     Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot'),
+    #     Line2D([0], [0], color=hecolor, lw=4, label='He'),
+    #     Line2D([0], [0], color='k', lw=4, label='Uniform', linestyle = ':'),
+    #     Line2D([0], [0], color='k', lw=4, label='Normal', linestyle = '--'),
+    #     Line2D([0], [0], color='k', lw=4, label='BiGamma', linestyle = '-'),
+    # ]
+
+    legend_elements = [
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Uniform', linestyle = ':'),
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Normal', linestyle = '--'),
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot BiGamma', linestyle = '-'),
+        Line2D([0], [0], color=hecolor, lw=4, label='He Uniform', linestyle=':'),
+        Line2D([0], [0], color=hecolor, lw=4, label='He Normal', linestyle='--'),
+        Line2D([0], [0], color=hecolor, lw=4, label='He BiGamma', linestyle='-'),
+    ]
+
+    # Create the figure
+    fig, ax = plt.subplots(figsize=(3, 3))
+    for pos in ['right', 'left', 'bottom', 'top']:
+        ax.spines[pos].set_visible(False)
+
+    ax.legend(handles=legend_elements, loc='center')
+
+    plt.axis('off')
+    plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off',
+                    labelright='off', labelbottom='off')
+
+    plot_filename = r'distlegend.pdf'
+    fig.savefig(plot_filename, bbox_inches='tight')
+    plt.show()
+
 if __name__ == '__main__':
-    test_1()
+    test_2()
+    # draw_legend()

@@ -4,7 +4,7 @@ from GenericTools.stay_organized.utils import rename
 
 
 def maechannel(channel):
-    @rename('msac{}'.format(channel))
+    @rename('maec{}'.format(channel))
     def maec(y_true, y_pred):
         yt = y_true[..., channel]
         yp = y_pred[..., channel]

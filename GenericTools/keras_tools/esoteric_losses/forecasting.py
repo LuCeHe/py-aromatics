@@ -1,6 +1,8 @@
 import tensorflow as tf
 from tensorflow.keras import backend as K
 
+from GenericTools.stay_organized.utils import rename
+
 
 def mase(y_true, y_pred):
     sust = tf.reduce_mean(tf.abs(y_true[:, 1:] - y_true[:, :-1]))
@@ -53,10 +55,23 @@ def owa(y_true, y_pred):
 
 
 def match_directions_rate(y_true, y_pred):
+    # print('and here')
     st = tf.math.sign(y_true)
     sp = tf.math.sign(y_pred)
     equals = tf.cast(tf.math.equal(st, sp), tf.float32)
     return tf.reduce_mean(equals)
+
+
+def drchannel(channel):
+    @rename('drc{}'.format(channel))
+    def drc(y_true, y_pred):
+        yt = y_true[..., channel]
+        yp = y_pred[..., channel]
+        return match_directions_rate(yt, yp)
+
+    return drc
+
+
 
 if __name__ == '__main__':
     t = tf.random.normal((2,3))
