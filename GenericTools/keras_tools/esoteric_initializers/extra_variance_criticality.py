@@ -271,12 +271,17 @@ hecolor = '#FF5733'
 glorotcolor = '#98975D'
 
 def test_2():
+    import matplotlib as mpl
+    from GenericTools.stay_organized.mpl_tools import load_plot_settings
+    mpl = load_plot_settings(mpl=mpl)
     import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
     shape = (200, 300)
     from scipy.stats import gamma, norm, uniform
     x = np.linspace(-.25, .25, 1000)
     # a = 3
 
+    fig, ax = plt.subplots(figsize=(5, 5))
     for type in ['he', 'glorot']:
         if type == 'he':
             variance = 2. / (shape[0])
@@ -306,21 +311,38 @@ def test_2():
                 pdf = 0 * x
                 linestyle = 'o'
 
-            plt.plot(x, pdf, linestyle, lw=2, alpha=1, color=c, label=type + distribution)
+            ax.plot(x, pdf, linestyle, lw=2, alpha=1, color=c, label=type + distribution)
 
-    plt.ylabel('$p(x)$')
-    plt.xlabel('$x$')
+    ax.set_ylabel('$p(x)$')
+    ax.set_xlabel('$x$')
 
     # for pos in ['right', 'left', 'bottom', 'top']:
     #     plt.spines[pos].set_visible(False)
 
+    legend_elements = [
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Uniform', linestyle = ':'),
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Normal', linestyle = '--'),
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot BiGamma', linestyle = '-'),
+        Line2D([0], [0], color=hecolor, lw=4, label='He Uniform', linestyle=':'),
+        Line2D([0], [0], color=hecolor, lw=4, label='He Normal', linestyle='--'),
+        Line2D([0], [0], color=hecolor, lw=4, label='He BiGamma', linestyle='-'),
+    ]
+
+    # Create the figure
+    for pos in ['right', 'left', 'bottom', 'top']:
+        ax.spines[pos].set_visible(False)
+
+    ax.legend(handles=legend_elements, frameon=False, bbox_to_anchor=(.65, .45))
+
+    ax.set_xticks([-.1, 0, .1])
+    ax.set_yticks([0, 10])
     # plt.legend()
-    plt.axis('off')
-    plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off',
-                    labelright='off', labelbottom='off')
+    # plt.axis('off')
+    # plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off',
+    #                 labelright='off', labelbottom='off')
 
     plot_filename = 'distributions.pdf'
-    plt.savefig(plot_filename, bbox_inches='tight', dpi=512, transparent=True)
+    fig.savefig(plot_filename, bbox_inches='tight', dpi=512, transparent=True)
     plt.show()
 
 
