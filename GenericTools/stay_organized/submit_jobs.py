@@ -5,12 +5,12 @@ from datetime import datetime, timedelta
 def run_experiments(
         experiments=None, init_command='python language_main.py with ',
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
-        duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training': False}
+        duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': 0}
 ):
     delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
 
     # stop training 2 hours before the total allocated time, to run tests
-    stop_training = delta.total_seconds() - 2 * 3600
+    stop_training = delta.total_seconds() - duration['prestop_training_hours'] * 3600
 
     hours, remainder = divmod(delta.total_seconds(), 3600)
     minutes, seconds = divmod(remainder, 60)
@@ -21,7 +21,7 @@ def run_experiments(
         run_string = 'sbatch ' + sh_name
 
     print()
-    stop_training = '' if not duration['prestop_training'] else ' stop_time={} '.format(int(stop_training))
+    stop_training = '' if not duration['prestop_training_hours'] == 0 else ' stop_time={} '.format(int(stop_training))
     if not experiments is None:
         ds = dict2iter(experiments)
     else:
