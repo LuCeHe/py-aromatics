@@ -86,7 +86,8 @@ class KnowledgeDropout(tf.keras.layers.Layer):
         look_no_knowledge = tf.zeros_like(koh)
 
         switched = self.random_switch([koh, look_all_knowledge, look_no_knowledge])
-        lp = tf.keras.backend.learning_phase()
+        lp = tf.cast(tf.keras.backend.learning_phase(), tf.float32)
+
         switched = lp * switched + (1 - lp) * koh
         return switched
 
@@ -247,9 +248,9 @@ def EndToEndModel(num_layers=5, d_model=256, num_heads=2, dff=512, input_vocab_s
         c = ContrastiveLossLayer(string_config=comments)
         logits = c([output_tokens, logits])
 
-    # logits = AddLossLayer(loss=sparse_perplexity)([output_tokens, logits])
-    logits = AddLossLayer(loss=sparse_smape)([output_tokens, logits])
-    # logits = AddMetricsLayer(metrics=metrics_wow(num_classes=input_vocab_size, mask_value=pad_idx))([output_tokens, logits])
+    logits = AddLossLayer(loss=sparse_perplexity)([output_tokens, logits])
+    # logits = AddLossLayer(loss=sparse_smape)([output_tokens, logits])
+    logits = AddMetricsLayer(metrics=metrics_wow(num_classes=input_vocab_size, mask_value=pad_idx))([output_tokens, logits])
 
     model = tf.keras.models.Model([src_tokens, know_tokens, chosen_knowledge, tgt_tokens, output_tokens], logits)
     return model

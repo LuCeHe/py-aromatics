@@ -5,7 +5,10 @@ import tensorflow as tf
 
 # positional encoding
 from GenericTools.keras_tools.esoteric_layers import SurrogatedStep
+from GenericTools.keras_tools.esoteric_layers.layer_scaling import LayerScaling
 
+# layer_normalization = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+layer_normalization = LayerScaling()
 
 def get_angles(pos, i, d_model):
     angle_rates = 1 / np.power(10000, (2 * (i // 2)) / np.float32(d_model))
@@ -238,8 +241,8 @@ class EncoderLayer(tf.keras.layers.Layer):
         self.mha = MultiHeadAttention(d_model, num_heads, mha_type=mha_type)
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
-        self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm1 = layer_normalization
+        self.layernorm2 = layer_normalization
 
         self.dropout1 = tf.keras.layers.Dropout(rate)
         self.dropout2 = tf.keras.layers.Dropout(rate)
@@ -265,9 +268,9 @@ class DecoderLayer(tf.keras.layers.Layer):
 
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
-        self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm3 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm1 = layer_normalization
+        self.layernorm2 = layer_normalization
+        self.layernorm3 = layer_normalization
 
         self.dropout1 = tf.keras.layers.Dropout(rate)
         self.dropout2 = tf.keras.layers.Dropout(rate)
@@ -301,8 +304,8 @@ class GPTBlock(tf.keras.layers.Layer):
 
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
-        self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm3 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm1 = tf.keras.layers.layer_normalization
+        self.layernorm3 = tf.keras.layers.layer_normalization
 
         self.dropout1 = tf.keras.layers.Dropout(rate)
         self.dropout3 = tf.keras.layers.Dropout(rate)

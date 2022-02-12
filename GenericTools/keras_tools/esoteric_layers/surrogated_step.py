@@ -115,6 +115,31 @@ def SpikeFunctionSigmoid(v_scaled, dampening, sharpness):
 
 
 @tf.custom_gradient
+def SpikeFunctionMultiGaussian(v_scaled, dampening, sharpness):
+    # Accurate and efficient time-domain classification
+    # with adaptive spiking recurrent neural networks
+    # Bojian Yin, Federico Corradi and Sander M. Bohté
+    # FIXME: it uses the hyperparams from that publication, but it would be interesting to standardize it to have max
+    # value of 1 and area under the curve of 1
+
+    z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
+
+    def grad(dy):  # best m found 25
+        x = v_scaled * sharpness
+        width = 0.5
+        h = .15
+        s = 6
+
+        central_g = (1 + h) * tf.exp(-tf.pow(x, 2) / (2 * width ** 2))
+        left_g = h * tf.exp(-tf.pow(x - width, 2) / (2 * s ** 2 * width ** 2))
+        right_g = h * tf.exp(-tf.pow(x + width, 2) / (2 * s ** 2 * width ** 2))
+        dz_dv_scaled = central_g-left_g-right_g
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
+
+    return tf.identity(z_, name="SpikeFunction"), grad
+
+
+@tf.custom_gradient
 def SpikeFunctionGauss(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
 
@@ -250,6 +275,10 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
         tail = str2val(config, 'tailvalue', float, default=1.1)
         z = NTailSpikeFunction(v_sc, dampening, sharpness, tail)
 
+    elif 'mgausspseudod' in config:
+        # tail = str2val(config, 'tailvalue', float, default=1.1)
+        z = SpikeFunctionMultiGaussian(v_sc, dampening, sharpness)
+
     elif 'reluspike' in config:
         z = dampening * tf.nn.relu(sharpness * v_sc)
 
@@ -320,6 +349,7 @@ possible_pseudod = [
     'fastsigmoidpseudod',
     'cappedskippseudod',
     # 'ntailpseudod',
+    'mgausspseudod',
 ]
 
 
@@ -349,21 +379,21 @@ def draw_pseudods():
 
     fig, axs = plt.subplots(1, 2, gridspec_kw={'wspace': .1}, sharey=False, figsize=(10, 5))
 
-    # for k in possible_pseudod:
-    #     x = tf.cast(tf.constant(np.linspace(0, 1.5, 1000)), tf.float32)
-    #     with tf.GradientTape() as tape:
-    #         tape.watch(x)
-    #         y = ChoosePseudoHeaviside(x, k + '_sharpn:1')
-    #     grad = tape.gradient(y, x)
-    #     print(k)
-    #     print(np.mean(grad) * 4)
-    #
-    #     c = pseudod_color(k)
-    #     print(c)
-    #     cint = (int(255 * i) for i in c)
-    #     print(cint)
-    #     print(k, '#{:02x}{:02x}{:02x}'.format(*cint))
-    #     axs[0].plot(x, grad, color=c, label=clean_pseudo_name(k))
+    for k in possible_pseudod:
+        x = tf.cast(tf.constant(np.linspace(0, 1.5, 1000)), tf.float32)
+        with tf.GradientTape() as tape:
+            tape.watch(x)
+            y = ChoosePseudoHeaviside(x, k + '_sharpn:1')
+        grad = tape.gradient(y, x)
+        print(k)
+        print(np.mean(grad) * 4)
+
+        c = pseudod_color(k)
+        print(c)
+        cint = (int(255 * i) for i in c)
+        print(cint)
+        print(k, '#{:02x}{:02x}{:02x}'.format(*cint))
+        axs[0].plot(x, grad, color=c, label=clean_pseudo_name(k))
 
     n_exps = 7
     exponents = 10 ** np.linspace(-2, 1.2, n_exps) + 1
@@ -497,6 +527,6 @@ def draw_legend_mini():
 
 
 if __name__ == '__main__':
-    # draw_pseudods()
+    draw_pseudods()
     # draw_legend()
-    draw_legend_mini()
+    # draw_legend_mini()
