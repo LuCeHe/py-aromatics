@@ -1,4 +1,4 @@
-import os, itertools
+import os, itertools, time, socket
 from datetime import datetime, timedelta
 
 
@@ -53,7 +53,6 @@ def dict2iter(experiments):
 
 
 def create_sbatch_sh(duration, sh_location, py_location, account):
-    import time
     sh_name = '{0:010x}'.format(int(time.time() * 256))[:15] + '.sh'
     sh_path = os.path.join(sh_location, sh_name)
     with open(sh_path, 'w') as f:
@@ -61,7 +60,11 @@ def create_sbatch_sh(duration, sh_location, py_location, account):
     return sh_path
 
 
-sh_base = lambda time, account, py_location: """#!/bin/bash
+def sh_base(time, account, py_location):
+    env_location = '~/scratch/denv2/bin/activate'
+    if 'cdr' in socket.gethostname():
+        env_location = '~/project/lucacehe/denv2/bin/activate'
+    return """#!/bin/bash
 #SBATCH --time={}
 #SBATCH --account={}
 #SBATCH --mem 32G
@@ -69,7 +72,7 @@ sh_base = lambda time, account, py_location: """#!/bin/bash
 #SBATCH --gres=gpu:1
 
 module load StdEnv/2020  gcc/9.3.0  cuda/11.0 arrow/1.0.0 python/3.6 scipy-stack
-source ~/scratch/denv2/bin/activate
+source {}
 cd {}
 $1
-""".format(time, account, py_location)
+""".format(time, account, env_location, py_location)
