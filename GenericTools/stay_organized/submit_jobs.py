@@ -62,7 +62,7 @@ def create_sbatch_sh(duration, sh_location, py_location, account):
 
 def sh_base(time, account, py_location):
     env_location = '~/scratch/denv2/bin/activate'
-    if 'cdr' in socket.gethostname():
+    if 'cedar' in socket.gethostname():
         env_location = '~/project/lucacehe/denv2/bin/activate'
     return """#!/bin/bash
 #SBATCH --time={}
