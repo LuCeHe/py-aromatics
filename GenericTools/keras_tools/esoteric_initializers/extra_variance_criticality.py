@@ -4,12 +4,12 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow.python.keras.initializers.initializers_v2 import _RandomGenerator, _compute_fans, Orthogonal
 
-
 tfd = tfp.distributions
 _PARTITION_SHAPE = 'partition_shape'
 
 distributions_possible = ['uniform', 'truncated_normal', 'untruncated_normal', 'bi_gamma', 'bi_gamma_10',
                           'tanh_normal', 'cauchy', 'nozero_uniform']
+
 
 def orthogonalize(initial_initializer):
     shape = initial_initializer.shape
@@ -49,7 +49,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
                  mode='fan_avg',
                  distribution='uniform',
                  orthogonalize=False,
-                 mean = 0,
+                 mean=0,
                  seed=None):
         if np.any(scale <= 0.):
             raise ValueError('`scale` must be positive float.')
@@ -116,8 +116,11 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
             distribution = stddev * samples * flip / 10
 
         elif 'bi_gamma' in self.distribution:
-            alpha = 3
-            beta = 2
+            alpha, beta = 3, 2
+            alpha, beta = 3, 20
+            alpha = 5
+            variance = 1
+            beta = float(np.sqrt((alpha * (alpha + 1)) / variance))
             dist = tfd.Gamma(concentration=alpha, rate=beta)
             samples = dist.sample(shape)
             flip = 2 * np.random.choice(2, shape) - 1
@@ -158,6 +161,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
 
 
 PluriInitializerI = MoreVarianceScalingAndOrthogonal
+
 
 class GlorotTanh(MoreVarianceScalingAndOrthogonal):
     def __init__(self, scale=1.0, mode='fan_avg', distribution='tanh_normal', seed=None):
@@ -243,7 +247,7 @@ def test_1():
         seed=None
     )
 
-    initializer= BiGamma10()
+    initializer = GlorotBiGamma()
 
     shape = (2000, 3000)
     t = initializer(shape).numpy()
@@ -267,8 +271,10 @@ def test_1():
     n, bins, patches = plt.hist(x=t.flatten(), bins=50, color='#0504aa', alpha=0.7, rwidth=0.85)
     plt.show()
 
+
 hecolor = '#FF5733'
 glorotcolor = '#98975D'
+
 
 def test_2():
     import matplotlib as mpl
@@ -294,7 +300,7 @@ def test_2():
 
         for distribution in ['bi_gamma', 'normal', 'uniform']:
             if distribution == 'bi_gamma':
-                alpha = 3
+                alpha = 5
                 beta = np.sqrt((alpha * (alpha + 1)) / variance)
                 pdf = gamma.pdf(x, a=alpha, loc=0, scale=1 / beta) / 2 + gamma.pdf(-x, a=alpha, loc=0,
                                                                                    scale=1 / beta) / 2
@@ -320,9 +326,9 @@ def test_2():
     #     plt.spines[pos].set_visible(False)
 
     legend_elements = [
-        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Uniform', linestyle = ':'),
-        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Normal', linestyle = '--'),
-        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot BiGamma', linestyle = '-'),
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Uniform', linestyle=':'),
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Normal', linestyle='--'),
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot BiGamma', linestyle='-'),
         Line2D([0], [0], color=hecolor, lw=4, label='He Uniform', linestyle=':'),
         Line2D([0], [0], color=hecolor, lw=4, label='He Normal', linestyle='--'),
         Line2D([0], [0], color=hecolor, lw=4, label='He BiGamma', linestyle='-'),
@@ -364,9 +370,9 @@ def draw_legend():
     # ]
 
     legend_elements = [
-        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Uniform', linestyle = ':'),
-        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Normal', linestyle = '--'),
-        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot BiGamma', linestyle = '-'),
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Uniform', linestyle=':'),
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Normal', linestyle='--'),
+        Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot BiGamma', linestyle='-'),
         Line2D([0], [0], color=hecolor, lw=4, label='He Uniform', linestyle=':'),
         Line2D([0], [0], color=hecolor, lw=4, label='He Normal', linestyle='--'),
         Line2D([0], [0], color=hecolor, lw=4, label='He BiGamma', linestyle='-'),
@@ -387,6 +393,8 @@ def draw_legend():
     fig.savefig(plot_filename, bbox_inches='tight')
     plt.show()
 
+
 if __name__ == '__main__':
-    test_2()
+    test_1()
+    # test_2()
     # draw_legend()
