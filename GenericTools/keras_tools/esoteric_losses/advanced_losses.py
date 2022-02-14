@@ -206,16 +206,14 @@ def f1(y_true, y_pred):
     return f1
 
 
-def sparse_f1_on_max(num_classes):
-    def sparse_f1_on_max(y_true, y_pred):
-        max_pred = tf.argmax(y_pred, -1)
-        # max_pred = tf.cast(max_pred, tf.float32)
-        y_true = tf.cast(y_true, tf.int32)
-        oh_true = tf.one_hot(y_true, depth=num_classes)
-        oh_pred = tf.one_hot(max_pred, depth=num_classes)
-        return f1(oh_true, oh_pred)
+def sparse_f1_on_max(y_true, y_pred):
+    num_classes = y_pred.shape[-1]
 
-    return sparse_f1_on_max
+    max_pred = tf.argmax(y_pred, -1)
+    y_true = tf.cast(y_true, tf.int32)
+    oh_true = tf.one_hot(y_true, depth=num_classes)
+    oh_pred = tf.one_hot(max_pred, depth=num_classes)
+    return f1(oh_true, oh_pred)
 
 
 def masked_f1_on_max(num_classes, mask_value):
