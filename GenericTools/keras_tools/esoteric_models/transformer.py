@@ -7,8 +7,12 @@ import tensorflow as tf
 from GenericTools.keras_tools.esoteric_layers import SurrogatedStep
 from GenericTools.keras_tools.esoteric_layers.layer_scaling import LayerScaling
 
-# layer_normalization = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-layer_normalization = LayerScaling()
+
+def layer_normalization(config):
+    ln = tf.keras.layers.LayerNormalization(epsilon=1e-6)
+    if 'layerscaling' in config:
+        ln = LayerScaling()
+    return ln
 
 def get_angles(pos, i, d_model):
     angle_rates = 1 / np.power(10000, (2 * (i // 2)) / np.float32(d_model))
@@ -235,14 +239,14 @@ def point_wise_feed_forward_network(d_model, dff):
 # encoder and decoder
 
 class EncoderLayer(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads, dff, rate=0.1, mha_type='original_transformer'):
+    def __init__(self, d_model, num_heads, dff, rate=0.1, config='original_transformer'):
         super(EncoderLayer, self).__init__()
 
-        self.mha = MultiHeadAttention(d_model, num_heads, mha_type=mha_type)
+        self.mha = MultiHeadAttention(d_model, num_heads, mha_type=config)
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
-        self.layernorm1 = layer_normalization
-        self.layernorm2 = layer_normalization
+        self.layernorm1 = layer_normalization(config)
+        self.layernorm2 = layer_normalization(config)
 
         self.dropout1 = tf.keras.layers.Dropout(rate)
         self.dropout2 = tf.keras.layers.Dropout(rate)
@@ -260,17 +264,17 @@ class EncoderLayer(tf.keras.layers.Layer):
 
 
 class DecoderLayer(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads, dff, rate=0.1, mha_type='original_transformer'):
+    def __init__(self, d_model, num_heads, dff, rate=0.1, config='original_transformer'):
         super(DecoderLayer, self).__init__()
 
-        self.mha1 = MultiHeadAttention(d_model, num_heads, mha_type=mha_type)
-        self.mha2 = MultiHeadAttention(d_model, num_heads, mha_type=mha_type)
+        self.mha1 = MultiHeadAttention(d_model, num_heads, mha_type=config)
+        self.mha2 = MultiHeadAttention(d_model, num_heads, mha_type=config)
 
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
-        self.layernorm1 = layer_normalization
-        self.layernorm2 = layer_normalization
-        self.layernorm3 = layer_normalization
+        self.layernorm1 = layer_normalization(config)
+        self.layernorm2 = layer_normalization(config)
+        self.layernorm3 = layer_normalization(config)
 
         self.dropout1 = tf.keras.layers.Dropout(rate)
         self.dropout2 = tf.keras.layers.Dropout(rate)
@@ -304,8 +308,8 @@ class GPTBlock(tf.keras.layers.Layer):
 
         self.ffn = point_wise_feed_forward_network(d_model, dff)
 
-        self.layernorm1 = tf.keras.layers.layer_normalization
-        self.layernorm3 = tf.keras.layers.layer_normalization
+        self.layernorm1 =layer_normalization
+        self.layernorm3 = layer_normalization
 
         self.dropout1 = tf.keras.layers.Dropout(rate)
         self.dropout3 = tf.keras.layers.Dropout(rate)
@@ -326,7 +330,7 @@ class GPTBlock(tf.keras.layers.Layer):
 
 class TransformerEncoder(tf.keras.layers.Layer):
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-                 maximum_position_encoding, rate=0.1, mha_type='original_transformer'):
+                 maximum_position_encoding, rate=0.1, config='original_transformer'):
         super().__init__()
 
         self.d_model = d_model
@@ -336,7 +340,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
         self.pos_encoding = positional_encoding(maximum_position_encoding,
                                                 self.d_model)
 
-        self.enc_layers = [EncoderLayer(d_model, num_heads, dff, rate, mha_type=mha_type)
+        self.enc_layers = [EncoderLayer(d_model, num_heads, dff, rate, config=config)
                            for _ in range(num_layers)]
 
         self.dropout = tf.keras.layers.Dropout(rate)
@@ -359,7 +363,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
 
 class TransformerDecoder(tf.keras.layers.Layer):
     def __init__(self, num_layers, d_model, num_heads, dff, target_vocab_size,
-                 maximum_position_encoding, rate=0.1, mha_type='original_transformer'):
+                 maximum_position_encoding, rate=0.1, config='original_transformer'):
         super().__init__()
 
         self.d_model = d_model
@@ -368,7 +372,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
         self.embedding = tf.keras.layers.Embedding(target_vocab_size, d_model)
         self.pos_encoding = positional_encoding(maximum_position_encoding, d_model)
 
-        self.dec_layers = [DecoderLayer(d_model, num_heads, dff, rate, mha_type=mha_type)
+        self.dec_layers = [DecoderLayer(d_model, num_heads, dff, rate, config=config)
                            for _ in range(num_layers)]
         self.dropout = tf.keras.layers.Dropout(rate)
 
