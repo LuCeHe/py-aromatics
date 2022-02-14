@@ -10,8 +10,11 @@ from GenericTools.keras_tools.esoteric_layers.layer_scaling import LayerScaling
 
 def layer_normalization(config):
     ln = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-    if 'layerscaling' in config:
+    if 'nogradlayerscaling' in config:
+        ln = LayerScaling(grad_through_maxmin=False)
+    elif 'layerscaling' in config:
         ln = LayerScaling()
+
     return ln
 
 def get_angles(pos, i, d_model):

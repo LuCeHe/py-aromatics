@@ -21,6 +21,7 @@ class LayerScaling(Layer):
                  gamma_regularizer=None,
                  beta_constraint=None,
                  gamma_constraint=None,
+                 grad_through_maxmin=True,
                  **kwargs):
         super(LayerScaling, self).__init__(**kwargs)
         if isinstance(axis, (list, tuple)):
@@ -42,6 +43,12 @@ class LayerScaling(Layer):
         self.gamma_constraint = constraints.get(gamma_constraint)
 
         self.supports_masking = True
+        self.grad_through_maxmin = grad_through_maxmin
+
+        self.grad_switch = tf.stop_gradient
+        if not grad_through_maxmin:
+            self.grad_switch = lambda x: x
+
 
 
     def build(self, input_shape):
@@ -88,8 +95,8 @@ class LayerScaling(Layer):
                 return array_ops.reshape(v, broadcast_shape)
             return v
 
-        maxs = tf.reduce_max(inputs, axis=self.axis, keepdims=True)
-        mins = tf.reduce_min(inputs, axis=self.axis, keepdims=True)
+        maxs = self.grad_switch(tf.reduce_max(inputs, axis=self.axis, keepdims=True))
+        mins = self.grad_switch(tf.reduce_min(inputs, axis=self.axis, keepdims=True))
 
         outputs = inputs - (maxs - mins) / 2
         outputs /= (maxs - mins)
@@ -115,7 +122,8 @@ class LayerScaling(Layer):
             'beta_regularizer': regularizers.serialize(self.beta_regularizer),
             'gamma_regularizer': regularizers.serialize(self.gamma_regularizer),
             'beta_constraint': constraints.serialize(self.beta_constraint),
-            'gamma_constraint': constraints.serialize(self.gamma_constraint)
+            'gamma_constraint': constraints.serialize(self.gamma_constraint),
+            'grad_through_maxmin': self.grad_through_maxmin
         }
         base_config = super().get_config()
         return dict(list(base_config.items()) + list(config.items()))
