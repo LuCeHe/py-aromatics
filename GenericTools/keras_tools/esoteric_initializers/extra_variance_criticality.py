@@ -274,6 +274,7 @@ def test_1():
 
 hecolor = '#FF5733'
 glorotcolor = '#98975D'
+orthogonalcolor = '#1E8DE1'
 
 
 def test_2():
@@ -324,6 +325,7 @@ def test_2():
 
     # for pos in ['right', 'left', 'bottom', 'top']:
     #     plt.spines[pos].set_visible(False)
+
 
     legend_elements = [
         Line2D([0], [0], color=glorotcolor, lw=4, label='Glorot Uniform', linestyle=':'),
