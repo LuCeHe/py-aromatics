@@ -282,7 +282,7 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
     elif 'reluspike' in config:
         z = dampening * tf.nn.relu(sharpness * v_sc)
 
-    elif 'ssnu' in config:
+    elif 'sigspike' in config:
         z = dampening * tf.nn.sigmoid(sharpness * v_sc)
 
     elif 'geluspike' in config:

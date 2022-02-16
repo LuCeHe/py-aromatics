@@ -22,7 +22,6 @@ class LayerScaling(Layer):
                  beta_constraint=None,
                  gamma_constraint=None,
                  grad_through_maxmin=True,
-                 normalization=False,
                  **kwargs):
         super(LayerScaling, self).__init__(**kwargs)
         if isinstance(axis, (list, tuple)):
@@ -45,7 +44,6 @@ class LayerScaling(Layer):
 
         self.supports_masking = True
         self.grad_through_maxmin = grad_through_maxmin
-        self.normalization = normalization
 
         self.grad_switch = tf.stop_gradient
         if not grad_through_maxmin:

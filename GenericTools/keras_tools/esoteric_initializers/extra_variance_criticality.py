@@ -118,7 +118,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
         elif 'bi_gamma' in self.distribution:
             alpha, beta = 3, 2
             alpha, beta = 3, 20
-            alpha = 5
+            alpha = 3
             variance = 1
             beta = float(np.sqrt((alpha * (alpha + 1)) / variance))
             dist = tfd.Gamma(concentration=alpha, rate=beta)
