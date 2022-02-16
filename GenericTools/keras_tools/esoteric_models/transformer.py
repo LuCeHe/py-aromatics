@@ -14,6 +14,10 @@ def layer_normalization(config):
         ln = LayerScaling(grad_through_maxmin=False)
     elif 'layerscaling' in config:
         ln = LayerScaling()
+    elif 'layerscalingmeanstd' in config:
+        ln = LayerScaling(center='mean', scale='std')
+    elif 'layerscalingmeandist' in config:
+        ln = LayerScaling(center='mean', scale='maxmin')
 
     return ln
 

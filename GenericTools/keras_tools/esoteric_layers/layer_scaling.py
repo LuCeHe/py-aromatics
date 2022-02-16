@@ -12,7 +12,7 @@ class LayerScaling(Layer):
 
     def __init__(self,
                  axis=-1,
-                 epsilon=1e-3,
+                 epsilon=1e-5,
                  center=True,
                  scale=True,
                  beta_initializer='zeros',
@@ -22,6 +22,7 @@ class LayerScaling(Layer):
                  beta_constraint=None,
                  gamma_constraint=None,
                  grad_through_maxmin=True,
+                 normalization=False,
                  **kwargs):
         super(LayerScaling, self).__init__(**kwargs)
         if isinstance(axis, (list, tuple)):
@@ -44,11 +45,27 @@ class LayerScaling(Layer):
 
         self.supports_masking = True
         self.grad_through_maxmin = grad_through_maxmin
+        self.normalization = normalization
 
         self.grad_switch = tf.stop_gradient
         if not grad_through_maxmin:
             self.grad_switch = lambda x: x
 
+        maxs = lambda x: self.grad_switch(tf.reduce_max(x, axis=self.axis, keepdims=True))
+        mins = lambda x:self.grad_switch(tf.reduce_min(x, axis=self.axis, keepdims=True))
+        if center =='maxmin':
+            self.centralize = lambda x: (maxs(x) + mins(x)) / 2
+        elif center == 'mean':
+            self.centralize = lambda x: tf.reduce_mean(x, axis=self.axis, keepdims=True)
+        else:
+            self.centralize = lambda x: (maxs(x) + mins(x)) / 2
+
+        if scale =='maxmin':
+            self.scalerize = lambda x: (maxs(x) - mins(x))
+        elif scale == 'std':
+            self.scalerize = lambda x: tf.math.reduce_std(x, axis=self.axis, keepdims=True)
+        else:
+            self.scalerize = lambda x: (maxs(x) - mins(x))
 
 
     def build(self, input_shape):
@@ -95,11 +112,10 @@ class LayerScaling(Layer):
                 return array_ops.reshape(v, broadcast_shape)
             return v
 
-        maxs = self.grad_switch(tf.reduce_max(inputs, axis=self.axis, keepdims=True))
-        mins = self.grad_switch(tf.reduce_min(inputs, axis=self.axis, keepdims=True))
-
-        outputs = inputs - (maxs - mins) / 2
-        outputs /= (maxs - mins)
+        center = self.centralize(inputs)
+        width = (self.scalerize(inputs) + self.epsilon)
+        outputs = inputs - center
+        outputs /= width
 
         gamma = _broadcast(self.gamma)
         beta = _broadcast(self.beta)
