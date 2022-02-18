@@ -65,7 +65,7 @@ def sh_base(time, account, py_location):
     if 'cedar' in socket.gethostname():
         env_location = '~/project/lucacehe/denv2/bin/activate'
     if 'gra' == socket.gethostname()[:3]:
-        env_location = '~/projects/def-jrouat/lucacehe'
+        env_location = '~/projects/def-jrouat/lucacehe/denv2/bin/activate'
     return """#!/bin/bash
 #SBATCH --time={}
 #SBATCH --account={}
