@@ -6,6 +6,7 @@ import tensorflow as tf
 # positional encoding
 from GenericTools.keras_tools.esoteric_layers import SurrogatedStep
 from GenericTools.keras_tools.esoteric_layers.layer_scaling import LayerScaling
+from GenericTools.keras_tools.esoteric_layers.repu_variants import RePU
 
 
 def layer_normalization(config):
@@ -20,6 +21,7 @@ def layer_normalization(config):
         ln = LayerScaling(center='mean', scale='maxmin')
 
     return ln
+
 
 def get_angles(pos, i, d_model):
     angle_rates = 1 / np.power(10000, (2 * (i // 2)) / np.float32(d_model))
@@ -185,7 +187,7 @@ def choose_attention(attention_type):
 
 
 class MultiHeadAttention(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads, mha_type='original_transformer'):
+    def __init__(self, d_model, num_heads, config='original_transformer'):
         super(MultiHeadAttention, self).__init__()
         self.num_heads = num_heads
         self.d_model = d_model
@@ -200,7 +202,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
         self.dense = tf.keras.layers.Dense(d_model)
 
-        self.scaled_dot_product_attention = choose_attention(mha_type)
+        self.scaled_dot_product_attention = choose_attention(config)
 
     def split_heads(self, x, batch_size):
         """Split the last dimension into (num_heads, depth).
@@ -236,9 +238,16 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         return output, attention_weights
 
 
-def point_wise_feed_forward_network(d_model, dff):
+def point_wise_feed_forward_network(d_model, dff, config):
+    activation = tf.keras.layers.ReLU()
+    if 'repu' in config:
+        activation = RePU()
+    elif 'pswish' in config:
+        activation = RePU(base_activation='swish')
+
     return tf.keras.Sequential([
-        tf.keras.layers.Dense(dff, activation='relu'),  # (batch_size, seq_len, dff)
+        tf.keras.layers.Dense(dff),  # (batch_size, seq_len, dff)
+        activation,
         tf.keras.layers.Dense(d_model)  # (batch_size, seq_len, d_model)
     ])
 
@@ -249,8 +258,8 @@ class EncoderLayer(tf.keras.layers.Layer):
     def __init__(self, d_model, num_heads, dff, rate=0.1, config='original_transformer'):
         super(EncoderLayer, self).__init__()
 
-        self.mha = MultiHeadAttention(d_model, num_heads, mha_type=config)
-        self.ffn = point_wise_feed_forward_network(d_model, dff)
+        self.mha = MultiHeadAttention(d_model, num_heads, config=config)
+        self.ffn = point_wise_feed_forward_network(d_model, dff, config)
 
         self.layernorm1 = layer_normalization(config)
         self.layernorm2 = layer_normalization(config)
@@ -274,10 +283,10 @@ class DecoderLayer(tf.keras.layers.Layer):
     def __init__(self, d_model, num_heads, dff, rate=0.1, config='original_transformer'):
         super(DecoderLayer, self).__init__()
 
-        self.mha1 = MultiHeadAttention(d_model, num_heads, mha_type=config)
-        self.mha2 = MultiHeadAttention(d_model, num_heads, mha_type=config)
+        self.mha1 = MultiHeadAttention(d_model, num_heads, config=config)
+        self.mha2 = MultiHeadAttention(d_model, num_heads, config=config)
 
-        self.ffn = point_wise_feed_forward_network(d_model, dff)
+        self.ffn = point_wise_feed_forward_network(d_model, dff, config)
 
         self.layernorm1 = layer_normalization(config)
         self.layernorm2 = layer_normalization(config)
@@ -308,14 +317,14 @@ class DecoderLayer(tf.keras.layers.Layer):
 
 
 class GPTBlock(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads, dff, rate=0.1, mha_type='original_transformer'):
+    def __init__(self, d_model, num_heads, dff, rate=0.1, config='original_transformer'):
         super().__init__()
 
-        self.mha1 = MultiHeadAttention(d_model, num_heads, mha_type=mha_type)
+        self.mha1 = MultiHeadAttention(d_model, num_heads, config=config)
 
-        self.ffn = point_wise_feed_forward_network(d_model, dff)
+        self.ffn = point_wise_feed_forward_network(d_model, dff, config)
 
-        self.layernorm1 =layer_normalization
+        self.layernorm1 = layer_normalization
         self.layernorm3 = layer_normalization
 
         self.dropout1 = tf.keras.layers.Dropout(rate)
@@ -412,12 +421,12 @@ class GPT(tf.keras.layers.Layer):
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
     def __init__(self, num_layers, d_model, num_heads, dff, target_vocab_size,
-                 maximum_position_encoding, pad_idx, rate=0.1, mha_type='original_transformer', **kwargs):
+                 maximum_position_encoding, pad_idx, rate=0.1, config='original_transformer', **kwargs):
         super().__init__(**kwargs)
 
         self.init_args = dict(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
                               target_vocab_size=target_vocab_size, maximum_position_encoding=maximum_position_encoding,
-                              rate=rate, pad_idx=pad_idx, mha_type=mha_type)
+                              rate=rate, pad_idx=pad_idx, config=config)
 
         self.d_model = d_model
         self.num_layers = num_layers
@@ -426,7 +435,7 @@ class GPT(tf.keras.layers.Layer):
         self.embedding = tf.keras.layers.Embedding(target_vocab_size, d_model)
         self.pos_encoding = positional_encoding(maximum_position_encoding, d_model)
 
-        self.dec_layers = [GPTBlock(d_model, num_heads, dff, rate, mha_type=mha_type)
+        self.dec_layers = [GPTBlock(d_model, num_heads, dff, rate, config=config)
                            for _ in range(num_layers)]
         self.dropout = tf.keras.layers.Dropout(rate)
 
@@ -455,13 +464,13 @@ class GPT(tf.keras.layers.Layer):
 
 class Transformer(tf.keras.Model):
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-                 target_vocab_size, pe_input, pe_target, pad_idx, rate=0.1, mha_type='original_transformer'):
+                 target_vocab_size, pe_input, pe_target, pad_idx, rate=0.1, config='original_transformer'):
         super().__init__()
         self.encoder = TransformerEncoder(num_layers, d_model, num_heads, dff,
-                                          input_vocab_size, pe_input, rate, mha_type=mha_type)
+                                          input_vocab_size, pe_input, rate, config=config)
 
         self.decoder = TransformerDecoder(num_layers, d_model, num_heads, dff,
-                                          target_vocab_size, pe_target, rate, mha_type=mha_type)
+                                          target_vocab_size, pe_target, rate, config=config)
 
         self.final_layer = tf.keras.layers.Dense(target_vocab_size)
         self.pad_idx = pad_idx

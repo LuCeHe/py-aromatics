@@ -12,7 +12,7 @@ class LayerScaling(Layer):
 
     def __init__(self,
                  axis=-1,
-                 epsilon=1e-5,
+                 epsilon=1e-6,
                  center=True,
                  scale=True,
                  beta_initializer='zeros',
@@ -46,25 +46,32 @@ class LayerScaling(Layer):
         self.grad_through_maxmin = grad_through_maxmin
 
         self.grad_switch = tf.stop_gradient
-        if not grad_through_maxmin:
+        if grad_through_maxmin:
             self.grad_switch = lambda x: x
 
         maxs = lambda x: self.grad_switch(tf.reduce_max(x, axis=self.axis, keepdims=True))
-        mins = lambda x:self.grad_switch(tf.reduce_min(x, axis=self.axis, keepdims=True))
-        if center =='maxmin':
+        mins = lambda x: self.grad_switch(tf.reduce_min(x, axis=self.axis, keepdims=True))
+
+        if center == 'maxmin':
             self.centralize = lambda x: (maxs(x) + mins(x)) / 2
         elif center == 'mean':
             self.centralize = lambda x: tf.reduce_mean(x, axis=self.axis, keepdims=True)
         else:
             self.centralize = lambda x: (maxs(x) + mins(x)) / 2
 
-        if scale =='maxmin':
-            self.scalerize = lambda x: (maxs(x) - mins(x))
+        if scale == 'maxmin':
+            self.scalerize = lambda x: (maxs(x) - mins(x)) ** 2
         elif scale == 'std':
-            self.scalerize = lambda x: tf.math.reduce_std(x, axis=self.axis, keepdims=True)
+            # self.scalerize = lambda x: tf.math.reduce_std(x, axis=self.axis, keepdims=True)
+            self.scalerize = lambda x: tf.reduce_mean(
+                tf.math.squared_difference(x, array_ops.stop_gradient(self.centralize(x))),
+                self.axis,
+                keepdims=True,
+                name="variance")
         else:
-            self.scalerize = lambda x: (maxs(x) - mins(x))
+            self.scalerize = lambda x: (maxs(x) - mins(x)) ** 2
 
+        self.inverse_scale = lambda x: tf.math.rsqrt(self.scalerize(x) + epsilon)
 
     def build(self, input_shape):
 
@@ -111,9 +118,7 @@ class LayerScaling(Layer):
             return v
 
         center = self.centralize(inputs)
-        width = (self.scalerize(inputs) + self.epsilon)
-        outputs = inputs - center
-        outputs /= width
+        outputs = self.inverse_scale(inputs) * (inputs - center)
 
         gamma = _broadcast(self.gamma)
         beta = _broadcast(self.beta)
