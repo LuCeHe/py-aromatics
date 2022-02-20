@@ -55,7 +55,6 @@ def ExpSpikeFunction(v_scaled, dampening, sharpness):
 @tf.custom_gradient
 def FastSigmoidSpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
-
     def grad(dy):
         xabs = tf.abs(2. * v_scaled * sharpness)
         dz_dv_scaled = 1 / (1 + xabs) ** 2
@@ -306,7 +305,7 @@ class SurrogatedStep(tf.keras.layers.Layer):
         base_config = super().get_config()
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
-    def __init__(self, string_config='', dampening=1, sharpness=1, **kwargs):
+    def __init__(self, string_config='', dampening=1., sharpness=1., **kwargs):
         super().__init__(**kwargs)
 
         self.init_args = dict(string_config=string_config)
