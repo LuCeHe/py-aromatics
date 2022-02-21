@@ -62,7 +62,7 @@ def load_plot_settings(mpl=None, pd=None, figsize=(10, 10)):
         params = {'axes.titlesize': large,
                   'legend.fontsize': med,
                   'figure.figsize': figsize,
-                  'axes.labelsize': large,
+                  'axes.labelsize': med,
                   'xtick.labelsize': small,
                   'ytick.labelsize': small,
                   'figure.titlesize': large}
