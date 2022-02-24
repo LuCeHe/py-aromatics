@@ -55,9 +55,10 @@ def ExpSpikeFunction(v_scaled, dampening, sharpness):
 @tf.custom_gradient
 def FastSigmoidSpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
+
     def grad(dy):
         xabs = tf.abs(2. * v_scaled * sharpness)
-        dz_dv_scaled = 1 / (1 + xabs) ** 2
+        dz_dv_scaled = dampening * 1 / (1 + xabs) ** 2
         return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
@@ -70,7 +71,7 @@ def NTailSpikeFunction(v_scaled, dampening, sharpness, tail):
     def grad(dy):
         xabs = tf.abs(v_scaled * sharpness)
         factor = (tail - 1) / 2
-        dz_dv_scaled = 1 / (1 + xabs / factor) ** tail
+        dz_dv_scaled = dampening * 1 / (1 + xabs / factor) ** tail
         return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness), tf.zeros_like(tail)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
@@ -81,7 +82,7 @@ def CappedSkipSpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
-        cap = tf.cast(tf.less(tf.abs(2 * sharpness * v_scaled), 1), dtype=tf.float32)
+        cap = dampening * tf.cast(tf.less(tf.abs(2 * sharpness * v_scaled), 1), dtype=tf.float32)
         return [dy * cap, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
@@ -125,14 +126,16 @@ def SpikeFunctionMultiGaussian(v_scaled, dampening, sharpness):
 
     def grad(dy):  # best m found 25
         x = v_scaled * sharpness
-        width = 0.5
         h = .15
-        s = 6
+        s = 2
+        A = (1 + h - 2 * h * tf.exp(-1 / (2 * s ** 2))) ** (-1)  # 1
+        width = (A * (1 + h) * tf.sqrt(2 * math.pi) - A * 2 * h * s * tf.sqrt(2 * math.pi)) ** (-1)  # .5
 
         central_g = (1 + h) * tf.exp(-tf.pow(x, 2) / (2 * width ** 2))
         left_g = h * tf.exp(-tf.pow(x - width, 2) / (2 * s ** 2 * width ** 2))
         right_g = h * tf.exp(-tf.pow(x + width, 2) / (2 * s ** 2 * width ** 2))
-        dz_dv_scaled = central_g-left_g-right_g
+        dz_dv_scaled = central_g - left_g - right_g
+        dz_dv_scaled = dampening * A * dz_dv_scaled
         return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
 
     return tf.identity(z_, name="SpikeFunction"), grad
@@ -165,7 +168,7 @@ def SpikeFunctionDeltaDirac(v_scaled, dampening):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
 
     def grad(dy):
-        dz_dv_scaled = tf.cast(tf.math.equal(v_scaled, 0), tf.keras.backend.floatx())
+        dz_dv_scaled = dampening*tf.cast(tf.math.equal(v_scaled, 0), tf.keras.backend.floatx())
         # dz_dv_scaled = 0
         return [dy * dz_dv_scaled, tf.zeros_like(dampening)]
 
