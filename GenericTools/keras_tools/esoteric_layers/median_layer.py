@@ -14,3 +14,10 @@ class Median(tf.keras.layers.Layer):
             inputs = tf.concat([tf.expand_dims(i, axis=-1) for i in inputs], axis=-1)
         median = tfp.stats.percentile(inputs, 50.0, interpolation='midpoint', axis=self.axis)
         return median
+
+
+    def get_config(self):
+        config = {
+            'axis': self.axis,
+        }
+        return dict(list(super().get_config().items()) + list(config.items()))
