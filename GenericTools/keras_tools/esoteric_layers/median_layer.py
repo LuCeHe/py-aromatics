@@ -5,8 +5,8 @@ import tensorflow_probability as tfp
 import numpy as np
 
 class Median(tf.keras.layers.Layer):
-    def __init__(self, axis=-1):
-        super().__init__()
+    def __init__(self, axis=-1, **kwargs):
+        super().__init__(**kwargs)
         self.axis = axis
 
     def call(self, inputs, **kwargs):
