@@ -22,6 +22,8 @@ class RePU(Layer):
                  shared_axes=[1],
                  base_activation='relu',
                  slope=True,
+                 trainable_p=True,
+                 trainable_slope=True,
                  **kwargs):
         super().__init__(**kwargs)
         self.supports_masking = True
@@ -43,6 +45,9 @@ class RePU(Layer):
         elif base_activation == 'swish':
             self.activation = swish
 
+        self.trainable_p = trainable_p
+        self.trainable_slope = trainable_slope
+
     @tf_utils.shape_type_conversion
     def build(self, input_shape):
         param_shape = list(input_shape[1:])
@@ -55,7 +60,9 @@ class RePU(Layer):
             name='power',
             initializer=self.p_initializer,
             regularizer=self.p_regularizer,
-            constraint=self.p_constraint)
+            constraint=self.p_constraint,
+            trainable=self.trainable_p
+        )
         # Set input spec
         axes = {}
         if self.shared_axes:
@@ -68,7 +75,11 @@ class RePU(Layer):
             self.s = self.add_weight(
                 shape=param_shape,
                 name='slope',
-                initializer=self.slope_initializer)
+                initializer=self.slope_initializer,
+                trainable=self.trainable_slope
+            )
+        else:
+            self.s = 1
 
         self.built = True
 
@@ -88,4 +99,3 @@ class RePU(Layer):
         }
         base_config = super().get_config()
         return dict(list(base_config.items()) + list(config.items()))
-

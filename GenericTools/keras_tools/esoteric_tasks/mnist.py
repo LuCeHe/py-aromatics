@@ -5,7 +5,7 @@ import numpy as np
 
 
 def getMNIST(categorical=True, sequential=False, original_size=True,
-             training_set='all', train_split=.8, normalize=True, spike_latency=False):
+             training_set='all', train_split=.8, normalize=True, spike_latency=False, remove_mean=False):
     # the data, split between train and test sets
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -42,6 +42,9 @@ def getMNIST(categorical=True, sequential=False, original_size=True,
     if normalize:
         x = x.astype('float32')
         x /= 255
+
+    if remove_mean:
+        x -= np.mean(x, -1, keepdims=True)
 
     if spike_latency:
         # original: The Remarkable Robustness of Surrogate Gradient
