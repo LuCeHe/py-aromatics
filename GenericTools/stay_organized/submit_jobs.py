@@ -40,8 +40,8 @@ def run_experiments(
         command = command.replace('  ', ' ')
         print('{}/{}'.format(i + 1, len(ds)), command)
         os.system(command)
-    # print('Number jobs: {}'.format(len(ds)))
-#
+    print('Number jobs: {}'.format(len(ds)))
+
 
 def dict2iter(experiments):
     full_ds = []
