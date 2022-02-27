@@ -39,9 +39,9 @@ def run_experiments(
         command = "{} '{}'".format(run_string, command + stop_training)
         command = command.replace('  ', ' ')
         print('{}/{}'.format(i + 1, len(ds)), command)
-        # os.system(command)
-    print('Number jobs: {}'.format(len(ds)))
-
+        os.system(command)
+    # print('Number jobs: {}'.format(len(ds)))
+#
 
 def dict2iter(experiments):
     full_ds = []
