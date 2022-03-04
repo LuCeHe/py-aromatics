@@ -29,7 +29,6 @@ def ExpSpikeFunction(v_scaled, dampening, sharpness):
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
-
 @tf.custom_gradient
 def FastSigmoidSpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
@@ -205,18 +204,11 @@ class SurrogatedStep(tf.keras.layers.Layer):
 
         sharpness = str2val(string_config, 'sharpn', float, default=sharpness)
         dampening = str2val(string_config, 'dampf', float, default=dampening)
-        self.soft_spike = lambda x: dampening * tf.nn.sigmoid(
-            sharpness * x) if 'annealing' in string_config else 0
+        self.soft_spike = lambda x: \
+            dampening * tf.nn.sigmoid(sharpness * x) if 'annealing' in string_config else 0
 
-        if 'randompseudod' in string_config:
-            spike_functions = [SpikeFunctionGauss, SpikeFunctionCauchy, SpikeFunction, SpikeFunctionSigmoid,
-                               ExpSpikeFunction, CappedSkipSpikeFunction, FastSigmoidSpikeFunction]
-            spikes = lambda x: [s(x, dampening, sharpness) for s in spike_functions]
-            self.random_switch = RandomSwitch([1 / len(spike_functions)] * len(spike_functions))
-            self.hard_spike = lambda x: self.random_switch(spikes(x))
-        else:
-            self.hard_spike = lambda x: ChoosePseudoHeaviside(x, config=string_config, sharpness=sharpness,
-                                                              dampening=dampening)
+        self.hard_spike = lambda x: ChoosePseudoHeaviside(x, config=string_config, sharpness=sharpness,
+                                                          dampening=dampening)
 
     def build(self, input_shape):
         self.hard_heaviside = self.add_weight(
@@ -245,9 +237,9 @@ possible_pseudod = [
 
 
 def clean_pseudo_name(pseudod_name):
-    pseudod_name = pseudod_name.replace('pseudod', '').replace('original', 'ReLU').replace('sigmoidal',
-                                                                                           '$\partial$ sigmoid').replace(
-        'fastsigmoid', '$\partial$ fast-sigmoid').replace('cappedskip', 'skip & cap')
+    pseudod_name = pseudod_name.replace('pseudod', '') \
+        .replace('original', 'ReLU').replace('sigmoidal', '$\partial$ sigmoid') \
+        .replace('fastsigmoid', '$\partial$ fast-sigmoid').replace('cappedskip', 'skip & cap')
     return pseudod_name
 
 
