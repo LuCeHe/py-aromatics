@@ -162,7 +162,7 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
         z = FastSigmoidSpikeFunction(v_sc, dampening, sharpness)
 
     elif 'ntailpseudod' in config:
-        tail = str2val(config, 'tailvalue', float, default=1.1)
+        tail = str2val(config, 'tailvalue', float, default=1.56)
         z = NTailSpikeFunction(v_sc, dampening, sharpness, tail)
 
     elif 'mgausspseudod' in config:
@@ -196,18 +196,18 @@ class SurrogatedStep(tf.keras.layers.Layer):
         base_config = super().get_config()
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
-    def __init__(self, string_config='', dampening=1., sharpness=1., **kwargs):
+    def __init__(self, dampening=1., sharpness=1., config='', **kwargs):
         super().__init__(**kwargs)
 
-        self.init_args = dict(string_config=string_config)
+        self.init_args = dict(config=config)
         self.__dict__.update(self.init_args)
 
-        sharpness = str2val(string_config, 'sharpn', float, default=sharpness)
-        dampening = str2val(string_config, 'dampf', float, default=dampening)
+        sharpness = str2val(config, 'sharpn', float, default=sharpness)
+        dampening = str2val(config, 'dampf', float, default=dampening)
         self.soft_spike = lambda x: \
-            dampening * tf.nn.sigmoid(sharpness * x) if 'annealing' in string_config else 0
+            dampening * tf.nn.sigmoid(sharpness * x) if 'annealing' in config else 0
 
-        self.hard_spike = lambda x: ChoosePseudoHeaviside(x, config=string_config, sharpness=sharpness,
+        self.hard_spike = lambda x: ChoosePseudoHeaviside(x, config=config, sharpness=sharpness,
                                                           dampening=dampening)
 
     def build(self, input_shape):
@@ -215,6 +215,19 @@ class SurrogatedStep(tf.keras.layers.Layer):
             name='hard_heaviside', shape=(), initializer=tf.keras.initializers.Constant(1.), trainable=False
         )
         self.built = True
+
+        if 'learnablepseudod' in self.config:
+            n_in = input_shape[-1]
+            self.sharpness = self.hard_heaviside = self.add_weight(
+                name='sharp', shape=(n_in,), initializer=tf.keras.initializers.Constant(1.), trainable=True
+            )
+            self.dampening = self.hard_heaviside = self.add_weight(
+                name='damp', shape=(n_in,), initializer=tf.keras.initializers.Constant(1.), trainable=True
+            )
+            self.tail = self.hard_heaviside = self.add_weight(
+                name='tail', shape=(n_in,), initializer=tf.keras.initializers.Constant(2.), trainable=True
+            )
+            self.hard_spike = lambda x: NTailSpikeFunction(x, self.dampening, self.sharpness, self.tail)
 
     def call(self, inputs, *args, **kwargs):
         v_sc = inputs
@@ -227,12 +240,11 @@ possible_pseudod = [
     'originalpseudod',
     'exponentialpseudod',
     'gaussianpseudod',
-    # 'cauchypseudod',
     'sigmoidalpseudod',
     'fastsigmoidpseudod',
     'cappedskippseudod',
-    # 'ntailpseudod',
-    # 'mgausspseudod',
+    'ntailpseudod',
+    'mgausspseudod',
 ]
 
 
