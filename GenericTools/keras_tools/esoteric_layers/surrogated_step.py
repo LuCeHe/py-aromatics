@@ -8,29 +8,6 @@ from GenericTools.stay_organized.mpl_tools import load_plot_settings
 
 
 @tf.custom_gradient
-def NelsonSpike_old(delta_b, delta_p, l_p_z):
-    z = binary_forward(l_p_z)
-    hard_b = tf.stop_gradient(gate(z))
-
-    def grad(dy_z, dy_b):
-        d_nelson = delta_b / delta_p * dy_b  # dy[1]
-        return d_nelson, tf.zeros_like(delta_p), tf.zeros_like(l_p_z)
-
-    return [z, hard_b], grad
-
-
-@tf.custom_gradient
-def NelsonSpike(v_sc, old_v_sc, thr):
-    z_ = tf.cast(tf.greater(v_sc, 0.), dtype=tf.float32)
-
-    def grad(dy):
-        d_nelson = thr / (v_sc - old_v_sc) * dy  # dy[1]
-        return d_nelson, tf.zeros_like(old_v_sc), tf.zeros_like(thr)
-
-    return tf.identity(z_, name="nelsonSpikeFunction"), grad
-
-
-@tf.custom_gradient
 def SpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
@@ -78,26 +55,12 @@ def NTailSpikeFunction(v_scaled, dampening, sharpness, tail):
 
 
 @tf.custom_gradient
-def CappedSkipSpikeFunction(v_scaled, dampening, sharpness):
+def RectangularSpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
     def grad(dy):
         cap = dampening * tf.cast(tf.less(tf.abs(2 * sharpness * v_scaled), 1), dtype=tf.float32)
         return [dy * cap, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
-
-    return tf.identity(z_, name="SpikeFunction"), grad
-
-
-@tf.custom_gradient
-def SpikeFunctionDamp(v_scaled, dampening):
-    z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
-
-    def grad(dy):
-        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled), 0) * dampening
-        return [
-            dy * dz_dv_scaled,
-            tf.reduce_mean(dy * dz_dv_scaled) * tf.ones_like(dampening)
-        ]
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
@@ -119,8 +82,6 @@ def SpikeFunctionMultiGaussian(v_scaled, dampening, sharpness):
     # Accurate and efficient time-domain classification
     # with adaptive spiking recurrent neural networks
     # Bojian Yin, Federico Corradi and Sander M. Bohté
-    # FIXME: it uses the hyperparams from that publication, but it would be interesting to standardize it to have max
-    # value of 1 and area under the curve of 1
 
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
 
@@ -168,84 +129,11 @@ def SpikeFunctionDeltaDirac(v_scaled, dampening):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
 
     def grad(dy):
-        dz_dv_scaled = dampening*tf.cast(tf.math.equal(v_scaled, 0), tf.keras.backend.floatx())
+        dz_dv_scaled = dampening * tf.cast(tf.math.equal(v_scaled, 0), tf.keras.backend.floatx())
         # dz_dv_scaled = 0
         return [dy * dz_dv_scaled, tf.zeros_like(dampening)]
 
     return tf.identity(z_, name="SpikeFunctionDeltaDirac"), grad
-
-
-@tf.custom_gradient
-def isiSpikeFunction(v_scaled, last_spike_distance):
-    z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
-
-    def grad(dy):
-        return [dy * last_spike_distance, tf.zeros_like(last_spike_distance)]
-
-    return tf.identity(z_, name="isiSpikeFunction"), grad
-
-
-@tf.custom_gradient
-def isi2SpikeFunction(v_scaled, last_spike_distance):
-    z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
-
-    def grad(dy):
-        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled), 0) * .3
-        return [dy * last_spike_distance * dz_dv_scaled, tf.zeros_like(last_spike_distance)]
-
-    return tf.identity(z_, name="isi2SpikeFunction"), grad
-
-
-@tf.custom_gradient
-def SpikeFunction_new(v_scaled, dampening, spike_dropout):
-    z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
-
-    def grad(dy):
-        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled), 0) * dampening
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(spike_dropout)]
-
-    n_neurons = tf.shape(z_)[1]
-    batch_size = tf.shape(z_)[0]
-    p = tf.tile([[spike_dropout, 1 - spike_dropout]], [batch_size, 1])
-    mask = tf.cast(tf.random.categorical(tf.math.log(p), n_neurons), dtype=tf.float32)
-    return tf.identity(mask * z_, name="SpikeFunction"), grad
-
-
-# new derivatives ================================================================
-
-@tf.custom_gradient
-def idSpikeFunction(v_scaled, dampening):
-    z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
-
-    def grad(dy):
-        return [dy, tf.zeros_like(dampening)]
-
-    return tf.identity(z_, name="SpikeFunction"), grad
-
-
-@tf.custom_gradient
-def strangeSpikeFunction(v_scaled, dampening):
-    z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
-
-    def grad(dy):
-        dz_dv_scaled = 1 / (1 + tf.exp(-1 / v_scaled))
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening)]
-
-    return tf.identity(z_, name="SpikeFunction"), grad
-
-
-@tf.custom_gradient
-def switchSpikeFunction(v_scaled, dampening):
-    z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
-
-    def grad(dy):
-        aa_zeros = tf.cast(tf.random.categorical(tf.math.log([[.8, .2]]), 1), dtype=tf.float32)
-
-        dz_dv_scaled = tf.maximum(1 - tf.abs(v_scaled), 0) * dampening
-        dz_dv = (1 - aa_zeros) * dy * dz_dv_scaled + aa_zeros * dy
-        return [dz_dv, tf.zeros_like(dampening)]
-
-    return tf.identity(z_, name="SpikeFunction"), grad
 
 
 def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
@@ -267,8 +155,8 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
     elif 'exponentialpseudod' in config:
         z = ExpSpikeFunction(v_sc, dampening, sharpness)
 
-    elif 'cappedskippseudod' in config:
-        z = CappedSkipSpikeFunction(v_sc, dampening, sharpness)
+    elif 'cappedskippseudod' in config or 'rectangularpseudod' in config:
+        z = RectangularSpikeFunction(v_sc, dampening, sharpness)
 
     elif 'fastsigmoidpseudod' in config:
         z = FastSigmoidSpikeFunction(v_sc, dampening, sharpness)
