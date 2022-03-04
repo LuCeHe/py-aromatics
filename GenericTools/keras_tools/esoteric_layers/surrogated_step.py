@@ -29,6 +29,7 @@ def ExpSpikeFunction(v_scaled, dampening, sharpness):
     return tf.identity(z_, name="SpikeFunction"), grad
 
 
+
 @tf.custom_gradient
 def FastSigmoidSpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
