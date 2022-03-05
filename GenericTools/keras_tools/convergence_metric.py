@@ -2,7 +2,10 @@ from scipy.signal import savgol_filter
 import numpy as np
 
 
-def convergence_estimation(loss):
+def convergence_estimation(loss, epsilon=1e-6):
+    if loss[0] == 0:
+        loss = [l + epsilon for l in loss]
+
     if not len(loss) < 4:
         # smooth the signal
         window_length = int(np.ceil(len(loss) / 3) // 2 * 2 + 1)
