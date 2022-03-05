@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+from GenericTools.keras_tools.esoteric_layers import SurrogatedStep
 from GenericTools.keras_tools.esoteric_layers.rate_voltage_reg import RateVoltageRegularization
 
 
@@ -33,6 +34,7 @@ class LSNN(tf.keras.layers.Layer):
         self.__dict__.update(self.init_args)
 
         self.state_size = (units, units, units, units)
+        self.spike_function = SurrogatedStep(dampening=dampening_factor, sharpness=1., config='triangularpseudod')
 
     def build(self, input_shape):
         n_input = input_shape[-1]
@@ -54,8 +56,9 @@ class LSNN(tf.keras.layers.Layer):
     def spike(self, new_v, thr, *args):
         v_sc = (new_v - thr) / thr
 
-        z = SpikeFunction(v_sc, self.dampening_factor, 1.)
-        z.set_shape(v_sc.get_shape())
+        # z = SpikeFunction(v_sc, self.dampening_factor, 1.)
+        # z.set_shape(v_sc.get_shape())
+        z = self.spike_function(v_sc)
         return z, v_sc
 
     def currents_composition(self, inputs, old_spike):

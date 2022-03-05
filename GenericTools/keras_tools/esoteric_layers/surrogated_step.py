@@ -146,7 +146,7 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
     elif 'cauchypseudod' in config:
         z = SpikeFunctionCauchy(v_sc, dampening, sharpness)
 
-    elif 'originalpseudod' in config:
+    elif 'originalpseudod' in config or 'triangularpseudod' in config:
         z = SpikeFunction(v_sc, dampening, sharpness)
 
     elif 'sigmoidalpseudod' in config:
