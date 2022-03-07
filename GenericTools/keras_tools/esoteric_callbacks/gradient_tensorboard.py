@@ -31,8 +31,10 @@ def _log_grads(self, epoch):
                         if not curr_grad is None and len(curr_grad) > 0:
                             nc = 'bias' if len(curr_grad.shape) == 1 else 'weight'
 
-                            mean = tf.reduce_mean(tf.abs(curr_grad))
+                            mean = tf.reduce_mean(curr_grad)
+                            std = tf.reduce_mean(curr_grad)
                             summary_ops_v2.scalar('grad_mean_{}_{}_{}'.format(n, i + 1, nc), mean, step=epoch)
+                            summary_ops_v2.scalar('grad_std_{}_{}_{}'.format(n, i + 1, nc), std, step=epoch)
                             summary_ops_v2.histogram('grad_histogram_{}_{}_{}'.format(n, i + 1, nc), curr_grad,
                                                      step=epoch)
 

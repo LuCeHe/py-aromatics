@@ -1,10 +1,7 @@
 import tensorflow as tf
 import math
 
-from GenericTools.keras_tools.esoteric_layers.random_switch import RandomSwitch
 from GenericTools.stay_organized.utils import str2val
-
-from GenericTools.stay_organized.mpl_tools import load_plot_settings
 
 
 @tf.custom_gradient
@@ -78,7 +75,7 @@ def SpikeFunctionSigmoid(v_scaled, dampening, sharpness):
 
 
 @tf.custom_gradient
-def SpikeFunctionMultiGaussian(v_scaled, dampening, sharpness):
+def SpikeFunctionMultiGaussian(v_scaled, dampening, sharpness, h, sl, sr, hl, hr, shiftl, shiftr):
     # Accurate and efficient time-domain classification
     # with adaptive spiking recurrent neural networks
     # Bojian Yin, Federico Corradi and Sander M. Bohté
@@ -87,17 +84,17 @@ def SpikeFunctionMultiGaussian(v_scaled, dampening, sharpness):
 
     def grad(dy):  # best m found 25
         x = v_scaled * sharpness
-        h = .15
-        s = 2
-        A = (1 + h - 2 * h * tf.exp(-1 / (2 * s ** 2))) ** (-1)  # 1
-        width = (A * (1 + h) * tf.sqrt(2 * math.pi) - A * 2 * h * s * tf.sqrt(2 * math.pi)) ** (-1)  # .5
+        # h = .15
+        # s = 2
+        A = (1 + h - 2 * h * tf.exp(-1 / (sl + sr ** 2))) ** (-1)  # 1
+        width = (A * (1 + h) * tf.sqrt(2 * math.pi) - A * h * (sl + sr) * tf.sqrt(2 * math.pi)) ** (-1)  # .5
 
         central_g = (1 + h) * tf.exp(-tf.pow(x, 2) / (2 * width ** 2))
-        left_g = h * tf.exp(-tf.pow(x - width, 2) / (2 * s ** 2 * width ** 2))
-        right_g = h * tf.exp(-tf.pow(x + width, 2) / (2 * s ** 2 * width ** 2))
+        left_g = hl * tf.exp(-tf.pow(x - shiftl * width, 2) / (2 * sl ** 2 * width ** 2))
+        right_g = hr * tf.exp(-tf.pow(x + shiftr * width, 2) / (2 * sr ** 2 * width ** 2))
         dz_dv_scaled = central_g - left_g - right_g
         dz_dv_scaled = dampening * A * dz_dv_scaled
-        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)]
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)] + [tf.zeros_like(h)] * 7
 
     return tf.identity(z_, name="SpikeFunction"), grad
 
@@ -136,6 +133,25 @@ def SpikeFunctionDeltaDirac(v_scaled, dampening):
     return tf.identity(z_, name="SpikeFunctionDeltaDirac"), grad
 
 
+@tf.custom_gradient
+def MNTailSpikeFunction(v_scaled, dampening, sharpness, tail1, tail2, tail3, c1, c2, c3, h1, h2, h3):
+    z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
+
+    def grad(dy):
+        x1 = tf.abs((v_scaled - c1) * sharpness)
+        peak1 = h1 / (1 + 2 * x1 / (tail1 - 1)) ** tail1
+        x2 = tf.abs((v_scaled - c2) * sharpness)
+        peak2 = h2 / (1 + 2 * x2 / (tail2 - 1)) ** tail2
+        x3 = tf.abs((v_scaled - c3) * sharpness)
+        peak3 = h3 / (1 + 2 * x3 / (tail3 - 1)) ** tail1
+
+        peaks = peak1 + peak2 + peak3
+        dz_dv_scaled = dampening * peaks
+        return [dy * dz_dv_scaled, tf.zeros_like(dampening), tf.zeros_like(sharpness)] + [tf.zeros_like(tail1)]*9
+
+    return tf.identity(z_, name="SpikeFunction"), grad
+
+
 def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
     sharpness = str2val(config, 'sharpn', float, default=sharpness)
     dampening = str2val(config, 'dampf', float, default=dampening)
@@ -167,7 +183,7 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
 
     elif 'mgausspseudod' in config:
         # tail = str2val(config, 'tailvalue', float, default=1.1)
-        z = SpikeFunctionMultiGaussian(v_sc, dampening, sharpness)
+        z = SpikeFunctionMultiGaussian(v_sc, dampening, sharpness, .15, 2, 2, .15, .15, 1, 1)
 
     elif 'reluspike' in config:
         z = dampening * tf.nn.relu(sharpness * v_sc)
@@ -185,6 +201,93 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
         z = FastSigmoidSpikeFunction(v_sc, dampening, sharpness)
 
     return z
+
+
+def OneLearnableNTail(self, n_in):
+    self.sharpness = self.hard_heaviside = self.add_weight(
+        name='sharp', shape=(n_in,), initializer=tf.keras.initializers.Constant(1.), trainable=True
+    )
+    self.dampening = self.hard_heaviside = self.add_weight(
+        name='damp', shape=(n_in,), initializer=tf.keras.initializers.Constant(1.), trainable=True
+    )
+    self.tail = self.hard_heaviside = self.add_weight(
+        name='tail', shape=(n_in,), initializer=tf.keras.initializers.Constant(2.), trainable=True
+    )
+    self.hard_spike = lambda x: NTailSpikeFunction(x, self.dampening, self.sharpness, self.tail)
+    return self
+
+
+def MLearnableGauss(self, n_in):
+    self.sharpness = self.hard_heaviside = self.add_weight(
+        name='sharp', shape=(n_in,), initializer=tf.keras.initializers.Constant(1.), trainable=True
+    )
+    self.dampening = self.hard_heaviside = self.add_weight(
+        name='damp', shape=(n_in,), initializer=tf.keras.initializers.Constant(1.), trainable=True
+    )
+    self.h = self.hard_heaviside = self.add_weight(
+        name='h', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(-0.05, 1.), trainable=True
+    )
+    self.sl = self.hard_heaviside = self.add_weight(
+        name='sl', shape=(n_in,), initializer=tf.keras.initializers.Constant(2.), trainable=True
+    )
+    self.sr = self.hard_heaviside = self.add_weight(
+        name='sr', shape=(n_in,), initializer=tf.keras.initializers.Constant(2.), trainable=True
+    )
+    self.hl = self.hard_heaviside = self.add_weight(
+        name='hl', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(-0.05, 1.), trainable=True
+    )
+    self.hr = self.hard_heaviside = self.add_weight(
+        name='hr', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(-0.05, 1.), trainable=True
+    )
+    self.shiftl = self.hard_heaviside = self.add_weight(
+        name='shiftl', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(0.05, 1.5), trainable=True
+    )
+    self.shiftr = self.hard_heaviside = self.add_weight(
+        name='shiftr', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(0.05, 1.5), trainable=True
+    )
+    self.hard_spike = lambda x: SpikeFunctionMultiGaussian(x, self.dampening, self.sharpness, self.h, self.sl,
+                                                           self.sr, self.hl, self.hr, self.shiftl,
+                                                           self.shiftr)
+    return self
+
+
+def MLearnableTails(self, n_in):
+    self.sharpness = self.hard_heaviside = self.add_weight(
+        name='sharp', shape=(n_in,), initializer=tf.keras.initializers.Constant(1.), trainable=True
+    )
+    self.dampening = self.hard_heaviside = self.add_weight(
+        name='damp', shape=(n_in,), initializer=tf.keras.initializers.Constant(1.), trainable=True
+    )
+    self.tail1 = self.hard_heaviside = self.add_weight(
+        name='tail1', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(-0.05, 1.), trainable=True
+    )
+    self.tail2 = self.hard_heaviside = self.add_weight(
+        name='tail2', shape=(n_in,), initializer=tf.keras.initializers.Constant(2.), trainable=True
+    )
+    self.tail3 = self.hard_heaviside = self.add_weight(
+        name='tail3', shape=(n_in,), initializer=tf.keras.initializers.Constant(2.), trainable=True
+    )
+    self.c1 = self.hard_heaviside = self.add_weight(
+        name='c1', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(-0.05, 1.), trainable=True
+    )
+    self.c2 = self.hard_heaviside = self.add_weight(
+        name='c2', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(-0.05, 1.), trainable=True
+    )
+    self.c3 = self.hard_heaviside = self.add_weight(
+        name='c3', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(0.05, 1.5), trainable=True
+    )
+    self.h1 = self.hard_heaviside = self.add_weight(
+        name='h1', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(0.05, 1.5), trainable=True
+    )
+    self.h2 = self.hard_heaviside = self.add_weight(
+        name='h2', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(0.05, 1.5), trainable=True
+    )
+    self.h3 = self.hard_heaviside = self.add_weight(
+        name='h3', shape=(n_in,), initializer=tf.keras.initializers.RandomUniform(0.05, 1.5), trainable=True
+    )
+    self.hard_spike = lambda x: MNTailSpikeFunction(x, self.dampening, self.sharpness, self.tail1, self.tail2,
+                                                    self.tail3, self.c1, self.c2, self.c3, self.h1, self.h2, self.h3)
+    return self
 
 
 class SurrogatedStep(tf.keras.layers.Layer):
@@ -211,23 +314,21 @@ class SurrogatedStep(tf.keras.layers.Layer):
                                                           dampening=dampening)
 
     def build(self, input_shape):
+        n_in = input_shape[-1]
         self.hard_heaviside = self.add_weight(
             name='hard_heaviside', shape=(), initializer=tf.keras.initializers.Constant(1.), trainable=False
         )
         self.built = True
 
         if 'learnablepseudod' in self.config:
-            n_in = input_shape[-1]
-            self.sharpness = self.hard_heaviside = self.add_weight(
-                name='sharp', shape=(n_in,), initializer=tf.keras.initializers.Constant(1.), trainable=True
-            )
-            self.dampening = self.hard_heaviside = self.add_weight(
-                name='damp', shape=(n_in,), initializer=tf.keras.initializers.Constant(1.), trainable=True
-            )
-            self.tail = self.hard_heaviside = self.add_weight(
-                name='tail', shape=(n_in,), initializer=tf.keras.initializers.Constant(2.), trainable=True
-            )
-            self.hard_spike = lambda x: NTailSpikeFunction(x, self.dampening, self.sharpness, self.tail)
+
+            if 'mgauss' in self.config:
+                print('here')
+                self = MLearnableGauss(self, n_in)
+            elif 'mtail' in self.config:
+                self = MLearnableTails(self, n_in)
+            else:
+                self = OneLearnableNTail(self, n_in)
 
     def call(self, inputs, *args, **kwargs):
         v_sc = inputs
@@ -266,6 +367,7 @@ def pseudod_color(pseudod_name):
 def draw_pseudods():
     import numpy as np
     import matplotlib as mpl
+    from GenericTools.stay_organized.mpl_tools import load_plot_settings
 
     # mpl.rcParams['font.family'] = 'serif'
     mpl = load_plot_settings(mpl)
@@ -368,6 +470,7 @@ def draw_legend():
     from matplotlib.lines import Line2D
     import matplotlib.pyplot as plt
     import matplotlib as mpl
+    from GenericTools.stay_organized.mpl_tools import load_plot_settings
     mpl = load_plot_settings(mpl=mpl)
 
     legend_elements = [Line2D([0], [0], color=pseudod_color(n), lw=4, label=clean_pseudname(n))
@@ -395,6 +498,7 @@ def draw_legend_mini():
     from matplotlib.lines import Line2D
     import matplotlib.pyplot as plt
     import matplotlib as mpl
+    from GenericTools.stay_organized.mpl_tools import load_plot_settings
     mpl = load_plot_settings(mpl=mpl)
 
     legend_elements = [
