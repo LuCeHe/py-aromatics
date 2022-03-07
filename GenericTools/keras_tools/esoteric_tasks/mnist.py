@@ -5,17 +5,17 @@ import numpy as np
 
 
 def getMNIST(categorical=True, sequential=False, original_size=True,
-             training_set='all', train_split=.8, normalize=True, spike_latency=False, remove_mean=False):
+             data_split='all', train_split=.8, normalize=True, spike_latency=False, remove_mean=False):
     # the data, split between train and test sets
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-    if training_set == 'test':
+    if data_split == 'test':
         x, y = x_test, y_test
-    elif training_set == 'train':
+    elif data_split == 'train':
         n_samples_train = x_train.shape[0]
         x = x_train[:int(train_split * n_samples_train)]
         y = y_train[:int(train_split * n_samples_train)]
-    elif training_set in ['validation', 'val']:
+    elif data_split in ['validation', 'val']:
         n_samples_train = x_train.shape[0]
         x = x_train[int(train_split * n_samples_train):]
         y = y_train[int(train_split * n_samples_train):]
