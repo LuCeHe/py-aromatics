@@ -6,7 +6,7 @@ https://github.com/huggingface/transformers/blob/master/examples/language-modeli
 '''
 
 import argparse, multiprocessing, os, time, shutil
-import datasets as nlp
+import ndatasets as nlp
 from transformers import GPT2Tokenizer
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
