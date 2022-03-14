@@ -344,8 +344,8 @@ possible_pseudod = [
     'sigmoidalpseudod',
     'fastsigmoidpseudod',
     'cappedskippseudod',
-    'ntailpseudod',
-    'mgausspseudod',
+    # 'ntailpseudod',
+    # 'mgausspseudod',
 ]
 
 
