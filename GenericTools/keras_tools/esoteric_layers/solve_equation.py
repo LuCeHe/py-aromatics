@@ -3,7 +3,7 @@ import tensorflow as tf
 
 class SolveEquation(tf.keras.layers.Layer):
 
-    def __init__(self, params, equation, shape=(10,), noisy=False,**kwargs):
+    def __init__(self, params, equation, shape=(10,), noisy=False, **kwargs):
         super().__init__(**kwargs)
         self.equation = equation
         self.shape = shape
@@ -11,10 +11,9 @@ class SolveEquation(tf.keras.layers.Layer):
         self.constraint = [
             lambda x: tf.abs(x) if p == 'positive'
             else lambda x: x
-
             for p in params]
 
-        self.noise = lambda x: x + tf.stop_gradient(x*tf.random.normal(x.shape)/20) if noisy else x
+        self.noise = lambda x: x + tf.stop_gradient(x * tf.random.normal(x.shape) / 20) if noisy else x
 
     def build(self, input_shape):
         self.ws = []
@@ -28,6 +27,7 @@ class SolveEquation(tf.keras.layers.Layer):
             else:
                 w = i
             self.ws.append(w)
+        # print(self.ws)
         self.built = True
 
     def call(self, inputs, **kwargs):
