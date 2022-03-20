@@ -83,7 +83,10 @@ def checkDuringTraining(generator_class, indices_sentences, encoder_model, decod
 
 
 def get_random_string():
-    return ''.join([str(r) for r in np.random.choice(10, 4)])
+    # random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
+    named_tuple = time.localtime()  # get struct_time
+    random_string = str(abs(hash(named_tuple)))[:4]
+    return random_string
 
 
 def timeStructured(random_string=True, seconds=False):
