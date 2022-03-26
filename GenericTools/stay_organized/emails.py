@@ -1,6 +1,6 @@
 import os, shutil, yagmail, logging
 from tqdm import tqdm
-import numpy as np
+# import numpy as np
 
 logger = logging.getLogger('mylogger')
 
@@ -12,11 +12,10 @@ def email_results(
         except_files=None,
         receiver_emails=[]):
     if not isinstance(receiver_emails, list): receiver_emails = [receiver_emails]
-    random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
     yag = yagmail.SMTP('my.experiments.336@gmail.com', ':(1234abcd')
-    subject = random_string + ' The Experiment is [DONE] ! ' + name_experiment
+    subject = name_experiment
 
-    logger.info('Sending Results via Email!')
+    print('Sending Results by Email!')
     # send specific files specified
     for filepath in filepaths_list + [text]:
         try:
@@ -45,6 +44,8 @@ def email_results(
                                                                                            '\n'.join(failed))]
         for email in receiver_emails:
             yag.send(to=email, contents=contents, subject=subject)
+
+    delete_emails()
 
 
 def email_folder_content(folderpath, receiver_email=''):
@@ -87,6 +88,52 @@ def CompressAndSend(path_folders, email):
         name_experiment=' compressed folders ',
         receiver_emails=[email])
 
+
+def delete_emails():
+    import imaplib
+
+    my_email = 'my.experiments.336@gmail.com'
+    app_generated_password = ':(1234abcd'
+
+    # initialize IMAP object for Gmail
+    imap = imaplib.IMAP4_SSL("imap.gmail.com")
+
+    # login to gmail with credentials
+    imap.login(my_email, app_generated_password)
+
+    # for i in imap.list()[1]:
+    #     print(i)
+    #     l = i.decode().split(' "/" ')
+    #     print(l[0] + " = " + l[1])
+
+    # for folder in ['INBOX']:
+    for folder in ['"[Gmail]/Sent Mail"', 'INBOX']:
+        messages = []
+        imap.select(folder)
+
+        _, message_id_list = imap.search(None, "ALL")
+        if not len(message_id_list[0]) ==0:
+            # convert the string ids to list of email ids
+            messages += message_id_list[0].split(b' ')
+
+        print("Deleting {} mails".format(len(messages)))
+        count = 1
+        for mail in tqdm(messages):
+            # mark the mail as deleted
+            imap.store(mail, "+FLAGS", "\\Deleted")
+
+            # print(count, "mail(s) deleted")
+            count += 1
+        # print("All selected mails have been deleted")
+
+        # delete all the selected messages
+        imap.expunge()
+
+    # close the mailbox
+    imap.close()
+
+    # logout from the account
+    imap.logout()
 
 def SendFilesWithIdentifier(container_dir, email_to, files_identifier):
     ds = [d for d in os.listdir(container_dir) if files_identifier in d]
