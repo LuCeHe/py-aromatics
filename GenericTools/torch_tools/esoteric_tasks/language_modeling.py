@@ -33,6 +33,10 @@ class Corpus(object):
 
     def tokenize(self, path):
         """Tokenizes a text file."""
+
+        if not 'PennTreebank' in path:
+            path = path.replace('PennTreebank/', '')
+
         print(path)
         assert os.path.exists(path)
         # Add words to the dictionary
