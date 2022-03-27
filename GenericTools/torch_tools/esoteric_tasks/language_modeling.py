@@ -93,7 +93,10 @@ class PennTreeBankTask():
         if datadir is None:
             raise ValueError('Define where you want the data to be saved with the argument datadir.')
 
+
         PTBDIR = os.path.join(datadir, 'PennTreebank')
+        os.makedirs(PTBDIR)
+
         pickle_name = os.path.join(PTBDIR, 'corpus.pickle')
         if not os.path.exists(pickle_name):
             download_ptb(datadir)
