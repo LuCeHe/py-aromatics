@@ -95,7 +95,7 @@ class PennTreeBankTask():
 
 
         PTBDIR = os.path.join(datadir, 'PennTreebank')
-        os.makedirs(PTBDIR)
+        os.makedirs(PTBDIR, exist_ok=True)
 
         pickle_name = os.path.join(PTBDIR, 'corpus.pickle')
         if not os.path.exists(pickle_name):
