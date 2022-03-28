@@ -93,7 +93,6 @@ class PennTreeBankTask():
         if datadir is None:
             raise ValueError('Define where you want the data to be saved with the argument datadir.')
 
-
         PTBDIR = os.path.join(datadir, 'PennTreebank')
         os.makedirs(PTBDIR, exist_ok=True)
 
@@ -118,7 +117,7 @@ class PennTreeBankTask():
 
         del corpus
 
-        self.steps_per_epoch = n_words // (maxlen * batch_size) if steps_per_epoch == None else steps_per_epoch
+        self.steps_per_epoch = n_words // (maxlen * batch_size) if steps_per_epoch < 0 else steps_per_epoch
         self.in_channels = 1
         self.out_channels = 10000
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
