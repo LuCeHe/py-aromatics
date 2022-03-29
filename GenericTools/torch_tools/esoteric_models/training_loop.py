@@ -89,6 +89,7 @@ class ModelWrapper():
         self.metrics = metrics + [loss]
 
     def fit(self, train_generator, val_generator=None, test_generator=None):
+        device = "cuda" if torch.cuda.is_available() else 'cpu'
         best_train_loss = math.inf
         best_val_loss = math.inf
 
@@ -126,7 +127,7 @@ class ModelWrapper():
                         train_coeffs, true_y = batch
                         times, lengths = None, None
 
-                    pred_y = self.model(times, train_coeffs, lengths, **kwargs)
+                    pred_y = self.model(times, train_coeffs.to(device), lengths, **kwargs)
 
                     loss = self.loss(pred_y, true_y)
                     loss.backward()
