@@ -3,6 +3,7 @@
 
 import os, torch, pickle
 from torchtext import datasets
+from GenericTools.torch_tools.esoteric_tasks.base_generator import BaseGenerator
 
 
 def download_ptb(datadir):
@@ -80,14 +81,14 @@ def get_batch(source, bptt, i):
     return data, target[..., -1]
 
 
-class PennTreeBankTask():
-    def __init__(self, batch_size, epochs, steps_per_epoch, maxlen, train_val_test, datadir=None, string_config=''):
+class PennTreeBankTask(BaseGenerator):
+    def __init__(self, batch_size, epochs, steps_per_epoch, maxlen, data_split, datadir=None, string_config=''):
         self.__dict__.update(
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
             batch_size=batch_size,
             maxlen=maxlen,
-            train_val_test=train_val_test,
+            data_split=data_split,
             string_config=string_config)
 
         if datadir is None:
@@ -106,11 +107,11 @@ class PennTreeBankTask():
             with open(pickle_name, 'rb') as handle:
                 corpus = pickle.load(handle)
 
-        if train_val_test == 'train':
+        if data_split == 'train':
             self.data, n_words = batchify(corpus.train, batch_size)
-        elif train_val_test in ['valid', 'validation', 'val']:
+        elif data_split in ['valid', 'validation', 'val']:
             self.data, n_words = batchify(corpus.valid, batch_size)
-        elif train_val_test == 'test':
+        elif data_split == 'test':
             self.data, n_words = batchify(corpus.test, batch_size)
         else:
             raise NotImplementedError
@@ -121,6 +122,9 @@ class PennTreeBankTask():
         self.in_channels = 1
         self.out_channels = 10000
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    def __len__(self):
+        return self.steps_per_epoch
 
     def __getitem__(self, index):
         data, targets = get_batch(self.data, self.maxlen, index)

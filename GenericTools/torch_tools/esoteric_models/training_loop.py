@@ -52,7 +52,7 @@ def _evaluate_metrics(model_name, generator, model, metric, slope, device, kwarg
     with torch.no_grad():
         total_dataset_size = 0
         total_loss = 0
-        steps_per_epoch = generator.steps_per_epoch
+        steps_per_epoch = len(generator)
 
         batch_size = generator.batch_size
         for i in range(steps_per_epoch):
@@ -97,7 +97,7 @@ class ModelWrapper():
         plateau_terminate = 50
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=10)
         epochs = train_generator.epochs
-        steps_per_epoch = train_generator.steps_per_epoch
+        steps_per_epoch = len(train_generator)
         tqdm_range = tqdm.tqdm(range(epochs))
         history = []
         breaking = False
@@ -132,6 +132,8 @@ class ModelWrapper():
                     loss.backward()
                     self.optimizer.step()
                     self.optimizer.zero_grad()
+
+            train_generator.on_epoch_end()
 
             if epoch % epoch_per_metric == 0 or epoch == epochs - 1:
                 self.model.eval()
