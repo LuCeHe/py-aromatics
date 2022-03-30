@@ -150,7 +150,7 @@ class ModelWrapper():
                                                              self.device, kwargs)
                             metrics_evaluate[metric.__name__] = metric_value
                         epoch_metrics[k] = metrics_evaluate
-
+                    generator.on_epoch_end()
                 self.model.train()
 
                 train_loss = list(epoch_metrics['train'].values())[-1]
