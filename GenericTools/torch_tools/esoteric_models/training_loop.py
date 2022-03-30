@@ -103,7 +103,6 @@ class ModelWrapper():
         breaking = False
 
         for epoch in tqdm_range:
-            print(epoch)
             if self.slope_check:
                 slope = (epoch * 0.12) + 1.0
             else:
