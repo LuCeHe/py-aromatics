@@ -146,6 +146,7 @@ class ModelWrapper():
                     if not generator is None:
                         metrics_evaluate = {}
                         for metric in self.metrics:
+                            print(metric.__name__)
                             metric_value = _evaluate_metrics(self.model_name, generator, self.model, metric, slope,
                                                              self.device, kwargs)
                             metrics_evaluate[metric.__name__] = metric_value
