@@ -95,7 +95,8 @@ class ModelWrapper():
         best_train_loss = math.inf
         best_val_loss = math.inf
 
-        generators = {'train': copy.deepcopy(train_generator), 'val': copy.deepcopy(val_generator), 'test': copy.deepcopy(test_generator)}
+        # generators = {'train': copy.deepcopy(train_generator), 'val': copy.deepcopy(val_generator), 'test': copy.deepcopy(test_generator)}
+        generators = {'train': train_generator, 'val': val_generator, 'test': test_generator}
         epoch_per_metric = 1
         plateau_terminate = 50
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=10)
@@ -147,15 +148,15 @@ class ModelWrapper():
                 for k, generator in generators.items():
                     print(k)
                     if not generator is None:
-                        generator.on_epoch_end()
                         metrics_evaluate = {}
                         for metric in self.metrics:
                             print(metric.__name__)
+                            generator.on_epoch_end()
                             metric_value = _evaluate_metrics(self.model_name, generator, self.model, metric, slope,
                                                              self.device, kwargs)
                             metrics_evaluate[metric.__name__] = metric_value
+                            generator.on_epoch_end()
                         epoch_metrics[k] = metrics_evaluate
-                        generator.on_epoch_end()
                 self.model.train()
 
                 train_loss = list(epoch_metrics['train'].values())[-1]
