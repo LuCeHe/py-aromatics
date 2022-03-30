@@ -59,8 +59,8 @@ def _evaluate_metrics(model_name, generator, model, metric, slope, device, kwarg
             batch = generator.__getitem__(i)
             batch = tuple(b.to(device) for b in batch)
 
-            if len(batch) == 6:
-                *train_coeffs, train_y, lengths = batch
+            if len(batch) == 7:
+                *train_coeffs, train_y, lengths, times = batch
             elif len(batch) == 2:
                 coeffs, true_y = batch
                 times, lengths = None, None
@@ -121,13 +121,14 @@ class ModelWrapper():
                     break
                 with _SuppressAssertions(tqdm_range):
 
-                    if len(batch) == 6:
-                        *train_coeffs, true_y, lengths = batch
+                    if len(batch) == 7:
+                        *train_coeffs, true_y, lengths, times = batch
+                        true_y = true_y.float()
                     elif len(batch) == 2:
                         train_coeffs, true_y = batch
                         times, lengths = None, None
 
-                    pred_y = self.model(times, train_coeffs.to(device), lengths, **kwargs)
+                    pred_y = self.model(times, train_coeffs, lengths, **kwargs)
 
                     loss = self.loss(pred_y, true_y)
                     loss.backward()
