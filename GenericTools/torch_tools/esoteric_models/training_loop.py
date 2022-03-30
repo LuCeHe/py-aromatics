@@ -57,6 +57,7 @@ def _evaluate_metrics(model_name, generator, model, metric, slope, device, kwarg
 
         batch_size = generator.batch_size
         for i in range(steps_per_epoch):
+            print(i)
             batch = generator.__getitem__(i)
             batch = tuple(b.to(device) for b in batch)
 
