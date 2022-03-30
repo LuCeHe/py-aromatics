@@ -114,7 +114,6 @@ class ModelWrapper():
                 break
 
             for i in range(steps_per_epoch):
-                print(i)
                 batch = train_generator.__getitem__(i)
                 batch = tuple(b.to(self.device) for b in batch)
                 if breaking:
