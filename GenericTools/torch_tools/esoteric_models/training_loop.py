@@ -104,6 +104,7 @@ class ModelWrapper():
         tqdm_range = tqdm.tqdm(range(epochs))
         history = []
         breaking = False
+        print(steps_per_epoch)
 
         for epoch in tqdm_range:
 
@@ -117,6 +118,7 @@ class ModelWrapper():
                 break
 
             for i in range(steps_per_epoch):
+                print(i)
                 batch = train_generator.__getitem__(i)
                 batch = tuple(b.to(self.device) for b in batch)
                 if breaking:
@@ -145,6 +147,7 @@ class ModelWrapper():
                 for k, generator in generators.items():
                     print(k)
                     if not generator is None:
+                        generator.on_epoch_end()
                         metrics_evaluate = {}
                         for metric in self.metrics:
                             print(metric.__name__)
