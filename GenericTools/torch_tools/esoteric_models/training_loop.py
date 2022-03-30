@@ -60,7 +60,7 @@ def _evaluate_metrics(model_name, generator, model, metric, slope, device, kwarg
             batch = tuple(b.to(device) for b in batch)
 
             if len(batch) == 7:
-                *coeffs, train_y, lengths, times = batch
+                *coeffs, true_y, lengths, times = batch
             elif len(batch) == 2:
                 coeffs, true_y = batch
                 times, lengths = None, None
