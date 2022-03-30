@@ -1,4 +1,4 @@
-import torch, math, tqdm
+import torch, math, tqdm, copy
 
 BASELINE_MODELS = [
     "ncde",
@@ -95,7 +95,7 @@ class ModelWrapper():
         best_train_loss = math.inf
         best_val_loss = math.inf
 
-        generators = {'train': train_generator, 'val': val_generator, 'test': test_generator}
+        generators = {'train': copy.deepcopy(train_generator), 'val': copy.deepcopy(val_generator), 'test': copy.deepcopy(test_generator)}
         epoch_per_metric = 1
         plateau_terminate = 50
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=10)
