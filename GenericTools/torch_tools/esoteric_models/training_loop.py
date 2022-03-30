@@ -53,6 +53,7 @@ def _evaluate_metrics(model_name, generator, model, metric, slope, device, kwarg
         total_dataset_size = 0
         total_loss = 0
         steps_per_epoch = len(generator)
+        print(steps_per_epoch)
 
         batch_size = generator.batch_size
         for i in range(steps_per_epoch):
@@ -141,6 +142,7 @@ class ModelWrapper():
                 self.model.eval()
                 epoch_metrics = {}
                 for k, generator in generators.items():
+                    print(k)
                     if not generator is None:
                         metrics_evaluate = {}
                         for metric in self.metrics:
