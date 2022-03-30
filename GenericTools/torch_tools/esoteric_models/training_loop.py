@@ -53,11 +53,9 @@ def _evaluate_metrics(model_name, generator, model, metric, slope, device, kwarg
         total_dataset_size = 0
         total_loss = 0
         steps_per_epoch = len(generator)
-        print(steps_per_epoch)
 
         batch_size = generator.batch_size
         for i in range(steps_per_epoch):
-            print(i)
             batch = generator.__getitem__(i)
             batch = tuple(b.to(device) for b in batch)
 
@@ -91,11 +89,9 @@ class ModelWrapper():
         self.metrics = metrics + [loss]
 
     def fit(self, train_generator, val_generator=None, test_generator=None):
-        device = "cuda" if torch.cuda.is_available() else 'cpu'
         best_train_loss = math.inf
         best_val_loss = math.inf
 
-        # generators = {'train': copy.deepcopy(train_generator), 'val': copy.deepcopy(val_generator), 'test': copy.deepcopy(test_generator)}
         generators = {'train': train_generator, 'val': val_generator, 'test': test_generator}
         epoch_per_metric = 1
         plateau_terminate = 50
@@ -105,7 +101,6 @@ class ModelWrapper():
         tqdm_range = tqdm.tqdm(range(epochs))
         history = []
         breaking = False
-        print(steps_per_epoch)
 
         for epoch in tqdm_range:
 
@@ -146,16 +141,13 @@ class ModelWrapper():
                 self.model.eval()
                 epoch_metrics = {}
                 for k, generator in generators.items():
-                    print(k)
                     if not generator is None:
                         metrics_evaluate = {}
                         for metric in self.metrics:
-                            print(metric.__name__)
                             generator.on_epoch_end()
                             metric_value = _evaluate_metrics(self.model_name, generator, self.model, metric, slope,
                                                              self.device, kwargs)
                             metrics_evaluate[metric.__name__] = metric_value
-                            generator.on_epoch_end()
                         epoch_metrics[k] = metrics_evaluate
                 self.model.train()
 
