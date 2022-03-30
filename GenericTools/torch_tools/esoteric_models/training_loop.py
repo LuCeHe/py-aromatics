@@ -103,7 +103,7 @@ class ModelWrapper():
         breaking = False
 
         for epoch in tqdm_range:
-
+            print(epoch)
             if self.slope_check:
                 slope = (epoch * 0.12) + 1.0
             else:
@@ -143,9 +143,9 @@ class ModelWrapper():
                     if not generator is None:
                         metrics_evaluate = {}
                         for metric in self.metrics:
-                            generator.on_epoch_end()
                             metric_value = _evaluate_metrics(self.model_name, generator, self.model, metric, slope,
                                                              self.device, kwargs)
+                            generator.on_epoch_end()
                             metrics_evaluate[metric.__name__] = metric_value
                         epoch_metrics[k] = metrics_evaluate
                 self.model.train()
