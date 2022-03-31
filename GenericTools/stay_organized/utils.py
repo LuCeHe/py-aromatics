@@ -2,8 +2,9 @@ import argparse, logging, os, random, time
 from time import strftime, localtime
 
 import numpy as np
-import tensorflow as tf
-from tqdm import tqdm
+
+# import tensorflow as tf
+# from tqdm import tqdm
 
 logger = logging.getLogger('mylogger')
 
@@ -124,25 +125,33 @@ def collect_information():
     print(i)
 
 
-def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True):
+def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True, tensorflow=False, pytorch=False):
     # Fix the seed of all random number generator
     random.seed(seed)
     np.random.seed(seed)
-    tf.random.set_seed(seed)
+
+    if pytorch:
+        import torch
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.random.manual_seed(seed)
 
     if prove_seed:
         print(np.random.rand())
 
-    config = tf.compat.v1.ConfigProto(
-        intra_op_parallelism_threads=1,
-        inter_op_parallelism_threads=1,
-        device_count={'CPU': 1}
-    )
+    if tensorflow:
+        import tensorflow as tf
+        tf.random.set_seed(seed)
 
-    if disableGpuMemPrealloc:
-        config.gpu_options.allow_growth = True
-    # K.clear_session()
-    # K.set_session(tf.Session(config=config))
+        config = tf.compat.v1.ConfigProto(
+            intra_op_parallelism_threads=1,
+            inter_op_parallelism_threads=1,
+            device_count={'CPU': 1}
+        )
+
+        if disableGpuMemPrealloc:
+            config.gpu_options.allow_growth = True
 
 
 def Dict2ArgsParser(args_dict):
