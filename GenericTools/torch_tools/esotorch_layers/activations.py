@@ -64,7 +64,7 @@ class RePU(torch.nn.Module):
 
 
 class gRePU(torch.nn.Module):
-    def __init__(self, slope=1., power=2., var=0.001):
+    def __init__(self, slope=1., power=2., var=0.0001):
         super().__init__()
         self.slope = slope
         self.exponent = power
