@@ -19,7 +19,10 @@ def CritialVar(name, force_value=None):
     return c
 
 
-def ActivationRedirection(name):
+def ActivationRedirection(name, power=1.3, power2=1.1353213):
+
+    # 2   -> 0.73087925
+    # 1.3 -> 1.1353213
     activation = None
     n = 1
     if ':' in name:
@@ -29,13 +32,13 @@ def ActivationRedirection(name):
 
     if name == 'relu':
         activation = nn.ReLU()
-    elif name == 'requ':
-        activation = RePU(1, 2)
-    elif name == 're07u':
+    elif name == 'repu':
+        activation = RePU(1, power)
+    elif name == 'grepu':
         if n == 0:
-            activation = RePU(1, 2)
+            activation = RePU(1, power)
         else:
-            activation = gRePU(1, 0.7161707)
+            activation = gRePU(1, power2)
     else:
         raise NotImplementedError
 
@@ -61,7 +64,7 @@ class RePU(torch.nn.Module):
 
 
 class gRePU(torch.nn.Module):
-    def __init__(self, slope=1., power=2., var=0.01):
+    def __init__(self, slope=1., power=2., var=0.001):
         super().__init__()
         self.slope = slope
         self.exponent = power
