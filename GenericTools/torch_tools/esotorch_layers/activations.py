@@ -19,10 +19,11 @@ def CritialVar(name, force_value=None):
     return c
 
 
-def ActivationRedirection(name, power=1.3, power2=1.1353213):
+def ActivationRedirection(name, power=1.1, power2=1.391948):
 
     # 2   -> 0.73087925
     # 1.3 -> 1.1353213
+    # 1.1 -> 1.391948
     activation = None
     n = 1
     if ':' in name:
