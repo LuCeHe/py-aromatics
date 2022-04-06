@@ -125,7 +125,8 @@ def collect_information():
     print(i)
 
 
-def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True, tensorflow=False, pytorch=False):
+def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True, tensorflow=False, pytorch=False,
+                    empty_cuda=True):
     # Fix the seed of all random number generator
     random.seed(seed)
     np.random.seed(seed)
@@ -152,6 +153,14 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True, tensorf
 
         if disableGpuMemPrealloc:
             config.gpu_options.allow_growth = True
+
+    if empty_cuda:
+        torch.cuda.empty_cache()
+        from numba import cuda
+        device = cuda.get_current_device()
+        device.reset()
+        cuda.select_device(0)
+        cuda.close()
 
 
 def Dict2ArgsParser(args_dict):
