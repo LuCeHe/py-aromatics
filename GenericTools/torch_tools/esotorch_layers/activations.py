@@ -8,7 +8,7 @@ def CritialVar(name, force_value=None):
         c = 2
     elif name == 'requ':
         c = 1 / 3
-    elif name == 're07u':
+    elif name in ['re07u', 'grepu']:
         c = 1.
     else:
         raise NotImplementedError
