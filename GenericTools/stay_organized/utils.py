@@ -126,7 +126,7 @@ def collect_information():
 
 
 def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True, tensorflow=False, pytorch=False,
-                    empty_cuda=True):
+                    empty_cuda=False):
     # Fix the seed of all random number generator
     random.seed(seed)
     np.random.seed(seed)
