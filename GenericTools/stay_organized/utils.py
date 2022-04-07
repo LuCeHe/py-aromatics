@@ -1,4 +1,4 @@
-import argparse, logging, os, random, time
+import argparse, logging, os, random, time, gc
 from time import strftime, localtime
 
 import numpy as np
@@ -155,12 +155,16 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True, tensorf
             config.gpu_options.allow_growth = True
 
     if empty_cuda:
-        torch.cuda.empty_cache()
+        gc.collect()
+        if pytorch:
+            torch.cuda.empty_cache()
+
         from numba import cuda
         device = cuda.get_current_device()
         device.reset()
         cuda.select_device(0)
         cuda.close()
+        # torch.cuda.empty_cache()
 
 
 def Dict2ArgsParser(args_dict):
