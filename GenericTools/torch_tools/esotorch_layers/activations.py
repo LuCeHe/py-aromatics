@@ -8,7 +8,7 @@ def CritialVar(name, force_value=None):
         c = 2
     elif name == 'requ':
         c = 1 / 3
-    elif name in ['re07u', 'grepu']:
+    elif name in ['re07u', 'grepu', 'bigrepu']:
         c = 1.
     else:
         raise NotImplementedError
@@ -20,10 +20,6 @@ def CritialVar(name, force_value=None):
 
 
 def ActivationRedirection(name, power=1.1, power2=1.391948):
-
-    # 2   -> 0.73087925
-    # 1.3 -> 1.1353213
-    # 1.1 -> 1.391948
     activation = None
     n = 1
     if ':' in name:
@@ -38,6 +34,12 @@ def ActivationRedirection(name, power=1.1, power2=1.391948):
     elif name == 'grepu':
         if n == 0:
             activation = RePU(1, power)
+        else:
+            activation = gRePU(1, power2)
+
+    elif name == 'bigrepu':
+        if n == 0:
+            activation = gRePU(1, power)
         else:
             activation = gRePU(1, power2)
     else:
