@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 def run_experiments(
         experiments=None, init_command='python language_main.py with ',
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
-        duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': 0}
+        duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': 0},
+        env_name='denv2',
 ):
     delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
 
@@ -17,7 +18,7 @@ def run_experiments(
     sh_duration = "{}:{}:00".format(str(int(hours)).zfill(2), str(int(minutes)).zfill(2))
 
     if run_string is None:
-        sh_name = create_sbatch_sh(sh_duration, sh_location, py_location, account)
+        sh_name = create_sbatch_sh(sh_duration, sh_location, py_location, account, env_name)
         run_string = 'sbatch ' + sh_name
 
     print()
@@ -51,20 +52,20 @@ def dict2iter(experiments):
     return full_ds
 
 
-def create_sbatch_sh(duration, sh_location, py_location, account):
+def create_sbatch_sh(duration, sh_location, py_location, account, env_name):
     sh_name = '{0:010x}'.format(int(time.time() * 256))[:15] + '.sh'
     sh_path = os.path.join(sh_location, sh_name)
     with open(sh_path, 'w') as f:
-        f.write(sh_base(duration, account, py_location))
+        f.write(sh_base(duration, account, py_location, env_name))
     return sh_path
 
 
-def sh_base(time, account, py_location):
-    env_location = '~/scratch/denv2/bin/activate'
+def sh_base(time, account, py_location, env_name):
+    env_location = f'~/scratch/{env_name}/bin/activate'
     if 'cedar' in socket.gethostname():
-        env_location = '~/project/lucacehe/denv2/bin/activate'
+        env_location = f'~/project/lucacehe/{env_name}/bin/activate'
     if 'gra' == socket.gethostname()[:3]:
-        env_location = '~/projects/def-jrouat/lucacehe/denv2/bin/activate'
+        env_location = f'~/projects/def-jrouat/lucacehe/{env_name}/bin/activate'
     return """#!/bin/bash
 #SBATCH --time={}
 #SBATCH --account={}
