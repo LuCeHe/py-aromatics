@@ -72,7 +72,7 @@ def sh_base(time, account, py_location):
 #SBATCH --cpus-per-task 4
 #SBATCH --gres=gpu:1
 
-module load StdEnv/2020  gcc/9.3.0  cuda/11.0 arrow/1.0.0 python/3.6 scipy-stack
+module load StdEnv/2020  gcc/9.3.0  cuda/11.0 arrow/1.0.0 python/3.8 scipy-stack
 source {}
 cd {}
 $1
