@@ -45,7 +45,7 @@ def email_results(
         for email in receiver_emails:
             yag.send(to=email, contents=contents, subject=subject)
 
-    delete_emails()
+    # delete_emails()
 
 
 def email_folder_content(folderpath, receiver_email=''):
