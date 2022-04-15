@@ -1,8 +1,18 @@
 import os, shutil, yagmail, logging
 from tqdm import tqdm
 # import numpy as np
+import requests
+from bs4 import BeautifulSoup
+import smtplib, ssl
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+import smtplib
+import sys
+import pandas as pd
 
 logger = logging.getLogger('mylogger')
+
 
 def email_results(
         folders_list=[],
@@ -142,3 +152,50 @@ def SendFilesWithIdentifier(container_dir, email_to, files_identifier):
         filepaths_list=ds,
         name_experiment=' identified files ',
         receiver_emails=[email_to])
+
+
+def emailnew(receiver_email, subject='nice subject',text = 'nice message', df=None):
+    sender_email = "my.experiments.336@gmail.com"
+    password = ':(1234abcd'
+    message = MIMEMultipart("alternative")
+    message["Subject"] = subject
+    message["From"] = sender_email
+    message["To"] = receiver_email
+
+    part1 = MIMEText(text, "plain")
+    message.attach(part1)
+
+    if not df is None:
+        html = df.to_html(index=False)
+        part2 = MIMEText(html, "html")
+        message.attach(part2)
+
+
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+        server.login(sender_email, password)
+        server.sendmail(
+            sender_email, receiver_email, message.as_string()
+        )
+
+
+def get_whisky():
+    newlist = []
+    url = 'https://www.thewhiskyexchange.com/new-products/standard-whisky'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36'}
+    r = requests.get(url, headers=headers)
+    soup = BeautifulSoup(r.text, 'html.parser')
+    new_whisky = soup.find('li', {'class': 'np-postlist__item'}).find_all('li', {'class': 'product-list-item'})
+
+    for item in new_whisky:
+        new = {
+            'name': item.find('p', {'class': 'name'}).text,
+            'spec': item.find('p', {'class': 'spec'}).text,
+            'desc': item.find('p', {'class': 'description'}).text.strip(),
+            'price': item.find('p', {'class': 'price'}).text,
+        }
+        newlist.append(new)
+
+    df = pd.DataFrame(newlist)
+    return df
