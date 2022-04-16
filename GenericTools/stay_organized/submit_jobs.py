@@ -69,12 +69,15 @@ def sh_base(time, account, py_location, env_name):
     return """#!/bin/bash
 #SBATCH --time={}
 #SBATCH --account={}
-#SBATCH --mem 32G
-#SBATCH --cpus-per-task 4
-#SBATCH --gres=gpu:1
+#SBATCH --mem 48G
+#SBATCH --cpus-per-task 6
 
 module load StdEnv/2020  gcc/9.3.0  cuda/11.0 arrow/1.0.0 python/3.8 scipy-stack
 source {}
 cd {}
 $1
 """.format(time, account, env_location, py_location)
+
+#SBATCH --mem 32G
+#SBATCH --cpus-per-task 4
+#SBATCH --gres=gpu:1
