@@ -7,7 +7,6 @@ import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
-import smtplib
 import sys
 import pandas as pd
 
@@ -55,7 +54,7 @@ def email_results(
         for email in receiver_emails:
             yag.send(to=email, contents=contents, subject=subject)
 
-    # delete_emails()
+    delete_emails()
 
 
 def email_folder_content(folderpath, receiver_email=''):
