@@ -81,3 +81,4 @@ $1
 #SBATCH --mem 32G
 #SBATCH --cpus-per-task 4
 #SBATCH --gres=gpu:1
+
