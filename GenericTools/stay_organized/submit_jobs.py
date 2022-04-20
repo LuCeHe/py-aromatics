@@ -40,7 +40,7 @@ def run_experiments(
         command = "{} '{}'".format(run_string, command + stop_training)
         command = command.replace('  ', ' ')
         print('{}/{}'.format(i + 1, len(ds)), command)
-        os.system(command)
+        # os.system(command)
     print('Number jobs: {}'.format(len(ds)))
 
 def dict2iter(experiments):
@@ -72,7 +72,7 @@ def sh_base(time, account, py_location, env_name):
 #SBATCH --mem 32G
 #SBATCH --cpus-per-task 8
 
-module load StdEnv/2020  gcc/10  cuda/11.0 arrow/1.0.0 python/3.8 scipy-stack
+module load StdEnv/2020 gcc/10 cuda/11.0 arrow/1.0.0 python/3.8 scipy-stack
 source {}
 cd {}
 $1
@@ -82,3 +82,4 @@ $1
 #SBATCH --cpus-per-task 4
 #SBATCH --gres=gpu:1
 
+# salloc  --time 17:0:0 --cpus-per-task 8 --mem 32G
