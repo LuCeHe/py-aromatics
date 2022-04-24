@@ -72,7 +72,7 @@ def sh_base(time, account, py_location, env_name):
 #SBATCH --mem 32G
 #SBATCH --cpus-per-task 8
 
-module load gcc/10 cuda/11.0 python/3.8
+module load StdEnv/2020 python/3.8 gcc/10 cuda/11.0 
 source {}
 cd {}
 $1
