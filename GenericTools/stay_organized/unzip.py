@@ -32,7 +32,7 @@ def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_fo
 
     ds = sorted(ds)
     destinations = []
-    for d in tqdm(ds):
+    for d in tqdm(ds, desc='Unzip'):
 
         # Create a ZipFile Object and load sample.zip in it
         with ZipFile(d, 'r') as zipObj:
