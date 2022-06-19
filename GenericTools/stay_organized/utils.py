@@ -1,5 +1,6 @@
 import argparse, logging, os, random, time, gc
 from time import strftime, localtime
+import importlib.util
 
 import numpy as np
 
@@ -221,6 +222,12 @@ def rename(newname):
 
     return decorator
 
+
+def module_from_file(module_name, file_path):
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 if __name__ == '__main__':
     comments = '_thing:23'
