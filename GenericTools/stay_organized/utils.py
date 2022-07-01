@@ -103,29 +103,6 @@ def timeStructured(random_string=True, seconds=False):
         return time_string, time.time()
     return time_string
 
-
-def collect_information():
-    f = open('./cout.txt', 'r')
-    i = 0
-
-    for line in f:
-        if '>> "           AriEL' in line:
-            print(i)
-            i = 0
-            print(line)
-            g = open(line[-11:-2] + '.txt', 'w')
-            g.write('\n\n')
-            g.write(line)
-            g.write('\n\n')
-
-        if 'cpu' in line or 'CPU' in line:
-            if not 'I tensorflow' in line:
-                i += 1
-                g.write(line)
-                g.write('\n')
-    print(i)
-
-
 def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True, tensorflow=False, pytorch=False,
                     empty_cuda=True):
     # Fix the seed of all random number generator
