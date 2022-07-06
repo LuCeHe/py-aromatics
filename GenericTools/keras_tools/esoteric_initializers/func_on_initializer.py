@@ -11,4 +11,4 @@ class FuncOnInitializer(tf.keras.initializers.Initializer):
         return self.func(self.initializer.__call__(shape, dtype, **kwargs))
 
     def get_config(self):
-        return {"func": self.func, "initializer": self.initializer}
+        return {'func': self.func, 'initializer': self.initializer}
