@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 def run_experiments(
         experiments=None, init_command='python language_main.py with ',
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
-        duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': 0},
+        duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': -1},
         env_name='denv2', n_gpus=0
 ):
     delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
@@ -22,7 +22,7 @@ def run_experiments(
         run_string = 'sbatch ' + sh_name
 
     print()
-    stop_training = '' if duration['prestop_training_hours'] == 0 else ' stop_time={} '.format(int(stop_training))
+    stop_training = '' if duration['prestop_training_hours'] == -1 else ' stop_time={} '.format(int(stop_training))
     if not experiments is None:
         ds = dict2iter(experiments)
     else:
