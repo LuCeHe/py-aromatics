@@ -53,7 +53,7 @@ def dict2iter(experiments):
 
 
 def create_sbatch_sh(duration, sh_location, py_location, account, env_name, n_gpus, id):
-    sh_name = '{0:010x}'.format(int(time.time() * 256))[:15] + f'-{id}.sh'
+    sh_name = '{0:010x}'.format(int(time.time() * 256))[-7:] + f'-{id}.sh'
     sh_path = os.path.join(sh_location, sh_name)
     with open(sh_path, 'w') as f:
         f.write(sh_base(duration, account, py_location, env_name, n_gpus))
