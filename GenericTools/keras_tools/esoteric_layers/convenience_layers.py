@@ -21,30 +21,22 @@ class AverageOverAxis(Layer):
         return tuple(input_shape)
 
 
-class ExpandDims(object):
-
-    def __init__(self, axis):
+class ExpandDims(tf.keras.layers.Layer):
+    def __init__(self, axis, **kwargs):
+        super().__init__(**kwargs)
         self.axis = axis
 
-    def __call__(self, inputs):
-        def ed(tensor, axis):
-            expanded = K.expand_dims(tensor, axis=axis)
-            return expanded
-
-        return Lambda(ed, arguments={'axis': self.axis})(inputs)
+    def call(self, inputs, training=None, **kwargs):
+        return tf.expand_dims(inputs, axis=self.axis)
 
 
-class Squeeze(object):
-
-    def __init__(self, axis):
+class Squeeze(tf.keras.layers.Layer):
+    def __init__(self, axis, **kwargs):
+        super().__init__(**kwargs)
         self.axis = axis
 
-    def __call__(self, inputs):
-        def squeeze(tensor, axis):
-            squeezed = K.squeeze(tensor, axis=axis)
-            return squeezed
-
-        return Lambda(squeeze, arguments={'axis': self.axis})(inputs)
+    def __call__(self, inputs, training=None, **kwargs):
+        return tf.squeeze(inputs, axis=self.axis)
 
 
 class Slice(Layer):
