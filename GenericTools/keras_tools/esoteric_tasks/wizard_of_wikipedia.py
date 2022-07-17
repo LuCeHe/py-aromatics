@@ -1,6 +1,6 @@
 import os, shutil, json, random, h5py, argparse
 from tokenizers import Tokenizer
-from transformers import GPT2Tokenizer, AutoTokenizer, AutoConfig
+# from transformers import GPT2Tokenizer, AutoTokenizer, AutoConfig
 import tensorflow as tf
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 from tqdm import tqdm
