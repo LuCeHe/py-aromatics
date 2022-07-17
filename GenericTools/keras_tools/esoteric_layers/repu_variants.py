@@ -10,6 +10,11 @@ from tensorflow.python.keras.utils import tf_utils
 
 from tensorflow.keras.layers import PReLU
 from tensorflow.python.ops.nn_impl import swish
+import math
+
+
+def guderman(features):
+    return features * (1 / 2 + 2 / math.pi * (tf.math.atan(tf.math.tanh(features))))
 
 
 class RePU(Layer):
@@ -22,8 +27,8 @@ class RePU(Layer):
                  shared_axes=[1],
                  base_activation='relu',
                  slope=True,
-                 trainable_p=True,
-                 trainable_slope=True,
+                 trainable_p=False,
+                 trainable_slope=False,
                  **kwargs):
         super().__init__(**kwargs)
         self.supports_masking = True
@@ -44,6 +49,8 @@ class RePU(Layer):
             self.activation = backend.relu
         elif base_activation == 'swish':
             self.activation = swish
+        elif base_activation == 'guderman':
+            self.activation = guderman
 
         self.trainable_p = trainable_p
         self.trainable_slope = trainable_slope

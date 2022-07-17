@@ -70,6 +70,7 @@ def Task(batch_size=64, steps_per_epoch=None, epochs=1, task_name='wow', data_sp
     else:
         raise NotImplementedError
 
+    if not hasattr(gen, 'pad_idx'): gen.pad_idx = 0
     if not hasattr(gen, 'in_len'): gen.in_len = maxlen
     if not hasattr(gen, 'out_len'): gen.out_len = maxlen
     if not hasattr(gen, 'task_name'): gen.name = task_name

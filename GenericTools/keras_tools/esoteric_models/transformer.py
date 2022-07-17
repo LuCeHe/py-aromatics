@@ -240,15 +240,29 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
 def point_wise_feed_forward_network(d_model, dff, config):
     activation = tf.keras.layers.ReLU()
-    if 'repu' in config:
-        activation = RePU()
+    kernel_initializer = 'he_uniform'
+    bias_initializer = 'zeros'
+    if 'trainable_repu' in config:
+        activation = RePU(trainable_p=True)
     elif 'pswish' in config:
+        activation = RePU(base_activation='swish', trainable_p=True)
+    elif 'swish' in config:
         activation = RePU(base_activation='swish')
+        if 'critical' in config:
+            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.988, mode='fan_in', distribution='normal')
+            bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=tf.sqrt(0.555))
+    elif 'guderman' in config:
+        activation = RePU(base_activation='guderman')
+        if 'critical' in config:
+            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.990, mode='fan_in', distribution='normal')
+            bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=tf.sqrt(0.103))
 
     return tf.keras.Sequential([
-        tf.keras.layers.Dense(dff),  # (batch_size, seq_len, dff)
+        tf.keras.layers.Dense(dff, kernel_initializer='glorot_normal', bias_initializer='zeros'),
+        # (batch_size, seq_len, dff)
         activation,
-        tf.keras.layers.Dense(d_model)  # (batch_size, seq_len, d_model)
+        tf.keras.layers.Dense(d_model, kernel_initializer=kernel_initializer, bias_initializer=bias_initializer)
+        # (batch_size, seq_len, d_model)
     ])
 
 
@@ -272,8 +286,7 @@ class EncoderLayer(tf.keras.layers.Layer):
         attn_output = self.dropout1(attn_output)
         out1 = self.layernorm1(x + attn_output)  # (batch_size, input_seq_len, d_model)
 
-        ffn_output = self.ffn(out1)  # (batch_size, input_seq_len, d_model)
-        ffn_output = self.dropout2(ffn_output)
+        ffn_output = self.dropout2(self.ffn(out1))  # (batch_size, input_seq_len, d_model)
         out2 = self.layernorm2(out1 + ffn_output)  # (batch_size, input_seq_len, d_model)
 
         return out2
