@@ -240,7 +240,8 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
 def point_wise_feed_forward_network(d_model, dff, config):
     activation = tf.keras.layers.ReLU()
-    kernel_initializer = 'he_normal'
+    # kernel_initializer = 'he_normal'
+    kernel_initializer = tf.keras.initializers.VarianceScaling(scale=2., mode='fan_avg', distribution='normal')
     bias_initializer = 'zeros'
     if 'trainable_repu' in config:
         activation = RePU(trainable_p=True)
