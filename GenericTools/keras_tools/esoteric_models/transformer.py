@@ -240,7 +240,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
 def point_wise_feed_forward_network(d_model, dff, config):
     activation = tf.keras.layers.ReLU()
-    kernel_initializer = 'he_uniform'
+    kernel_initializer = 'he_normal'
     bias_initializer = 'zeros'
     if 'trainable_repu' in config:
         activation = RePU(trainable_p=True)
@@ -249,12 +249,12 @@ def point_wise_feed_forward_network(d_model, dff, config):
     elif 'swish' in config:
         activation = RePU(base_activation='swish')
         if 'critical' in config:
-            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.988, mode='fan_in', distribution='normal')
+            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.988, mode='fan_avg', distribution='normal')
             bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=tf.sqrt(0.555))
     elif 'guderman' in config:
         activation = RePU(base_activation='guderman')
         if 'critical' in config:
-            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.990, mode='fan_in', distribution='normal')
+            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.990, mode='fan_avg', distribution='normal')
             bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=tf.sqrt(0.103))
 
     return tf.keras.Sequential([

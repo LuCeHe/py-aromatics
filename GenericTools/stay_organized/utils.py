@@ -103,6 +103,7 @@ def timeStructured(random_string=True, seconds=False):
         return time_string, time.time()
     return time_string
 
+
 def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True, tensorflow=False, pytorch=False,
                     empty_cuda=False):
     # Fix the seed of all random number generator
@@ -134,15 +135,15 @@ def setReproducible(seed=0, disableGpuMemPrealloc=True, prove_seed=True, tensorf
 
     if empty_cuda:
         gc.collect()
-        if pytorch:
-            torch.cuda.empty_cache()
 
         from numba import cuda
         device = cuda.get_current_device()
         device.reset()
         cuda.select_device(0)
         cuda.close()
-        # torch.cuda.empty_cache()
+
+        if pytorch:
+            torch.cuda.empty_cache()
 
 
 def Dict2ArgsParser(args_dict):
@@ -205,6 +206,7 @@ def module_from_file(module_name, file_path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
 
 if __name__ == '__main__':
     comments = '_thing:23'
