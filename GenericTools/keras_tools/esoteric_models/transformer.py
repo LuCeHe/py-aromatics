@@ -241,8 +241,12 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 def point_wise_feed_forward_network(d_model, dff, config):
     activation = tf.keras.layers.ReLU()
     # kernel_initializer = 'he_normal'
-    kernel_initializer = tf.keras.initializers.VarianceScaling(scale=2., mode='fan_avg', distribution='normal')
+    kernel_initializer = tf.keras.initializers.VarianceScaling(scale=2., mode='fan_in', distribution='untruncated_normal')
     bias_initializer = 'zeros'
+
+    # 2/(n_in + n_out) Glorot
+    # 1/(n_in)
+
     if 'trainable_repu' in config:
         activation = RePU(trainable_p=True)
     elif 'pswish' in config:
@@ -250,12 +254,12 @@ def point_wise_feed_forward_network(d_model, dff, config):
     elif 'swish' in config:
         activation = RePU(base_activation='swish')
         if 'critical' in config:
-            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.988, mode='fan_avg', distribution='normal')
+            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.988, mode='fan_in', distribution='untruncated_normal')
             bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=tf.sqrt(0.555))
     elif 'guderman' in config:
         activation = RePU(base_activation='guderman')
         if 'critical' in config:
-            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.990, mode='fan_avg', distribution='normal')
+            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.990, mode='fan_in', distribution='untruncated_normal')
             bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=tf.sqrt(0.103))
 
     return tf.keras.Sequential([
@@ -265,6 +269,7 @@ def point_wise_feed_forward_network(d_model, dff, config):
         tf.keras.layers.Dense(d_model, kernel_initializer=kernel_initializer, bias_initializer=bias_initializer)
         # (batch_size, seq_len, d_model)
     ])
+
 
 
 # encoder and decoder
