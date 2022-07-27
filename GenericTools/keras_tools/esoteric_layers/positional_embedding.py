@@ -57,10 +57,9 @@ class ZeroMeanEmbedding(tf.keras.layers.Embedding):
 
 class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
     def __init__(self, vocab_size, embed_dim, maxlen=512, embeddings_initializer='orthogonal',
-                 name='SymbolAndPositionEmbedding',
                  symbol_embedding='zero_mean',
-                 position_embedding=None, factorized_dim=None, from_string=None):
-        super().__init__(name=name)
+                 position_embedding=None, factorized_dim=None, from_string=None, **kwargs):
+        super().__init__(**kwargs)
 
         if isinstance(from_string, str):
             embed_dim, factorized_dim, symbol_embedding, position_embedding = string_to_emb(from_string, embed_dim)

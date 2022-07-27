@@ -18,6 +18,8 @@ def get_loss(loss_name):
         loss = tfa.losses.ContrastiveLoss()
     elif 'sparse_categorical_crossentropy' in loss_name:
         loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    elif 'mse' in loss_name:
+        loss = tf.keras.losses.MSE
     else:
         raise NotImplementedError
     return loss
