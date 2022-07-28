@@ -175,14 +175,21 @@ def move_mouse():
 
 
 def str2val(comments, flag, output_type=float, default=None, split_symbol='_', equality_symbol=':', remove_flag=True,
-            replace=None):
+            replace=None, exact_flag=False):
     if replace is None:
+        if exact_flag:
+            condition = lambda s: s.startswith('{}{}'.format(flag, equality_symbol))
+        else:
+            condition = lambda s: '{}{}'.format(flag, equality_symbol) in s
+
         if '{}{}'.format(flag, equality_symbol) in comments:
-            flags_detected = [s.replace(
-                '{}{}'.format(flag if remove_flag else '', equality_symbol), ''
-            )
+            flags_detected = [
+                s.replace(
+                    '{}{}'.format(flag if remove_flag else '', equality_symbol), ''
+                )
                 for s in comments.split(split_symbol)
-                if '{}{}'.format(flag, equality_symbol) in s]
+                if condition(s)
+            ]
             flags_detected = sorted([output_type(f) for f in flags_detected])
             output = flags_detected[0] if len(flags_detected) == 1 else flags_detected
         else:
