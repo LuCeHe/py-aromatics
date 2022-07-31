@@ -8,6 +8,30 @@ CDIR = os.path.dirname(os.path.realpath(__file__))
 
 def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_folders=[], except_files=[],
                     unzip_what=None):
+    r"""
+    Unzips files collected in a folder, possibly from experiments, and unzips only desired files in temporary folder.
+    By keeping the unzipped files in a different folder, it is faster to eliminate them when the analysis is done,
+    and they are no longer necessary.
+
+        Args:
+            exp_origin: location of the folder with the zipped files
+            exp_destination: folder with the temporary unzipped files
+            exp_identifiers: list of strings in folders to unzip
+            except_folders: list of strings present in folders to exclude from unzipping
+            except_files: list of strings present in files to exclude from unzipping
+            unzip_what: list of strings in files to unzip
+
+        Returns:
+            list of locations of unzipped folders
+
+        Examples::
+            >>> EXPERIMENTS = os.path.join(CDIR, 'results')
+            >>> TEMPORARY = os.path.join(CDIR, 'tmp')
+            >>> ds = unzip_good_exps(EXPERIMENTS, TEMPORARY, unzip_what=['.txt', '.ckpt'])
+            >>> for d in ds:
+            >>>     ...
+    """
+
     if not isinstance(exp_origin, list):
         exp_origin = [exp_origin]
 
@@ -32,7 +56,7 @@ def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_fo
 
     ds = sorted(ds)
     destinations = []
-    for d in tqdm(ds, desc='Unzip'):
+    for d in tqdm(ds, desc='Unzipping...'):
 
         # Create a ZipFile Object and load sample.zip in it
         with ZipFile(d, 'r') as zipObj:
@@ -66,21 +90,6 @@ def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_fo
                             print(e)
     return destinations
 
-
-def put_together_tensorboards(EXPERIMENTS):
-    exps = [d for d in os.listdir(EXPERIMENTS) if not 'other_outputs' in d]
-    for d in exps:
-        path = os.path.join(*[EXPERIMENTS, d, 'other_outputs'])
-        print(d)
-        print(os.listdir(path))
-        tb = os.listdir(path)[0]
-        path_tb = os.path.join(*[path, tb])
-
-        net_name = d.replace('.zip', '').split('=')[-1]
-        random_string = 'logs_' + net_name + '_' + ''.join([str(i) for i in np.random.choice(4, 5).tolist()])
-        dst = os.path.join(TENSORBOARDS, random_string)
-        os.mkdir(dst)
-        shutil.copy(path_tb, dst)
 
 
 if __name__ == '__main__':
