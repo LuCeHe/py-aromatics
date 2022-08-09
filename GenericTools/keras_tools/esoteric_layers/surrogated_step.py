@@ -369,13 +369,13 @@ class SurrogatedStep(tf.keras.layers.Layer):
 
 
 possible_pseudod = [
-    # 'originalpseudod',
+    'originalpseudod',
     'exponentialpseudod',
-    # 'gaussianpseudod',
-    # 'sigmoidalpseudod',
+    'gaussianpseudod',
+    'sigmoidalpseudod',
     'fastsigmoidpseudod',
-    # 'cappedskippseudod',
-    'eppseudod'
+    'cappedskippseudod',
+    # 'eppseudod'
     # 'ntailpseudod',
     # 'mgausspseudod',
 ]
