@@ -320,8 +320,8 @@ def test_2():
 
             ax.plot(x, pdf, linestyle, lw=2, alpha=1, color=c, label=type + distribution)
 
-    ax.set_ylabel('$p(x)$')
-    ax.set_xlabel('$x$')
+    ax.set_ylabel('$p(w)$')
+    ax.set_xlabel('$w$')
 
     # for pos in ['right', 'left', 'bottom', 'top']:
     #     plt.spines[pos].set_visible(False)
@@ -397,6 +397,6 @@ def draw_legend():
 
 
 if __name__ == '__main__':
-    test_1()
-    # test_2()
+    # test_1()
+    test_2()
     # draw_legend()
