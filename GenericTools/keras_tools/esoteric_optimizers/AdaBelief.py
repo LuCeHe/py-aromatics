@@ -1,12 +1,12 @@
 import re
 from typing import Optional, Union, Callable, List
 
+from tensorflow.python.keras.optimizer_v2 import optimizer_v2
 from tensorflow_addons.optimizers.weight_decay_optimizers import DecoupledWeightDecayExtension
 from typeguard import typechecked
 
 import tensorflow as tf
 from tensorflow_addons.utils.types import FloatTensorLike
-from tensorflow.python.keras.optimizer_v2 import optimizer_v2
 
 
 class AdaBelief(DecoupledWeightDecayExtension, optimizer_v2.OptimizerV2):
