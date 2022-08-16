@@ -260,12 +260,12 @@ def filetail(f, lines=20):
         else:
             f.seek(0, 0)
             blocks.append(f.read(block_end_byte))
-        lines_found = blocks[-1].count(b'\n')
+        lines_found = blocks[-1].count('\n')
         lines_to_go -= lines_found
         block_end_byte -= BLOCK_SIZE
         block_number -= 1
-    all_read_text = b''.join(reversed(blocks))
-    return b'\n'.join(all_read_text.splitlines()[-total_lines_wanted:])
+    all_read_text = ''.join(reversed(blocks))
+    return '\n'.join(all_read_text.splitlines()[-total_lines_wanted:])
 
 
 if __name__ == '__main__':
