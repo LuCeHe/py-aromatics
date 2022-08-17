@@ -1,4 +1,4 @@
-import argparse, logging, os, random, time, gc, json
+import argparse, logging, os, random, time, gc, json, re
 from time import strftime, localtime
 import importlib.util
 from tqdm import tqdm
@@ -296,6 +296,7 @@ def summarize_logs(
         # Open the file for reading.
         with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
             i = 0
+            double_detection = 0
             while i < n_lines:
                 line = infile.readline().rstrip('\r\n')  # Read the contents of the file into memory.
                 writeit = all([not remove_line in line for remove_line in remove_lines_with])
@@ -307,6 +308,7 @@ def summarize_logs(
                     if not error_not_found:
                         errors.append(line)
                         error_d.append(d)
+                        double_detection = 1
 
         # Return a list of the lines, breaking at line boundaries.
         all_lines.extend(['\n...\n'])
@@ -325,7 +327,7 @@ def summarize_logs(
             if writeit:
                 clean_last_lines.append(line)
                 error_not_found = all([not error_key in line for error_key in error_keys])
-                if not error_not_found:
+                if not error_not_found and double_detection == 0:
                     errors.append(line)
                     error_d.append(d)
         all_lines.extend(clean_last_lines)
@@ -353,6 +355,8 @@ def summarize_logs(
         f.write(f'\nCompleted after tag:  {completed_tag} of {len(ds)}')
         f.write(f'\nShort codes:          {extra_short} of {len(ds)}')
 
+    # remove digits from errors, to make them easier to consider as a one error
+    errors = [re.sub("\d+", "X", e) for e in errors]
     es, cs = np.unique(errors, return_counts=True)
 
     with open(path, 'a') as f:
