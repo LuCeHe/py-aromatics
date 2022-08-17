@@ -292,10 +292,10 @@ def summarize_logs(
             i = 0
             while i < n_lines:
                 line = infile.readline().rstrip('\r\n')  # Read the contents of the file into memory.
-                for remove_line in remove_lines_with:
-                    if not remove_line in line:
-                        i += 1
-                        all_lines.extend([line])
+                writeit = all([not remove_line in line for remove_line in remove_lines_with])
+                if writeit:
+                    i += 1
+                    all_lines.extend([line])
 
         # Return a list of the lines, breaking at line boundaries.
         all_lines.extend(['\n...\n'])
@@ -320,7 +320,7 @@ def summarize_logs(
 
     time_string = timeStructured()
     path = os.path.join(containing_folder, '{}-summary.txt'.format(time_string))
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding="utf-8") as f:
         f.write('\n'.join(all_lines))
 
     with open(path, 'a') as f:
