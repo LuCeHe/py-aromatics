@@ -1,6 +1,7 @@
 import argparse, logging, os, random, time, gc, json
 from time import strftime, localtime
 import importlib.util
+from tqdm import tqdm
 
 import numpy as np
 
@@ -267,6 +268,54 @@ def filetail(f, lines=20):
         block_number -= 1
     all_read_text = ''.join(reversed(blocks))
     return '\n'.join(all_read_text.splitlines()[-total_lines_wanted:])
+
+def summarize_logs(containing_folder):
+    ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
+
+    all_lines = []
+    finished_correctly = 0
+    completed_tag = 0
+    extra_short = 0
+    n_lines = 60
+    for d in tqdm(ds):
+        path = os.path.join(containing_folder, d)
+
+        all_lines.extend(['-' * 50 + '\n'])
+        all_lines.extend([d + '\n'])
+
+        # Open the file for reading.
+        with open(path, 'r') as infile:
+            for i in range(n_lines):
+                line = infile.readline().rstrip('\r\n')  # Read the contents of the file into memory.
+                all_lines.extend([line])
+
+        # Return a list of the lines, breaking at line boundaries.
+        all_lines.extend(['\n...\n'])
+
+        with open(path, 'r', encoding="latin1") as infile:
+            last_lines = filetail(infile, lines=n_lines)
+
+        all_lines.extend([last_lines])
+
+        if 'All done' in last_lines:
+            finished_correctly += 1
+
+        if 'Completed after' in last_lines:
+            completed_tag += 1
+
+        if i < 12:
+            extra_short += 1
+
+    time_string = timeStructured()
+    path = os.path.join(containing_folder, '{}-summary.txt'.format(time_string))
+    with open(path, 'w') as f:
+        f.write('\n'.join(all_lines))
+
+    with open(path, 'a') as f:
+        f.write('\n' + '-' * 50)
+        f.write(f'\nAll done tag:         {finished_correctly} of {len(ds)}')
+        f.write(f'\nCompleted after tag:  {completed_tag} of {len(ds)}')
+        f.write(f'\nShort codes:          {extra_short} of {len(ds)}')
 
 
 if __name__ == '__main__':
