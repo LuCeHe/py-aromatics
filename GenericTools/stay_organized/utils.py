@@ -2,6 +2,7 @@ import argparse, logging, os, random, time, gc, json
 from time import strftime, localtime
 import importlib.util
 from tqdm import tqdm
+from itertools import groupby
 
 import numpy as np
 
@@ -255,6 +256,11 @@ def filetail(f, lines=20):
     block_number = -1
     blocks = []
     while lines_to_go > 0 and block_end_byte > 0:
+        try:
+            last_lines = filetail(infile, lines=n_lines)
+        except Exception as e:
+            last_lines = [f'Exception:\n{e}']
+
         if (block_end_byte - BLOCK_SIZE > 0):
             # f.seek(block_number * BLOCK_SIZE, 2)
             f.seek(f.tell() + block_number * BLOCK_SIZE, os.SEEK_SET)
@@ -270,9 +276,11 @@ def filetail(f, lines=20):
     return all_read_text.splitlines()[-total_lines_wanted:]
 
 
+error_keys = ['Aborted', 'error', 'Error']
+
 def summarize_logs(
         containing_folder,
-        remove_lines_with=[': I tensorflow', 'WARNING:root:']
+        remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA: ', 'Lmod ', 'cuda/11.0']
 ):
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
 
@@ -290,7 +298,7 @@ def summarize_logs(
         all_lines.extend([d + '\n'])
 
         # Open the file for reading.
-        with open(path, 'r') as infile:
+        with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
             i = 0
             while i < n_lines:
                 line = infile.readline().rstrip('\r\n')  # Read the contents of the file into memory.
@@ -298,6 +306,11 @@ def summarize_logs(
                 if writeit:
                     i += 1
                     all_lines.extend([line])
+
+                    error_not_found = all([not error_key in line for error_key in error_keys])
+                    if not error_not_found:
+                        errors.append(line)
+                        error_d.append(d)
 
         # Return a list of the lines, breaking at line boundaries.
         all_lines.extend(['\n...\n'])
@@ -311,10 +324,12 @@ def summarize_logs(
 
         clean_last_lines = []
         for line in last_lines:
+            # print(line)
             writeit = all([not remove_line in line for remove_line in remove_lines_with])
             if writeit:
                 clean_last_lines.append(line)
-                if 'error' in line or 'Error' in line:
+                error_not_found = all([not error_key in line for error_key in error_keys])
+                if not error_not_found:
                     errors.append(line)
                     error_d.append(d)
         all_lines.extend(clean_last_lines)
@@ -330,8 +345,12 @@ def summarize_logs(
 
     time_string = timeStructured()
     path = os.path.join(containing_folder, '{}-summary.txt'.format(time_string))
+
+    all_lines = [i[0] for i in groupby(all_lines)]
+
     with open(path, 'w', encoding="utf-8") as f:
         f.write('\n'.join(all_lines))
+    print('\n'.join(all_lines))
 
     with open(path, 'a') as f:
         f.write('\n' + '-' * 50)
@@ -343,7 +362,7 @@ def summarize_logs(
 
     with open(path, 'a') as f:
         f.write('\n' + '-' * 50)
-        f.write('\n Errors\n')
+        f.write(f'\n Errors: {len(errors)}/{len(ds)}\n')
         for e, c in zip(es, cs):
             f.write('\n' + e)
             f.write(f'\n            {c} times')
