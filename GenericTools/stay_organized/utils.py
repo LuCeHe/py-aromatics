@@ -278,6 +278,7 @@ def summarize_logs(
 
     all_lines = []
     errors = []
+    error_d = []
     finished_correctly = 0
     completed_tag = 0
     extra_short = 0
@@ -315,6 +316,7 @@ def summarize_logs(
                 clean_last_lines.append(line)
                 if 'error' in line or 'Error' in line:
                     errors.append(line)
+                    error_d.append(d)
         all_lines.extend(clean_last_lines)
 
         if 'All done' in last_lines:
@@ -341,10 +343,14 @@ def summarize_logs(
 
     with open(path, 'a') as f:
         f.write('\n' + '-' * 50)
-        f.write('\n' + ' Errors')
+        f.write('\n Errors\n')
         for e, c in zip(es, cs):
             f.write('\n' + e)
             f.write(f'\n            {c} times')
+            index = errors.index(e)
+            d = error_d[index]
+            f.write(f'\n            e.g. {d}')
+            f.write(f'\n')
 
 
 if __name__ == '__main__':
