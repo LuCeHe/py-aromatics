@@ -293,7 +293,10 @@ def summarize_logs(containing_folder):
         all_lines.extend(['\n...\n'])
 
         with open(path, 'r', encoding="latin1") as infile:
-            last_lines = filetail(infile, lines=n_lines)
+            try:
+                last_lines = filetail(infile, lines=n_lines)
+            except Exception as e:
+                last_lines = f'Exception:\n{e}'
 
         all_lines.extend([last_lines])
 
