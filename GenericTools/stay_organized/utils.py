@@ -255,12 +255,7 @@ def filetail(f, lines=20):
     lines_to_go = total_lines_wanted
     block_number = -1
     blocks = []
-    while lines_to_go > 0 and block_end_byte > 0:
-        try:
-            last_lines = filetail(infile, lines=n_lines)
-        except Exception as e:
-            last_lines = [f'Exception:\n{e}']
-
+    while lines_to_go > 0 and block_end_byte > 0 and f.tell() + block_number * BLOCK_SIZE > 0:
         if (block_end_byte - BLOCK_SIZE > 0):
             # f.seek(block_number * BLOCK_SIZE, 2)
             f.seek(f.tell() + block_number * BLOCK_SIZE, os.SEEK_SET)
@@ -278,9 +273,10 @@ def filetail(f, lines=20):
 
 error_keys = ['Aborted', 'error', 'Error']
 
+
 def summarize_logs(
         containing_folder,
-        remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA: ', 'Lmod ', 'cuda/11.0']
+        remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA:', 'Lmod ', 'cuda/11.0']
 ):
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
 
@@ -350,7 +346,6 @@ def summarize_logs(
 
     with open(path, 'w', encoding="utf-8") as f:
         f.write('\n'.join(all_lines))
-    print('\n'.join(all_lines))
 
     with open(path, 'a') as f:
         f.write('\n' + '-' * 50)
