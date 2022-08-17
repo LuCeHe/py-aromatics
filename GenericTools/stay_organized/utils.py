@@ -269,7 +269,11 @@ def filetail(f, lines=20):
     all_read_text = ''.join(reversed(blocks))
     return '\n'.join(all_read_text.splitlines()[-total_lines_wanted:])
 
-def summarize_logs(containing_folder):
+
+def summarize_logs(
+        containing_folder,
+        remove_lines_with=[': I tensorflow', 'WARNING:root:']
+):
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
 
     all_lines = []
@@ -285,14 +289,19 @@ def summarize_logs(containing_folder):
 
         # Open the file for reading.
         with open(path, 'r') as infile:
-            for i in range(n_lines):
+            i = 0
+            while i < n_lines:
                 line = infile.readline().rstrip('\r\n')  # Read the contents of the file into memory.
-                all_lines.extend([line])
+                for remove_line in remove_lines_with:
+                    if not remove_line in line:
+                        i += 1
+                        all_lines.extend([line])
 
         # Return a list of the lines, breaking at line boundaries.
         all_lines.extend(['\n...\n'])
 
-        with open(path, 'r', encoding="latin1") as infile:
+        # with open(path, 'r', encoding="latin1") as infile:
+        with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
             try:
                 last_lines = filetail(infile, lines=n_lines)
             except Exception as e:
