@@ -313,7 +313,7 @@ def summarize_logs(
             writeit = all([not remove_line in line for remove_line in remove_lines_with])
             if writeit:
                 clean_last_lines.append(line)
-                if 'error' in line or 'Error':
+                if 'error' in line or 'Error' in line:
                     errors.append(line)
         all_lines.extend(clean_last_lines)
 
