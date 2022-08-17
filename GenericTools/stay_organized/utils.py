@@ -267,7 +267,7 @@ def filetail(f, lines=20):
         block_end_byte -= BLOCK_SIZE
         block_number -= 1
     all_read_text = ''.join(reversed(blocks))
-    return '\n'.join(all_read_text.splitlines()[-total_lines_wanted:])
+    return all_read_text.splitlines()[-total_lines_wanted:]
 
 
 def summarize_logs(
@@ -277,6 +277,7 @@ def summarize_logs(
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
 
     all_lines = []
+    errors = []
     finished_correctly = 0
     completed_tag = 0
     extra_short = 0
@@ -305,9 +306,16 @@ def summarize_logs(
             try:
                 last_lines = filetail(infile, lines=n_lines)
             except Exception as e:
-                last_lines = f'Exception:\n{e}'
+                last_lines = [f'Exception:\n{e}']
 
-        all_lines.extend([last_lines])
+        clean_last_lines = []
+        for line in last_lines:
+            writeit = all([not remove_line in line for remove_line in remove_lines_with])
+            if writeit:
+                clean_last_lines.append(line)
+                if 'error' in line or 'Error':
+                    errors.append(line)
+        all_lines.extend(clean_last_lines)
 
         if 'All done' in last_lines:
             finished_correctly += 1
@@ -329,8 +337,21 @@ def summarize_logs(
         f.write(f'\nCompleted after tag:  {completed_tag} of {len(ds)}')
         f.write(f'\nShort codes:          {extra_short} of {len(ds)}')
 
+    es, cs = np.unique(errors, return_counts=True)
+
+    with open(path, 'a') as f:
+        f.write('\n' + '-' * 50)
+        f.write('\n' + ' Errors')
+        for e, c in zip(es, cs):
+            f.write('\n' + e)
+            f.write(f'\n            {c} times')
+
 
 if __name__ == '__main__':
-    comments = '_thing:23'
-    new_comments = str2val(comments, 'thing', replace=232)
-    print(new_comments)
+    # comments = '_thing:23'
+    # new_comments = str2val(comments, 'thing', replace=232)
+    # print(new_comments)
+
+    errors = ['niceerror', 'bad', 'bad']
+    es, c = np.unique(errors, return_counts=True)
+    print(es, c)
