@@ -271,12 +271,10 @@ def filetail(f, lines=20):
     return all_read_text.splitlines()[-total_lines_wanted:]
 
 
-error_keys = ['Aborted', 'error', 'Error']
-
-
 def summarize_logs(
         containing_folder,
-        remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA:', 'Lmod ', 'cuda/11.0']
+        remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA:', 'Lmod ', 'cuda/11.0'],
+        error_keys=['Aborted', 'error', 'Error']
 ):
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
 
