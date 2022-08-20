@@ -369,7 +369,7 @@ def summarize_logs(
             for idx in indices[:n_error_examples]:
                 d = error_d[idx]
                 f.write(f'\n            e.g. {d}')
-                f.write(f'\n')
+            f.write(f'\n')
 
 
 if __name__ == '__main__':
