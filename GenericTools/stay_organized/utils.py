@@ -285,6 +285,7 @@ def summarize_logs(
     completed_tag = 0
     extra_short = 0
     n_lines = 60
+    n_error_examples = 3
     for d in tqdm(ds):
         path = os.path.join(containing_folder, d)
 
@@ -363,10 +364,12 @@ def summarize_logs(
         for e, c in zip(es, cs):
             f.write('\n' + e)
             f.write(f'\n            {c} times')
-            index = errors.index(e)
-            d = error_d[index]
-            f.write(f'\n            e.g. {d}')
-            f.write(f'\n')
+            # index = errors.index(e)
+            indices = [i for i, x in enumerate(errors) if x == e]
+            for idx in indices[:n_error_examples]:
+                d = error_d[idx]
+                f.write(f'\n            e.g. {d}')
+                f.write(f'\n')
 
 
 if __name__ == '__main__':
