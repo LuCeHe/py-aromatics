@@ -275,7 +275,7 @@ def summarize_logs(
         containing_folder,
         remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA:', 'Lmod ', 'cuda/11.0'],
         error_keys=['Aborted', 'error', 'Error'],
-        completion_keys = ['DONE', 'All done', 'Completed after']
+        completion_keys=['DONE', 'All done', 'Completed after']
 
 ):
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
@@ -300,7 +300,9 @@ def summarize_logs(
         with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
             double_detection = 0
             initial_lines = []
-            while len(initial_lines) < n_lines:
+            i = 0
+            while len(initial_lines) < n_lines or i < n_lines * 2:
+                i += 1
                 line = infile.readline().rstrip('\r\n')  # Read the contents of the file into memory.
                 writeit = all([not remove_line in line for remove_line in remove_lines_with])
                 if writeit and not line in initial_lines:
@@ -336,7 +338,6 @@ def summarize_logs(
                 else:
                     completed = any([completion_key in line for completion_key in completion_keys])
         all_lines.extend(clean_last_lines)
-
 
         if 'All done' in last_lines:
             finished_correctly += 1
