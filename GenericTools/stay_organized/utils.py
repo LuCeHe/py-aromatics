@@ -274,7 +274,9 @@ def filetail(f, lines=20):
 def summarize_logs(
         containing_folder,
         remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA:', 'Lmod ', 'cuda/11.0'],
-        error_keys=['Aborted', 'error', 'Error']
+        error_keys=['Aborted', 'error', 'Error'],
+        completion_keys = ['DONE', 'All done', 'Completed after']
+
 ):
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
 
@@ -286,6 +288,7 @@ def summarize_logs(
     extra_short = 0
     n_lines = 60
     n_error_examples = 3
+    n_completed = 0
     for d in tqdm(ds):
         path = os.path.join(containing_folder, d)
 
@@ -293,6 +296,7 @@ def summarize_logs(
         all_lines.extend([d + '\n'])
 
         # Open the file for reading.
+        completed = 0
         with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
             i = 0
             double_detection = 0
@@ -329,7 +333,10 @@ def summarize_logs(
                 if not error_not_found and double_detection == 0:
                     errors.append(line)
                     error_d.append(d)
+                else:
+                    completed = any([completion_key in line for completion_key in completion_keys])
         all_lines.extend(clean_last_lines)
+
 
         if 'All done' in last_lines:
             finished_correctly += 1
@@ -340,6 +347,7 @@ def summarize_logs(
         if i < 12:
             extra_short += 1
 
+        n_completed += completed
     time_string = timeStructured()
     path = os.path.join(containing_folder, '{}-summary.txt'.format(time_string))
 
@@ -350,9 +358,10 @@ def summarize_logs(
 
     with open(path, 'a') as f:
         f.write('\n' + '-' * 50)
-        f.write(f'\nAll done tag:         {finished_correctly} of {len(ds)}')
-        f.write(f'\nCompleted after tag:  {completed_tag} of {len(ds)}')
-        f.write(f'\nShort codes:          {extra_short} of {len(ds)}')
+        f.write(f'\nCompleted exps:             {n_completed}/{len(ds)}')
+        f.write(f'\n      All done tag:         {finished_correctly}/{len(ds)}')
+        f.write(f'\n      Completed after tag:  {completed_tag}/{len(ds)}')
+        f.write(f'\n      Short codes:          {extra_short}/{len(ds)}')
 
     # remove digits from errors, to make them easier to consider as a one error
     errors = [re.sub("\d+", "X", e) for e in errors]
