@@ -390,9 +390,19 @@ def clean_pseudo_name(pseudod_name):
 
 def pseudod_color(pseudod_name):
     import matplotlib.pyplot as plt
-    i = possible_pseudod.index(pseudod_name)
-    cm = plt.get_cmap('tab20b')
-    c = cm(.3 + (i - 1) / (len(possible_pseudod) - 1) * .7)
+    # 'tab20', 'tab20_r', 'tab20b', 'tab20b_r', 'tab20c', 'tab20c_r'
+    if not pseudod_name == 'ntailpseudod':
+        i = possible_pseudod.index(pseudod_name)
+        if pseudod_name == 'fastsigmoidpseudod':
+            i = 4.2
+        elif pseudod_name == 'cappedskippseudod':
+            i = 5. #5.5
+
+        cm = plt.get_cmap('tab20b')  # tab20b
+        c = cm(.3 + (i - 1) / (len(possible_pseudod) - 1) * .7)
+    else:
+        cm = plt.get_cmap('Oranges')
+        c = cm(.5)
     return c
 
 
@@ -497,6 +507,7 @@ def clean_pseudname(name):
     name = name.replace('fastsigmoid', '$\partial$ fast sigmoid')
     name = name.replace('sigmoidal', '$\partial$ sigmoid')
     name = name.replace('cappedskip', 'rectangular')
+    name = name.replace('ntail', '$q$-PseudoSpike')
     return name
 
 
@@ -511,20 +522,24 @@ def draw_legend():
                        for n in possible_pseudod]
 
     # Create the figure
-    fig, ax = plt.subplots(figsize=(3, 3))
+    fig, ax = plt.subplots(figsize=(3.5, .5))
     for pos in ['right', 'left', 'bottom', 'top']:
         ax.spines[pos].set_visible(False)
     # ax.tick_params(axis='both', which='both', bottom='off', top='off', labelbottom='off', right='off', left='off',
     #                 labelleft='off')
 
-    ax.legend(handles=legend_elements, loc='center')
+    ax.legend(ncol=7, handles=legend_elements, loc='center')
 
-    plt.axis('off')
-    plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off',
+    ax.axis('off')
+    ax.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off',
                     labelright='off', labelbottom='off')
+    # plt.tight_layout(pad=0)
+    plt.tight_layout(pad=0., w_pad=0., h_pad=0.)
 
     plot_filename = r'legend.pdf'
-    fig.savefig(plot_filename, bbox_inches='tight')
+    # fig.tight_layout(pad=0)
+    fig.savefig(plot_filename, bbox_inches='tight', pad_inches=0)
+    # fig.savefig(plot_filename)
     plt.show()
 
 
@@ -560,6 +575,6 @@ def draw_legend_mini():
 
 
 if __name__ == '__main__':
-    draw_pseudods()
-    # draw_legend()
+    # draw_pseudods()
+    draw_legend()
     # draw_legend_mini()
