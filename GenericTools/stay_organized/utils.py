@@ -298,14 +298,13 @@ def summarize_logs(
         # Open the file for reading.
         completed = 0
         with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
-            i = 0
             double_detection = 0
-            while i < n_lines:
+            initial_lines = []
+            while len(initial_lines) < n_lines:
                 line = infile.readline().rstrip('\r\n')  # Read the contents of the file into memory.
                 writeit = all([not remove_line in line for remove_line in remove_lines_with])
-                if writeit:
-                    i += 1
-                    all_lines.extend([line])
+                if writeit and not line in initial_lines:
+                    initial_lines.append(line)
 
                     error_not_found = all([not error_key in line for error_key in error_keys])
                     if not error_not_found:
@@ -314,6 +313,7 @@ def summarize_logs(
                         double_detection = 1
 
         # Return a list of the lines, breaking at line boundaries.
+        all_lines.extend(initial_lines)
         all_lines.extend(['\n...\n'])
 
         # with open(path, 'r', encoding="latin1") as infile:
@@ -327,7 +327,7 @@ def summarize_logs(
         for line in last_lines:
             # print(line)
             writeit = all([not remove_line in line for remove_line in remove_lines_with])
-            if writeit:
+            if writeit and not line in clean_last_lines:
                 clean_last_lines.append(line)
                 error_not_found = all([not error_key in line for error_key in error_keys])
                 if not error_not_found and double_detection == 0:
