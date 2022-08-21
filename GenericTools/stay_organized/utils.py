@@ -301,7 +301,7 @@ def summarize_logs(
             double_detection = 0
             initial_lines = []
             i = 0
-            while len(initial_lines) < n_lines or i < n_lines * 2:
+            while len(initial_lines) < n_lines and i < n_lines * 2:
                 i += 1
                 line = infile.readline().rstrip('\r\n')  # Read the contents of the file into memory.
                 writeit = all([not remove_line in line for remove_line in remove_lines_with])
