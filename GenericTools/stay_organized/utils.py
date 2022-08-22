@@ -340,7 +340,12 @@ def summarize_logs(
             # print(line)
             writeit = all([not remove_line in line for remove_line in remove_lines_with])
             if writeit and not line in clean_last_lines:
-                clean_last_lines.append(line.replace('^H', ''))
+                line = line.replace('^H', '')
+                if not is_pb:
+                    clean_last_lines.append(line)
+                else:
+                    clean_last_lines[-1] = line
+
                 error_not_found = all([not error_key in line for error_key in error_keys])
                 if not error_not_found and double_detection == 0:
                     errors.append(line)
