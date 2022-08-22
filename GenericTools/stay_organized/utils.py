@@ -333,7 +333,7 @@ def summarize_logs(
 
         # with open(path, 'r', encoding="latin1") as infile:
         with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
-            last_lines = filetail(infile, lines=n_lines)
+            last_lines = filetail(infile, lines=2*n_lines)
 
         clean_last_lines = []
         for line in last_lines:
@@ -341,6 +341,7 @@ def summarize_logs(
             writeit = all([not remove_line in line for remove_line in remove_lines_with])
             if writeit and not line in clean_last_lines:
                 line = line.replace('^H', '')
+                is_pb = is_progress_bar(line)
                 if not is_pb or len(clean_last_lines) < 1:
                     clean_last_lines.append(line)
                 else:
