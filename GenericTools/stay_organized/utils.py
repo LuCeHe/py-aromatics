@@ -341,7 +341,7 @@ def summarize_logs(
             writeit = all([not remove_line in line for remove_line in remove_lines_with])
             if writeit and not line in clean_last_lines:
                 line = line.replace('^H', '')
-                if not is_pb:
+                if not is_pb or len(clean_last_lines) < 1:
                     clean_last_lines.append(line)
                 else:
                     clean_last_lines[-1] = line
