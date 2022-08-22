@@ -271,8 +271,10 @@ def filetail(f, lines=20):
     return all_read_text.splitlines()[-total_lines_wanted:]
 
 
-def is_progress_bar(s, pb_items=['%|', '| ', '/', ' [', '<', 's/it']):
-    if pb_items[0] in s and pb_items[-1] in s:
+def is_progress_bar(s, pb_items=['%|', '| ', '/', ' [', ':', ',  ', '<', 's/it'], simplified=True):
+    if simplified:
+        return all([x in s for x in pb_items])
+    elif pb_items[0] in s and pb_items[-1] in s:
         matches = []
         for x in pb_items:
             if x in s and x not in matches:
@@ -280,6 +282,14 @@ def is_progress_bar(s, pb_items=['%|', '| ', '/', ' [', '<', 's/it']):
         return matches == pb_items
     else:
         return False
+
+
+def test_is_progress_bar():
+    s = ' 47%|████▋     | 14/30 [01:35<01:42,  6.43s/it]^[[A'
+    from timeit import timeit
+
+    print(timeit(lambda: is_progress_bar(s)))
+    # 1.9 microseconds first iteration
 
 
 def summarize_logs(
@@ -333,16 +343,21 @@ def summarize_logs(
 
         # with open(path, 'r', encoding="latin1") as infile:
         with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
-            last_lines = filetail(infile, lines=2*n_lines)
+            last_lines = filetail(infile, lines=2 * n_lines)
 
         clean_last_lines = []
+        first_pb = True
         for line in last_lines:
-            # print(line)
             writeit = all([not remove_line in line for remove_line in remove_lines_with])
             if writeit and not line in clean_last_lines:
                 line = line.replace('^H', '')
-                is_pb = is_progress_bar(line)
-                if not is_pb or len(clean_last_lines) < 1:
+                is_pb_tqdm = is_progress_bar(line)
+                is_pb_tf = is_progress_bar(line, pb_items=['/', ' [', '=>', ' - ', ': '])
+                is_pb = any([is_pb_tqdm, is_pb_tf])
+
+                if len(clean_last_lines) < 1:
+                    clean_last_lines.append(line)
+                elif not is_pb:
                     clean_last_lines.append(line)
                 else:
                     clean_last_lines[-1] = line
@@ -392,10 +407,4 @@ def summarize_logs(
 
 
 if __name__ == '__main__':
-    # comments = '_thing:23'
-    # new_comments = str2val(comments, 'thing', replace=232)
-    # print(new_comments)
-
-    errors = ['niceerror', 'bad', 'bad']
-    es, c = np.unique(errors, return_counts=True)
-    print(es, c)
+    test_is_progress_bar()
