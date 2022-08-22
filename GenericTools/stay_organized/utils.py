@@ -283,8 +283,6 @@ def summarize_logs(
     all_lines = []
     errors = []
     error_d = []
-    finished_correctly = 0
-    completed_tag = 0
     extra_short = 0
     n_lines = 60
     n_error_examples = 3
@@ -320,10 +318,7 @@ def summarize_logs(
 
         # with open(path, 'r', encoding="latin1") as infile:
         with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
-            try:
-                last_lines = filetail(infile, lines=n_lines)
-            except Exception as e:
-                last_lines = [f'Exception:\n{e}']
+            last_lines = filetail(infile, lines=n_lines)
 
         clean_last_lines = []
         for line in last_lines:
@@ -338,12 +333,6 @@ def summarize_logs(
                 else:
                     completed = any([completion_key in line for completion_key in completion_keys])
         all_lines.extend(clean_last_lines)
-
-        if 'All done' in last_lines:
-            finished_correctly += 1
-
-        if 'Completed after' in last_lines:
-            completed_tag += 1
 
         if i < 12:
             extra_short += 1
@@ -360,9 +349,7 @@ def summarize_logs(
     with open(path, 'a') as f:
         f.write('\n' + '-' * 50)
         f.write(f'\nCompleted exps:             {n_completed}/{len(ds)}')
-        f.write(f'\n      All done tag:         {finished_correctly}/{len(ds)}')
-        f.write(f'\n      Completed after tag:  {completed_tag}/{len(ds)}')
-        f.write(f'\n      Short codes:          {extra_short}/{len(ds)}')
+        f.write(f'\nShort codes:                {extra_short}/{len(ds)}')
 
     # remove digits from errors, to make them easier to consider as a one error
     errors = [re.sub("\d+", "X", e) for e in errors]
