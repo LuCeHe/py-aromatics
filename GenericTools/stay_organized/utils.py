@@ -271,9 +271,20 @@ def filetail(f, lines=20):
     return all_read_text.splitlines()[-total_lines_wanted:]
 
 
+def is_progress_bar(s, pb_items=['%|', '| ', '/', ' [', '<', 's/it']):
+    if pb_items[0] in s and pb_items[-1] in s:
+        matches = []
+        for x in pb_items:
+            if x in s and x not in matches:
+                matches.append(x)
+        return matches == pb_items
+    else:
+        return False
+
+
 def summarize_logs(
         containing_folder,
-        remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA:', 'Lmod ', 'cuda/11.0'],
+        remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA:', 'Lmod ', 'cuda/11.0', 'is deprecated'],
         error_keys=['Aborted', 'error', 'Error'],
         completion_keys=['DONE', 'All done', 'Completed after']
 
@@ -301,10 +312,14 @@ def summarize_logs(
             i = 0
             while len(initial_lines) < n_lines and i < n_lines * 2:
                 i += 1
-                line = infile.readline().rstrip('\r\n')  # Read the contents of the file into memory.
+                line = infile.readline().rstrip('\r\n').replace('^H', '')  # Read the contents of the file into memory.
                 writeit = all([not remove_line in line for remove_line in remove_lines_with])
                 if writeit and not line in initial_lines:
-                    initial_lines.append(line)
+                    is_pb = is_progress_bar(line)
+                    if not is_pb:
+                        initial_lines.append(line)
+                    else:
+                        initial_lines[-1] = line
 
                     error_not_found = all([not error_key in line for error_key in error_keys])
                     if not error_not_found:
@@ -325,7 +340,7 @@ def summarize_logs(
             # print(line)
             writeit = all([not remove_line in line for remove_line in remove_lines_with])
             if writeit and not line in clean_last_lines:
-                clean_last_lines.append(line)
+                clean_last_lines.append(line.replace('^H', ''))
                 error_not_found = all([not error_key in line for error_key in error_keys])
                 if not error_not_found and double_detection == 0:
                     errors.append(line)
@@ -341,6 +356,7 @@ def summarize_logs(
     time_string = timeStructured()
     path = os.path.join(containing_folder, '{}-summary.txt'.format(time_string))
 
+    # remove subsequent repeats
     all_lines = [i[0] for i in groupby(all_lines)]
 
     with open(path, 'w', encoding="utf-8") as f:
