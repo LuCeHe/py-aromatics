@@ -354,6 +354,7 @@ def summarize_logs(
                 is_pb_tqdm = is_progress_bar(line)
                 is_pb_tf = is_progress_bar(line, pb_items=['/', ' [', '=>', ' - ', ': '])
                 is_pb = any([is_pb_tqdm, is_pb_tf])
+                print(is_pb_tqdm, is_pb_tf, is_pb)
 
                 if len(clean_last_lines) < 1:
                     clean_last_lines.append(line)
