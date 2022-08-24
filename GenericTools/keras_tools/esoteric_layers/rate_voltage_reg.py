@@ -44,21 +44,19 @@ class RateVoltageRegularization(tf.keras.layers.Layer):
         b, v_sc = inputs
         rate = tf.reduce_mean(b, 1, keepdims=True)
 
-        if 'r_regularization' in self.type:
+        if 'rreg' in self.type:
             rate_loss = well_loss(min_value=0, max_value=200 / 1000)(rate) * self.reg_cost,
             # lambda z: util.well_loss(min_value=1 / 1000, max_value=150 / 1000, axis=1)(z) * reg_cost,
             self.add_loss(rate_loss)
             self.add_metric(rate_loss, name='rate_loss_' + self.name, aggregation='mean')
 
-        elif 'rv_regularization' in self.type:
+        elif 'rvreg' in self.type:
 
             max_value = 50 / 1000 if not 'monkey' in self.type else 10 / 1000
             min_value = 5 / 1000 if not 'monkey' in self.type else .2 / 1000
             rate_loss = well_loss(min_value=min_value, max_value=max_value)(rate) * self.reg_cost,
-            # lambda z: util.well_loss(min_value=1 / 1000, max_value=150 / 1000, axis=1)(z) * reg_cost,
 
             volt_loss = well_loss(min_value=-2, max_value=.4)(v_sc) * self.reg_cost,
-            # lambda z: util.well_loss(min_value=-3., max_value=1., axis=1)(z) * reg_cost,
 
             self.add_loss(rate_loss)
             self.add_metric(rate_loss, name='rate_loss_' + self.name, aggregation='mean')
