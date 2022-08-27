@@ -219,10 +219,13 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
         defaults = [-0.016451614574342632, 1.7112170716428443, -1.094737676894167, 0.93718267274918,
                     0.054550157179523155, 0.10135086310595437, 0.9907439317066982, 1.071867159728163,
                     -0.32863050315427816, 1.0317211556163626, 0.2]
+        stacki = str2val(config, 'stacki', int, default=-1)
+        stacki = '' if stacki == -1 else stacki
+
         for s, d in zip(
                 ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'l', 'm'],
                 defaults):
-            param = str2val(config, f'{s}', float, default=d, exact_flag=True)
+            param = str2val(config, f'{s}{stacki}', float, default=d, exact_flag=True)
             if not s == 'm':
                 param = abs(param)
             params.append(param)
@@ -396,7 +399,7 @@ def pseudod_color(pseudod_name):
         if pseudod_name == 'fastsigmoidpseudod':
             i = 4.2
         elif pseudod_name == 'cappedskippseudod':
-            i = 5. #5.5
+            i = 5.  # 5.5
 
         cm = plt.get_cmap('tab20b')  # tab20b
         c = cm(.3 + (i - 1) / (len(possible_pseudod) - 1) * .7)
@@ -532,7 +535,7 @@ def draw_legend():
 
     ax.axis('off')
     ax.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off',
-                    labelright='off', labelbottom='off')
+                   labelright='off', labelbottom='off')
     # plt.tight_layout(pad=0)
     plt.tight_layout(pad=0., w_pad=0., h_pad=0.)
 
