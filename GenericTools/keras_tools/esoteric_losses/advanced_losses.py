@@ -174,11 +174,13 @@ def sparse_perplexity(y_true, y_pred):
     p = tf.exp(mean_xent)
     return p
 
+
 def sparsesmape(y_true, y_pred):
     vocab_size = y_pred.shape[-1]
     oh_true = tf.one_hot(tf.cast(y_true, tf.int32), vocab_size)
     loss = smape_loss(oh_true, y_pred)
     return loss
+
 
 def masked_sparse_perplexity(mask_value):
     mxent = masked_sparse_crossentropy(mask_value)
@@ -250,23 +252,6 @@ def sparse_f1(num_classes):
     return score
 
 
-if __name__ == '__main__':
-    from GenericTools.LeanguageTreatmentTools.random_language import random_indices
-
-    vocab_size = 10
-    pad_idx = 7
-    batch_size = 2
-    maxlen = 3
-    y_true = random_indices(vocab_size, batch_size=batch_size, maxlen=maxlen, pad_idx=pad_idx)
-    print(y_true)
-    y_pred = tf.random.uniform((batch_size, maxlen, vocab_size))
-    print(y_pred.shape)
-
-    # loss = masked_sparse_crossentropy(mask_value=pad_idx)(y_true, y_pred)
-    loss = masked_f1_on_max(num_classes=vocab_size, mask_value=pad_idx)(y_true, y_pred)
-    print(loss)
-
-
 def si_sdr_loss(y_true, y_pred):
     # print("######## SI-SDR LOSS ########")
     x = tf.cast(y_true, tf.float32)
@@ -321,3 +306,51 @@ def pearson_r_a(y_true, y_pred):
 def pearson_loss(y_true, y_pred):
     return - pearson_r(y_true, y_pred)
 
+
+@tf.custom_gradient
+def clip_value_no_grad(x):
+    y = tf.clip_by_value(x, -2, 2)
+
+    def custom_grad(dy):
+        return dy
+
+    return y, custom_grad
+
+
+def well_loss(min_value=-120, max_value=40, walls_type='clip_relu_no_clip_grad', axis='all'):
+    def wloss(x):
+        if walls_type == 'sigmoid':
+            loss = -tf.math.sigmoid(x - min_value) + tf.math.sigmoid(x - max_value)
+        elif walls_type == 'relu':
+            loss = tf.nn.relu(-x + min_value) + tf.nn.relu(x - max_value)
+        elif walls_type == 'clip_relu_no_clip_grad':
+            loss = tf.nn.relu(-x + min_value) + tf.nn.relu(x - max_value)
+            loss = clip_value_no_grad(loss)
+        elif walls_type == 'squared':
+            loss = tf.square(tf.nn.relu(x - max_value)) + tf.square(tf.nn.relu(min_value - x))
+        else:
+            raise NotImplementedError
+
+        if axis == 'all':
+            return tf.reduce_mean(loss)
+        elif axis == None:
+            return loss
+        else:
+            return tf.reduce_mean(loss, axis=axis)
+
+    return wloss
+
+
+def test_well():
+    import matplotlib.pyplot as plt
+    x = np.linspace(-1, 2, 100)
+    for well_shape in ['sigmoid', 'relu', 'squared']:
+        w = well_loss(min_value=1, max_value=1, walls_type=well_shape, axis=None)(x)
+        plt.plot(x, w, label=well_shape)
+
+    plt.legend()
+    plt.show()
+
+
+if __name__ == '__main__':
+    test_well()

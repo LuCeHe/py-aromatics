@@ -1,36 +1,6 @@
 import tensorflow as tf
 
-
-@tf.custom_gradient
-def clip_value_no_grad(x):
-    y = tf.clip_by_value(x, -2, 2)
-
-    def custom_grad(dy):
-        return dy
-
-    return y, custom_grad
-
-
-def well_loss(min_value=-120, max_value=40, type='clip_relu_no_clip_grad', axis='all'):
-    def wloss(x):
-        if type == 'sigmoid':
-            loss = -tf.math.sigmoid(x - min_value) + tf.math.sigmoid(x - max_value)
-        elif type == 'relu':
-            loss = tf.nn.relu(-x + min_value) + tf.nn.relu(x - max_value)
-        elif type == 'clip_relu_no_clip_grad':
-            loss = tf.nn.relu(-x + min_value) + tf.nn.relu(x - max_value)
-            loss = clip_value_no_grad(loss)
-        elif type == 'squared':
-            loss = tf.square(tf.nn.relu(x - max_value)) + tf.square(tf.nn.relu(min_value - x))
-        else:
-            raise NotImplementedError
-
-        if axis == 'all':
-            return tf.reduce_mean(loss)
-        else:
-            return tf.reduce_mean(loss, axis=axis)
-
-    return wloss
+from GenericTools.keras_tools.esoteric_losses import well_loss
 
 
 class RateVoltageRegularization(tf.keras.layers.Layer):
