@@ -411,7 +411,7 @@ def summarize_logs(
                 if similar(s1, s2) > error_similarity_threshold:
                     to_append = s2
                     break
-            new_errors.append(to_append)
+        new_errors.append(to_append)
     errors = new_errors
 
     es, cs = np.unique(errors, return_counts=True)
