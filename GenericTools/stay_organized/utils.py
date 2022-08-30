@@ -354,7 +354,7 @@ def summarize_logs(
                 is_pb_tqdm = is_progress_bar(line)
                 is_pb_tf = is_progress_bar(line, pb_items=['/', ' [', '=>', ' - ', ': '])
                 is_pb = any([is_pb_tqdm, is_pb_tf])
-                print(is_pb_tqdm, is_pb_tf, is_pb)
+                # print(is_pb_tqdm, is_pb_tf, is_pb)
 
                 if len(clean_last_lines) < 1:
                     clean_last_lines.append(line)
@@ -391,6 +391,9 @@ def summarize_logs(
 
     # remove digits from errors, to make them easier to consider as a one error
     errors = [re.sub("\d+", "X", e) for e in errors]
+    errors = [e if not 'slurmstepd: error:' in e else ''.join(e.partition('slurmstepd: error:')[1:])
+               for e in errors]
+
     es, cs = np.unique(errors, return_counts=True)
 
     with open(path, 'a') as f:
