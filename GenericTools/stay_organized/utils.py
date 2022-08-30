@@ -405,14 +405,13 @@ def summarize_logs(
     new_errors = [errors[0]]
 
     for i, s1 in enumerate(errors[1:]):
-        do_append = True
+        to_append = s1
         if s1 not in new_errors:
             for s2 in new_errors:
                 if similar(s1, s2) > error_similarity_threshold:
-                    do_append = False
+                    to_append = s2
                     break
-            if do_append:
-                new_errors.append(s1)
+            new_errors.append(to_append)
     errors = new_errors
 
     es, cs = np.unique(errors, return_counts=True)
