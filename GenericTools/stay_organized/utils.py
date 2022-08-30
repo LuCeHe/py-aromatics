@@ -415,6 +415,9 @@ def summarize_logs(
     errors = new_errors
 
     es, cs = np.unique(errors, return_counts=True)
+    count_sort_ind = np.argsort(-cs)
+    es = es[count_sort_ind]
+    cs = cs[count_sort_ind]
 
     with open(path, 'a') as f:
         f.write('\n' + '-' * 50)
