@@ -344,29 +344,16 @@ class SurrogatedStep(tf.keras.layers.Layer):
         self.soft_spike = lambda x: \
             dampening * tf.nn.sigmoid(sharpness * x) if 'annealing' in config else 0
 
-        self.hard_spike = lambda x: ChoosePseudoHeaviside(x, config=config, sharpness=sharpness,
-                                                          dampening=dampening)
-
-    def build(self, input_shape):
-        n_in = input_shape[-1]
-        self.hard_heaviside = self.add_weight(
-            name='hard_heaviside', shape=(), initializer=tf.keras.initializers.Constant(1.), trainable=False
-        )
-        self.built = True
-
-        if 'learnablepseudod' in self.config:
-
-            if 'mgauss' in self.config:
-                print('here')
-                self = MLearnableGauss(self, n_in)
-            elif 'mtail' in self.config:
-                self = MLearnableTails(self, n_in)
-            else:
-                self = OneLearnableNTail(self, n_in)
+        if 'tanhspike' in config:
+            self.hard_spike = lambda x: -1 + 2 * ChoosePseudoHeaviside(x, config=config, sharpness=sharpness,
+                                                                       dampening=dampening)
+        else:
+            self.hard_spike = lambda x: ChoosePseudoHeaviside(x, config=config, sharpness=sharpness,
+                                                              dampening=dampening)
 
     def call(self, inputs, *args, **kwargs):
         v_sc = inputs
-        z = self.hard_heaviside * self.hard_spike(v_sc) + (1 - self.hard_heaviside) * self.soft_spike(v_sc)
+        z = self.hard_spike(v_sc)
         z.set_shape(v_sc.get_shape())
         return z
 
