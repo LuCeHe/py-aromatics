@@ -5,6 +5,7 @@ from tqdm import tqdm
 from itertools import groupby
 
 import numpy as np
+from difflib import SequenceMatcher
 
 # import tensorflow as tf
 # from tqdm import tqdm
@@ -255,9 +256,12 @@ def filetail(f, lines=20):
     lines_to_go = total_lines_wanted
     block_number = -1
     blocks = []
+    print('-' * 30)
     while lines_to_go > 0 and block_end_byte > 0 and f.tell() + block_number * BLOCK_SIZE > 0:
         if (block_end_byte - BLOCK_SIZE > 0):
             # f.seek(block_number * BLOCK_SIZE, 2)
+            print(f.tell() + block_number * BLOCK_SIZE)
+            print(os.SEEK_SET)
             f.seek(f.tell() + block_number * BLOCK_SIZE, os.SEEK_SET)
             blocks.append(f.read(BLOCK_SIZE))
         else:
@@ -292,7 +296,6 @@ def test_is_progress_bar():
     # 1.9 microseconds first iteration
 
 
-from difflib import SequenceMatcher
 
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
