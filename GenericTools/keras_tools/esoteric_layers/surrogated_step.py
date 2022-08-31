@@ -137,14 +137,27 @@ def SpikeFunctionDeltaDirac(v_scaled, dampening):
 def SpikeFunctionExpsPowerLaws(v_scaled, dampening, sharpness, a, b, c, d, e, f, g, h, i, l, m):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
 
-    def grad(dy):  # 20 best multiplicative factors found
+    def grad(dy):
         x = v_scaled * sharpness + m
         dz_dv_scaled = (a * tf.exp(b * x) + e * 1 / (1 + f * tf.abs(x) ** (1 + i))) \
                        * tf.cast(tf.greater(-x, 0.), dtype=tf.keras.backend.floatx()) \
                        + (c * tf.exp(- d * x) + h * 1 / (1 + g * tf.abs(x) ** (1 + l))) \
                        * tf.cast(tf.greater(x, 0.), dtype=tf.keras.backend.floatx())
         # dz_dv_scaled = 1 / (1 + tf.pow(math.pi * v_scaled * sharpness, 2)) * dampening
-        dz_dv_scaled = dampening * dz_dv_scaled / tf.math.maximum(a + e, c + h)
+        dz_dv_scaled = dampening * dz_dv_scaled
+        return [dy * dz_dv_scaled] + [tf.zeros_like(a)] * 13
+
+    return tf.identity(z_, name="SpikeFunction"), grad
+
+
+@tf.custom_gradient
+def SpikeFunctionAdaptiveGauss(v_scaled, dampening, sharpness, a, b, c, d, e, f, g, h, i, l, m):
+    z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
+
+    def grad(dy):
+        x = v_scaled * sharpness + m
+        dz_dv_scaled = a * tf.exp(-b * x ** 2)
+        dz_dv_scaled = dampening * dz_dv_scaled
         return [dy * dz_dv_scaled] + [tf.zeros_like(a)] * 13
 
     return tf.identity(z_, name="SpikeFunction"), grad
@@ -230,7 +243,14 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
                 param = abs(param)
             params.append(param)
 
-        z = SpikeFunctionExpsPowerLaws(v_sc, dampening, sharpness, *params)
+        if 'doubleexp' in config:
+            z = SpikeFunctionExpsPowerLaws(v_sc, dampening, sharpness, *params)
+        elif 'movedgauss':
+            z = SpikeFunctionAdaptiveGauss(v_sc, dampening, sharpness, *params)
+        else:
+            z = SpikeFunctionAdaptiveGauss(v_sc, dampening, sharpness, *params)
+
+
     else:
         z = FastSigmoidSpikeFunction(v_sc, dampening, sharpness)
 
