@@ -256,7 +256,7 @@ def filetail(f, lines=20):
     lines_to_go = total_lines_wanted
     block_number = -1
     blocks = []
-    print('-' * 30)
+    # print('-' * 30)
     while lines_to_go > 0 and block_end_byte > 0 and f.tell() + block_number * BLOCK_SIZE > 0:
         if (block_end_byte - BLOCK_SIZE > 0):
             # print(f.tell(), block_number, os.SEEK_SET)
@@ -326,7 +326,6 @@ def summarize_logs(
         # Open the file for reading.
         completed = 0
         with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
-            double_detection = 0
             initial_lines = []
             i = 0
             while len(initial_lines) < n_lines and i < n_lines * 2:
@@ -339,12 +338,6 @@ def summarize_logs(
                         initial_lines.append(line)
                     else:
                         initial_lines[-1] = line
-
-                    error_not_found = all([not error_key in line for error_key in error_keys])
-                    if not error_not_found:
-                        errors.append(line)
-                        error_d.append(d)
-                        double_detection = 1
 
         # Return a list of the lines, breaking at line boundaries.
         all_lines.extend(initial_lines)
@@ -372,8 +365,8 @@ def summarize_logs(
                 else:
                     clean_last_lines[-1] = line
 
-                error_not_found = all([not error_key in line for error_key in error_keys])
-                if not error_not_found and double_detection == 0:
+                error_found = any([error_key in line for error_key in error_keys])
+                if error_found:
                     errors.append(line)
                     error_d.append(d)
                 else:
