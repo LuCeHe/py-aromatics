@@ -23,6 +23,8 @@ def run_experiments(
 
     print()
     stop_training = '' if duration['prestop_training_hours'] == -1 else ' stop_time={} '.format(int(stop_training))
+    if is_argparse:
+        stop_training = stop_training.replace('stop_time', '--stop_time')
     if not experiments is None:
         ds = dict2iter(experiments)
     else:
@@ -42,6 +44,7 @@ def run_experiments(
         print('{}/{}'.format(i + 1, len(ds)), command)
         os.system(command)
     print('Number jobs: {}'.format(len(ds)))
+
 
 def dict2iter(experiments):
     full_ds = []
@@ -66,7 +69,7 @@ def sh_base(time, account, py_location, env_name, n_gpus):
         env_location = f'~/project/lucacehe/{env_name}/bin/activate'
     if 'gra' == socket.gethostname()[:3]:
         env_location = f'~/projects/def-jrouat/lucacehe/{env_name}/bin/activate'
-    gpus_line = ''if n_gpus==0 else f'#SBATCH --gres=gpu:{n_gpus}'
+    gpus_line = '' if n_gpus == 0 else f'#SBATCH --gres=gpu:{n_gpus}'
     return """#!/bin/bash
 #SBATCH --time={}
 #SBATCH --account={}
@@ -81,9 +84,9 @@ cd {}
 $1
 """.format(time, account, gpus_line, env_location, py_location)
 
-#SBATCH --mem 32G
-#SBATCH --cpus-per-task 4
-#SBATCH --gres=gpu:1
+# SBATCH --mem 32G
+# SBATCH --cpus-per-task 4
+# SBATCH --gres=gpu:1
 
 # salloc  --time 17:0:0 --cpus-per-task 8 --mem 32G
 # module load StdEnv/2020 gcc/10 cuda/11.0 arrow/1.0.0 python/3.8 scipy-stack
