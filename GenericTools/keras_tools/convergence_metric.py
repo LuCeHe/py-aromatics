@@ -6,7 +6,7 @@ def convergence_estimation(loss, epsilon=1e-6):
     if loss[0] == 0:
         loss = [l + epsilon for l in loss]
 
-    if not len(loss) < 4:
+    try:
         # smooth the signal
         window_length = int(np.ceil(len(loss) / 3) // 2 * 2 + 1)
         yhat = savgol_filter(loss, window_length, 2)
@@ -21,6 +21,6 @@ def convergence_estimation(loss, epsilon=1e-6):
         c2 = last_variance / total_variance
 
         c = c1 * (1 - c2)
-    else:
-        c = 0
+    except Exception as e:
+        c = -1
     return c
