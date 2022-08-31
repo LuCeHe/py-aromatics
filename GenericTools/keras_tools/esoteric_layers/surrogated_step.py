@@ -245,7 +245,7 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
 
         if 'doubleexp' in config:
             z = SpikeFunctionExpsPowerLaws(v_sc, dampening, sharpness, *params)
-        elif 'movedgauss':
+        elif 'movedgauss' in config:
             z = SpikeFunctionAdaptiveGauss(v_sc, dampening, sharpness, *params)
         else:
             z = SpikeFunctionAdaptiveGauss(v_sc, dampening, sharpness, *params)
