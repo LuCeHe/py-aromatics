@@ -5,9 +5,9 @@ import numpy as np
 
 
 def getMNIST(categorical=True, sequential=False, original_size=True,
-             data_split='all', train_split=.8, normalize=True, spike_latency=False, remove_mean=False):
+             data_split='all', train_split=.8, normalize=True, spike_latency=False, remove_mean=False, path='mnist.npz'):
     # the data, split between train and test sets
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    (x_train, y_train), (x_test, y_test) = mnist.load_data(path)
 
     if data_split == 'test':
         x, y = x_test, y_test
