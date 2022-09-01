@@ -1,5 +1,5 @@
 import os
-from sg_design_lif.generate_data import ptb_reader
+from GenericTools.keras_tools.esoteric_tasks import ptb_reader
 import numpy as np
 import tensorflow as tf
 
