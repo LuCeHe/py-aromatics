@@ -294,7 +294,6 @@ def test_is_progress_bar():
     # 1.9 microseconds first iteration
 
 
-
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
@@ -305,7 +304,7 @@ def summarize_logs(
         error_keys=['Aborted', 'error', 'Error'],
         completion_keys=['DONE', 'All done', 'Completed after'],
 
-    error_similarity_threshold = .8
+        error_similarity_threshold=.8
 
 ):
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
@@ -394,19 +393,19 @@ def summarize_logs(
     # remove digits from errors, to make them easier to consider as a one error
     errors = [re.sub("\d+", "X", e) for e in errors]
     errors = [e if not 'slurmstepd: error:' in e else ''.join(e.partition('slurmstepd: error:')[1:])
-               for e in errors]
+              for e in errors]
 
-    new_errors = [errors[0]]
-
-    for i, s1 in enumerate(errors[1:]):
-        to_append = s1
-        if s1 not in new_errors:
-            for s2 in new_errors:
-                if similar(s1, s2) > error_similarity_threshold:
-                    to_append = s2
-                    break
-        new_errors.append(to_append)
-    errors = new_errors
+    if len(errors) > 0:
+        new_errors = [errors[0]]
+        for i, s1 in enumerate(errors[1:]):
+            to_append = s1
+            if s1 not in new_errors:
+                for s2 in new_errors:
+                    if similar(s1, s2) > error_similarity_threshold:
+                        to_append = s2
+                        break
+            new_errors.append(to_append)
+        errors = new_errors
 
     es, cs = np.unique(errors, return_counts=True)
     count_sort_ind = np.argsort(-cs)
