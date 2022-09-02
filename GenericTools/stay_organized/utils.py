@@ -303,11 +303,11 @@ def summarize_logs(
         remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA:', 'Lmod ', 'cuda/11.0', 'is deprecated'],
         error_keys=['Aborted', 'error', 'Error'],
         completion_keys=['DONE', 'All done', 'Completed after'],
-
-        error_similarity_threshold=.8
-
+        error_similarity_threshold=.8,
+        comments=''
 ):
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
+    isolate_word = str2val(comments, 'isolate', str, default=None)
 
     all_lines = []
     errors = []
@@ -319,8 +319,10 @@ def summarize_logs(
     for d in tqdm(ds):
         path = os.path.join(containing_folder, d)
 
-        all_lines.extend(['-' * 50 + '\n'])
-        all_lines.extend([d + '\n'])
+        doc_lines = []
+
+        doc_lines.extend(['-' * 50 + '\n'])
+        doc_lines.extend([d + '\n'])
 
         # Open the file for reading.
         completed = 0
@@ -339,15 +341,14 @@ def summarize_logs(
                         initial_lines[-1] = line
 
         # Return a list of the lines, breaking at line boundaries.
-        all_lines.extend(initial_lines)
-        all_lines.extend(['\n...\n'])
+        doc_lines.extend(initial_lines)
+        doc_lines.extend(['\n...\n'])
 
         # with open(path, 'r', encoding="latin1") as infile:
         with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
             last_lines = filetail(infile, lines=2 * n_lines)
 
         clean_last_lines = []
-        first_pb = True
         for line in last_lines:
             writeit = all([not remove_line in line for remove_line in remove_lines_with])
             if writeit and not line in clean_last_lines:
@@ -370,7 +371,19 @@ def summarize_logs(
                     error_d.append(d)
                 else:
                     completed = any([completion_key in line for completion_key in completion_keys])
-        all_lines.extend(clean_last_lines)
+        doc_lines.extend(clean_last_lines)
+
+
+
+        if isolate_word is None:
+            all_lines.extend(doc_lines)
+
+        else:
+            isolate = any([isolate_word in line for line in doc_lines])
+            if isolate:
+                all_lines.extend(doc_lines)
+
+
 
         if i < 12:
             extra_short += 1
