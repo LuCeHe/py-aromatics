@@ -383,8 +383,6 @@ def summarize_logs(
             if isolate:
                 all_lines.extend(doc_lines)
 
-
-
         if i < 12:
             extra_short += 1
 
