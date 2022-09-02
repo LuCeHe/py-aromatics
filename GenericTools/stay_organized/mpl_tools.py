@@ -64,7 +64,7 @@ def load_plot_settings(mpl=None, pd=None, figsize=(10, 10)):
         med = 16
         small = 12  # 12
 
-        params = {'axes.titlesize': large,
+        params = {'axes.titlesize': med,
                   'legend.fontsize': med,
                   'figure.figsize': figsize,
                   'axes.labelsize': med,
