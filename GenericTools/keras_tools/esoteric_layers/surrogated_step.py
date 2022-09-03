@@ -1,6 +1,7 @@
 import tensorflow as tf
 import math
 
+from GenericTools.keras_tools.test_shapes import get_asg_shape
 from GenericTools.stay_organized.utils import str2val
 
 
@@ -164,6 +165,35 @@ def SpikeFunctionAdaptiveGauss(v_scaled, dampening, sharpness, a, b, c, d, e, f,
 
 
 @tf.custom_gradient
+def SpikeFunctionAdaptiveGauss(v_scaled, dampening, sharpness, a, b, c, d, e, f, g, h, i, l, m):
+    z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
+
+    def grad(dy):
+        x = v_scaled * sharpness + m
+        dz_dv_scaled = a * tf.exp(-b * x ** 2)
+        dz_dv_scaled = dampening * dz_dv_scaled
+        return [dy * dz_dv_scaled] + [tf.zeros_like(a)] * 13
+
+    return tf.identity(z_, name="SpikeFunction"), grad
+
+def moved_shape(shape_name):
+    sg_shape = get_asg_shape(shape_name)
+    @tf.custom_gradient
+    def SpikeFunctionAdapted(v_scaled, dampening, sharpness, a, b, c, d, e, f, g, h, i, l, m):
+        z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.keras.backend.floatx())
+
+        def grad(dy):
+            x = v_scaled * sharpness + m
+            dz_dv_scaled = sg_shape(x, a, b, c, d, e, f, g, h, i, l, m)
+            dz_dv_scaled = dampening * dz_dv_scaled
+            return [dy * dz_dv_scaled] + [tf.zeros_like(a)] * 13
+
+        return tf.identity(z_, name="SpikeFunction"), grad
+
+    return SpikeFunctionAdapted
+
+
+@tf.custom_gradient
 def MNTailSpikeFunction(v_scaled, dampening, sharpness, tail1, tail2, tail3, c1, c2, c3, h1, h2, h3):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
 
@@ -243,12 +273,11 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
                 param = abs(param)
             params.append(param)
 
-        if 'doubleexp' in config:
+        asgname = str2val(config, 'asgname', str, default=-1)
+        if 'doubleexp' == asgname:
             z = SpikeFunctionExpsPowerLaws(v_sc, dampening, sharpness, *params)
-        elif 'movedgauss' in config:
-            z = SpikeFunctionAdaptiveGauss(v_sc, dampening, sharpness, *params)
         else:
-            z = SpikeFunctionAdaptiveGauss(v_sc, dampening, sharpness, *params)
+            z = moved_shape(asgname)(v_sc, dampening, sharpness, *params)
 
 
     else:
