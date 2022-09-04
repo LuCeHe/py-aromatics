@@ -1,7 +1,7 @@
 import tensorflow as tf
 import math
 
-from GenericTools.keras_tools.test_shapes import get_asg_shape
+from GenericTools.keras_tools.test_sg_shapes import get_asg_shape
 from GenericTools.stay_organized.utils import str2val
 
 
