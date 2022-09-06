@@ -378,7 +378,7 @@ def summarize_logs(
                     error_d.append(d)
                     failed = 1
                 else:
-                    completed = any([completion_key in line for completion_key in completion_keys])
+                    completed = any([completion_key in line for completion_key in completion_keys] + [completed])
         doc_lines.extend(clean_last_lines)
         print(completed, failed)
 
