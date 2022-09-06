@@ -380,7 +380,6 @@ def summarize_logs(
                 else:
                     completed = any([completion_key in line for completion_key in completion_keys] + [completed])
         doc_lines.extend(clean_last_lines)
-        print(completed, failed)
 
         if isolate_word is None:
             all_lines.extend(doc_lines)
