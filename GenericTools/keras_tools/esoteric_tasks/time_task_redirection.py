@@ -14,7 +14,7 @@ from GenericTools.keras_tools.esoteric_tasks.ptb_generator import PTBGenerator
 # from sg_design_lif.generate_data.xor import XorGenerator
 from GenericTools.keras_tools.esoteric_tasks.random_generator import RandomGenerator
 
-from GenericTools.keras_tools.esoteric_tasks.grammar_generators import CFG_AutoEncoding_Generator
+# from GenericTools.keras_tools.esoteric_tasks.grammar_generators import CFG_AutoEncoding_Generator
 
 FILENAME = os.path.realpath(__file__)
 CDIR = os.path.dirname(FILENAME)
