@@ -321,6 +321,7 @@ def summarize_logs(
     n_lines = 60
     n_error_examples = 3
     n_completed = 0
+    n_failed = 0
     for d in tqdm(ds):
         path = os.path.join(containing_folder, d)
 
@@ -331,6 +332,7 @@ def summarize_logs(
 
         # Open the file for reading.
         completed = 0
+        failed = 0
         with open(path, 'r', encoding='utf-8', errors='ignore') as infile:
             initial_lines = []
             i = 0
@@ -374,10 +376,11 @@ def summarize_logs(
                 if error_found:
                     errors.append(line)
                     error_d.append(d)
+                    failed = 1
                 else:
                     completed = any([completion_key in line for completion_key in completion_keys])
         doc_lines.extend(clean_last_lines)
-        print(completed)
+        print(completed, failed)
 
         if isolate_word is None:
             all_lines.extend(doc_lines)
@@ -391,6 +394,7 @@ def summarize_logs(
             extra_short += 1
 
         n_completed += completed
+        n_failed += failed
     time_string = timeStructured()
     path = os.path.join(containing_folder, '{}-summary.txt'.format(time_string))
 
@@ -403,6 +407,7 @@ def summarize_logs(
     with open(path, 'a') as f:
         f.write('\n' + '-' * 50)
         f.write(f'\nCompleted exps:             {n_completed}/{len(ds)}')
+        f.write(f'\nFailed exps:                {n_failed}/{len(ds)}')
         f.write(f'\nShort codes:                {extra_short}/{len(ds)}')
 
     # remove digits from errors, to make them easier to consider as a one error
