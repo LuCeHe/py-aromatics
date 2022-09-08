@@ -3,6 +3,17 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 
 
+# reduce_prod
+def history_pick(k, v):
+    if any([n in k for n in ['loss', 'perplexity', 'entropy', 'bpc']]):
+        o = np.nanmin(v[10:])
+    elif any([n in k for n in ['acc']]):
+        o = np.nanmax(v[10:])
+    else:
+        o = f'{round(v[0], 3)}/{round(v[-1], 3)}'
+    return o
+
+
 def plot_history(histories, epochs, plot_filename=None, method_names=None, show=False, bkg_color='white',
                  metrics_to_show=[], column_id=[], colors=None, figsize=None, ylims={}, vertical=True, legend=True):
     if not isinstance(histories, list): histories = [histories]
