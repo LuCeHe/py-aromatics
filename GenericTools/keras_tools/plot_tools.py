@@ -4,14 +4,22 @@ import numpy as np
 
 
 # reduce_prod
-def history_pick(k, v):
+def history_pick(k, v, min_epochs=0):
+    # if isinstance(v,list):
+      # v = np.array(v)
+
     if any([n in k for n in ['loss', 'perplexity', 'entropy', 'bpc']]):
-        o = np.nanmin(v[10:])
+        o = np.nanmin(v[min_epochs:])
     elif any([n in k for n in ['acc']]):
-        o = np.nanmax(v[10:])
+        o = np.nanmax(v[min_epochs:])
     else:
         o = f'{round(v[0], 3)}/{round(v[-1], 3)}'
+        o = ((k, o),(k+'_initial', v[0]),(k+'_final', v[-1]))
+
+    if not isinstance(o, tuple):
+      o = (k, o),
     return o
+
 
 
 def plot_history(histories, epochs, plot_filename=None, method_names=None, show=False, bkg_color='white',
