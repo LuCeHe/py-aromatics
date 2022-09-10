@@ -13,7 +13,7 @@ class RateVoltageRegularization(tf.keras.layers.Layer):
 
         self.ff_switch = 1. if 'adjff' in self.config else 0.
         self.target_firing_rate = str2val(self.config, 'adjff', float, default=.1)
-        print('in!', config)
+
         if 'heidelberg' in config:
             self.reg_cost = 0.462
         elif 'wordptb' in config:
