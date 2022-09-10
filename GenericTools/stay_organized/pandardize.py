@@ -6,6 +6,7 @@ def simplify_col_names(df):
         ('perplexity', 'ppl'),
         ('crossentropy', 'xnt'),
         ('sparse_', ''),
+        ('categorical_', ''),
     ]:
         df.columns = df.columns.str.replace(co, cd)
 
