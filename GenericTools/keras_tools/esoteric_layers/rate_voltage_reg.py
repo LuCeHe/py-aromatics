@@ -11,7 +11,7 @@ class RateVoltageRegularization(tf.keras.layers.Layer):
         self.config = config
         self.reg_cost = reg_cost
 
-        self.ff_switch = 1. if 'adjff' in self.config else 0.
+        self.ff_switch = 0.
         self.target_firing_rate = str2val(self.config, 'adjff', float, default=.1)
 
         if 'heidelberg' in config:
@@ -23,7 +23,6 @@ class RateVoltageRegularization(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         stacki = str2val(self.config, 'stacki', int, default=0)
-        print('here!!!', stacki)
         self.coef = self.add_weight(name=f'switch_{stacki}',
                                     shape=(),
                                     initializer=tf.keras.initializers.Constant(self.ff_switch),
