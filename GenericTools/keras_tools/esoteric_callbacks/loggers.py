@@ -108,7 +108,6 @@ class CSVLogger(tf.keras.callbacks.Callback):
                                 **self._open_args)
 
     def on_epoch_begin(self, epoch, logs=None):
-        print(logs)
         if epoch == 0:
             row_dict = collections.OrderedDict({'epoch': -1})
             row_dict.update((key, handle_value(logs[key])) for key in logs.keys())
@@ -117,8 +116,6 @@ class CSVLogger(tf.keras.callbacks.Callback):
             # self.on_epoch_end(epoch=-1, logs=logs)
 
     def on_epoch_end(self, epoch, logs=None):
-        print(epoch)
-        print(logs)
         logs = logs or {}
 
         if self.keys is None:
