@@ -41,8 +41,7 @@ def plot_history(histories, epochs, plot_filename=None, method_names=None, show=
         for h in histories:
             keys.extend(list(h.history.keys()))
 
-        keys = list(set(keys))
-        keys = sorted([k for k in keys if not 'val' in k])
+        keys = sorted(list(set([k.replace('val_', '') for k in keys])))
 
         if metrics_to_show:
             keys = [k for k in keys if k in metrics_to_show]
@@ -56,6 +55,7 @@ def plot_history(histories, epochs, plot_filename=None, method_names=None, show=
 
         if figsize is None:
             figsize = (20, 5) if n_columns > 1 else (5, 20)
+
         fig, axs = plt.subplots(n_rows, n_columns, figsize=figsize, gridspec_kw={'hspace': 0})
         axs = axs if type(axs) is np.ndarray else [axs]
 

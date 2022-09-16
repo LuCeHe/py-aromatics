@@ -15,11 +15,21 @@ class RateVoltageRegularization(tf.keras.layers.Layer):
         self.target_firing_rate = str2val(self.config, 'adjff', float, default=.1)
 
         if 'heidelberg' in config:
-            self.reg_cost = 0.462
+            self.reg_cost = 0.436
         elif 'wordptb' in config:
-            self.reg_cost = 4.754
+            self.reg_cost = 4.595
         elif 'sl_mnist' in config:
-            self.reg_cost = 0.779
+            self.reg_cost = 0.800
+
+    def build(self, input_shape):
+        stacki = str2val(self.config, 'stacki', int, default=0)
+        print('here!!!', stacki)
+        self.coef = self.add_weight(name=f'switch_{stacki}',
+                                    shape=(),
+                                    initializer=tf.keras.initializers.Constant(self.ff_switch),
+                                    trainable=False)
+
+        self.built = True
 
     def call(self, inputs, training=None):
         b, v_sc = inputs
@@ -34,9 +44,9 @@ class RateVoltageRegularization(tf.keras.layers.Layer):
         elif 'adjff' in self.config:
             rate_loss = well_loss(
                 min_value=self.target_firing_rate, max_value=self.target_firing_rate, walls_type='relu'
-            )(rate) * self.reg_cost,
+            )(rate)
+            rate_loss = rate_loss * self.reg_cost * self.coef
 
-            # print('here', self.target_firing_rate, rate_loss)
             self.add_loss(rate_loss)
             self.add_metric(rate_loss, name='rate_loss_' + self.name, aggregation='mean')
 

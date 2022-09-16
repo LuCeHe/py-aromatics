@@ -2,9 +2,9 @@ import tensorflow as tf
 
 
 def exponential_annealing(epoch, epochs, value):
-    if epoch == 0:
+    if epoch < epochs / 5:
         new_value = 0
-    elif epoch > epochs / 2:
+    elif epoch > 3 * epochs / 4:
         new_value = 1
     else:
         new_value = 1 - .6 * (1 - value)
@@ -26,6 +26,7 @@ def probabilistic_exponential_annealing(epoch, epochs, value):
 
 hard_annealing = lambda epoch, epochs, value: 0 if epoch < epochs / 2 else 1
 inverse_hard_annealing = lambda epoch, epochs, value: 1 if epoch < epochs / 2 else 0
+
 
 def get_annealing_schedule(annealing_schedule):
     if annealing_schedule in ['probabilistic_exponential_annealing', 'pea']:
@@ -79,7 +80,10 @@ class AnnealingCallback(tf.keras.callbacks.Callback):
 
     def on_batch_begin(self, batch, logs=None):
         self.batch = batch
+        # print('inside here', len(self.annealing_weights), len(self.annealing_schedule))
+        if len(self.annealing_schedule) == 1 and not len(self.annealing_weights) == 1:
+            self.annealing_schedule = [self.annealing_schedule[0] for _ in self.annealing_weights]
+
         for w, ans in zip(self.annealing_weights, self.annealing_schedule):
             v = tf.keras.backend.get_value(w)
             tf.keras.backend.set_value(w, ans(self.epoch, self.epochs, v))
-

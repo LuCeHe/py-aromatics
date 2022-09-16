@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 
+
 class MultipleValidationSets(tf.keras.callbacks.Callback):
     def __init__(self, validation_sets, verbose=0):
         """
@@ -27,4 +28,16 @@ class MultipleValidationSets(tf.keras.callbacks.Callback):
             for k in evaluation.keys():
                 logs[val_name + '_' + k] = evaluation[k]
 
-        print(logs)
+        # print(logs)
+
+    def on_epoch_begin(self, epoch, logs=None):
+        if epoch == 0:
+            if logs is None:
+                return
+
+            # evaluate on the additional validation sets
+            for val_name, generator in self.validation_sets.items():
+                evaluation = self.model.evaluate(generator, return_dict=True, verbose=False)
+
+                for k in evaluation.keys():
+                    logs[val_name + '_' + k + '_begin'] = evaluation[k]
