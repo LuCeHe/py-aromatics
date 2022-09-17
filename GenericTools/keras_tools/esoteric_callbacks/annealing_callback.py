@@ -1,6 +1,17 @@
 import tensorflow as tf
 
 
+def linear_annealing(epoch, epochs, value):
+    r_f = 3/5
+    r_i  =1/5
+    if epoch < r_i*epochs :
+        new_value = 0
+    elif epoch > r_f * epochs :
+        new_value = 1
+    else:
+        new_value = 1/(r_f * epochs - r_i*epochs )*(epoch-r_i*epochs)
+    return new_value
+
 def exponential_annealing(epoch, epochs, value):
     if epoch < epochs / 5:
         new_value = 0
@@ -33,6 +44,8 @@ def get_annealing_schedule(annealing_schedule):
         return probabilistic_exponential_annealing
     elif annealing_schedule in ['exponential_annealing', 'ea']:
         return exponential_annealing
+    elif annealing_schedule in ['linear_annealing', 'la']:
+        return linear_annealing
     elif annealing_schedule in ['hard_annealing', 'ha', 'switch_on']:
         return hard_annealing
     elif annealing_schedule in ['inverse_hard_annealing', 'iha', 'switch_off']:
