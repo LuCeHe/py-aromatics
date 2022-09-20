@@ -458,8 +458,8 @@ def draw_pseudods():
     fig, axs = plt.subplots(1, 2, gridspec_kw={'wspace': .1}, sharey=False, figsize=(10, 5))
 
     for k in possible_pseudod:
-        # x = tf.cast(tf.constant(np.linspace(0, 1.5, 1000)), tf.float32)
-        x = tf.cast(tf.constant(np.linspace(-1.5, 1.5, 1000)), tf.float32)
+        x = tf.cast(tf.constant(np.linspace(0, 1.5, 1000)), tf.float32)
+        # x = tf.cast(tf.constant(np.linspace(-1.5, 1.5, 1000)), tf.float32)
         with tf.GradientTape() as tape:
             tape.watch(x)
             y = ChoosePseudoHeaviside(x, k + '_sharpn:1')
@@ -516,25 +516,21 @@ def draw_pseudods():
         ax.spines[pos].set_visible(False)
 
     # axs[0].set_xlabel('centered voltage')
-    axs[0].set_ylabel('surrogate gradient\namplitude')
-    axs[1].set_xlabel('centered voltage')
-    axs[1].set_ylabel('surrogate gradient\namplitude')
+    axs[0].set_ylabel('Surrogate gradient\namplitude')
+    axs[1].set_xlabel('Centered voltage')
+    # axs[1].set_ylabel('surrogate gradient\namplitude')
 
     from matplotlib.lines import Line2D
     legend_elements = [Line2D([0], [0], color=pseudod_color(n), lw=4, label=clean_pseudname(n))
-                       for n in possible_pseudod]
+                       for n in [possible_pseudod[-1]] + possible_pseudod[:-1]]
     axs[0].legend(handles=legend_elements, loc='best', bbox_to_anchor=(0.4, 0.5, 0.4, 0.5))
     for ax in axs:
         for pos in ['right', 'left', 'bottom', 'top']:
             ax.spines[pos].set_visible(False)
     axs[0].set_xticks([0, 1])
     axs[1].set_xticks([0, 1])
-    axs[0].set_xticks([])
+    axs[0].set_yticks([0, 1])
     axs[1].set_yticks([])
-    axs[1].set_yticks([], minor=True)
-    # axs[0].set_yticks([0, 1])
-    axs[0].set_yticks([0, 2])
-    axs[1].set_yticks([0, 1])
 
     plot_filename = r'pseudods.pdf'
     fig.savefig(plot_filename, bbox_inches='tight')
@@ -558,7 +554,7 @@ def draw_legend():
     mpl = load_plot_settings(mpl=mpl)
 
     legend_elements = [Line2D([0], [0], color=pseudod_color(n), lw=4, label=clean_pseudname(n))
-                       for n in possible_pseudod]
+                       for n in [possible_pseudod[-1]] + possible_pseudod[:-1] + ['ntailpseudod']]
 
     # Create the figure
     fig, ax = plt.subplots(figsize=(3.5, .5))

@@ -2,15 +2,16 @@ import tensorflow as tf
 
 
 def linear_annealing(epoch, epochs, value):
-    r_f = 3/5
-    r_i  =1/5
-    if epoch < r_i*epochs :
+    r_f = 3 / 5
+    r_i = 1 / 5
+    if epoch < r_i * epochs:
         new_value = 0
-    elif epoch > r_f * epochs :
+    elif epoch > r_f * epochs:
         new_value = 1
     else:
-        new_value = 1/(r_f * epochs - r_i*epochs )*(epoch-r_i*epochs)
+        new_value = 1 / (r_f * epochs - r_i * epochs) * (epoch - r_i * epochs)
     return new_value
+
 
 def exponential_annealing(epoch, epochs, value):
     if epoch < epochs / 5:
