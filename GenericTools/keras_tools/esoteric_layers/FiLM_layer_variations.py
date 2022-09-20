@@ -9,6 +9,7 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.layers import *
 from tensorflow.keras.models import *
 
+
 class FiLM1D(tf.keras.layers.Layer):
 
     def __init__(self, beta=None, gamma=None, dilation_rate=1, **kwargs):
@@ -21,7 +22,7 @@ class FiLM1D(tf.keras.layers.Layer):
 
     def Conv(self, name=''):
         return Sequential([
-            #Conv1D(16, 3, padding='same', dilation_rate=self.dilation_rate),
+            # Conv1D(16, 3, padding='same', dilation_rate=self.dilation_rate),
             Conv1D(1, 3, padding='same', dilation_rate=self.dilation_rate)
         ], name=name)
 
@@ -35,81 +36,35 @@ class FiLM1D(tf.keras.layers.Layer):
         return film
 
 
-def FiLM_Fusion(size, data_type='FiLM_v2', initializer='orthogonal'):
-    def fuse(inputs):
-        sound, spikes = inputs
-        if 'FiLM_v1' in data_type or 'FiLM_v2' in data_type:
-            # FiLM starts -------
-            beta_snd = Conv1D(size, 3, padding='same', kernel_initializer=initializer)(spikes)
-            gamma_snd = Conv1D(size, 3, padding='same', kernel_initializer=initializer)(spikes)
+class FiLM_Fusion(tf.keras.layers.Layer):
 
-            beta_spk = Conv1D(size, 3, padding='same', kernel_initializer=initializer)(sound)
-            gamma_spk = Conv1D(size, 3, padding='same', kernel_initializer=initializer)(sound)
+    def __init__(self, filters, initializer='orthogonal', kernel_size=3, **kwargs):
+        super().__init__(**kwargs)
 
-            # sound = Multiply()([sound, gamma_snd]) + beta_snd
-            sound = Add()([Multiply()([sound, gamma_snd]), beta_snd])
-            # spikes = Multiply()([spikes, gamma_spk]) + beta_spk
-            spikes = Add()([Multiply()([spikes, gamma_spk]), beta_spk])
+        self.initializer = initializer
+        self.kernel_size = kernel_size
+        self.filters = filters
 
-            # FiLM ends ---------
+        self.beta1 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer)
+        self.gamma1 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer)
 
-            layer = [sound, spikes]
+        self.beta2 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer)
+        self.gamma2 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer)
 
-        elif 'FiLM_v3' in data_type or 'FiLM_v4' in data_type:
-            # FiLM starts -------
-            beta_snd = Dense(size)(spikes)
-            gamma_snd = Dense(size)(spikes)
+    def call(self, inputs, **kwargs):
+        in1, in2 = inputs
 
-            beta_spk = Dense(size)(sound)
-            gamma_spk = Dense(size)(sound)
-            # changes: 20-8-20 instead of + I made a layer with ADD
+        beta1 = self.beta1(in1)
+        gamma1 = self.gamma1(in1)
 
-            # sound = Multiply()([sound, gamma_snd]) + beta_snd
-            sound = Add()([Multiply()([sound, gamma_snd]), beta_snd])
-            # spikes = Multiply()([spikes, gamma_spk]) + beta_spk
-            spikes = Add()([Multiply()([spikes, gamma_spk]), beta_spk])
+        beta2 = self.beta2(in2)
+        gamma2 = self.gamma2(in2)
 
-            # FiLM ends ---------
+        in2 = Add()([Multiply()([in2, gamma1]), beta1])
+        in1 = Add()([Multiply()([in1, gamma2]), beta2])
 
-            layer = [sound, spikes]
+        return (in2, in1)
 
-        elif 'FiLM_v5' in data_type:
-
-            # just modulating the sound
-            # FiLM starts -------
-            beta_snd = Conv1D(size, 3, padding='same', kernel_initializer=initializer)(spikes)
-            gamma_snd = Conv1D(size, 3, padding='same', kernel_initializer=initializer)(spikes)
-
-            # changes: 20-8-20 instead of + I made a layer with ADD
-            # sound = Multiply()([sound, gamma_snd]) + beta_snd
-            sound = Add()([Multiply()([sound, gamma_snd]), beta_snd])
-            # spikes = Multiply()([spikes, gamma_spk]) + beta_spk
-
-            # FiLM ends ---------
-
-            layer = [sound, spikes]
-
-        elif 'FiLM_v6' in data_type:
-            # FiLM starts -------
-
-            # just modulating the spikes
-            beta_spk = Conv1D(size, 3, padding='same', kernel_initializer=initializer)(sound)
-            gamma_spk = Conv1D(size, 3, padding='same', kernel_initializer=initializer)(sound)
-
-            # changes: 20-8-20 instead of + I made a layer with ADD
-            # sound = Multiply()([sound, gamma_snd]) + beta_snd
-            # spikes = Multiply()([spikes, gamma_spk]) + beta_spk
-            spikes = Add()([Multiply()([spikes, gamma_spk]), beta_spk])
-
-            # FiLM ends ---------
-
-            layer = [sound, spikes]
-
-        else:
-            layer = inputs
-        return layer
-
-    return fuse
 
 if __name__ == '__main__':
     sound = Input((300, 3))
