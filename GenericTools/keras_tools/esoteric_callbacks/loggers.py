@@ -19,11 +19,12 @@ class LearningRateLogger(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         if logs is None or "learning_rate" in logs:
             return
+
         if isinstance(self.model.optimizer.lr, float):
             lr = self.model.optimizer.lr
         else:
-            lr = self.model.optimizer.lr(epoch)
-        # print(lr)
+            lr = self.model.optimizer.lr.lr #(epoch)
+
         logs["learning_rate"] = lr.numpy() if hasattr(lr, 'numpy') else lr
 
 
