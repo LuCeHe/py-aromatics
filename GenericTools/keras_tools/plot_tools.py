@@ -6,20 +6,22 @@ import numpy as np
 # reduce_prod
 def history_pick(k, v, min_epochs=0):
     # if isinstance(v,list):
-      # v = np.array(v)
+    # v = np.array(v)
+    if isinstance(v, list):
+        if any([n in k for n in ['loss', 'perplexity', 'entropy', 'bpc']]):
+            o = np.nanmin(v[min_epochs:])
+        elif any([n in k for n in ['acc']]):
+            o = np.nanmax(v[min_epochs:])
+        else:
+            o = f'{round(v[0], 3)}/{round(v[-1], 3)}'
+            o = ((k, o), (k + '_initial', v[0]), (k + '_final', v[-1]))
 
-    if any([n in k for n in ['loss', 'perplexity', 'entropy', 'bpc']]):
-        o = np.nanmin(v[min_epochs:])
-    elif any([n in k for n in ['acc']]):
-        o = np.nanmax(v[min_epochs:])
+        if not isinstance(o, tuple):
+            o = (k, o),
+
     else:
-        o = f'{round(v[0], 3)}/{round(v[-1], 3)}'
-        o = ((k, o),(k+'_initial', v[0]),(k+'_final', v[-1]))
-
-    if not isinstance(o, tuple):
-      o = (k, o),
+        o = (k, v),
     return o
-
 
 
 def plot_history(histories, epochs, plot_filename=None, method_names=None, show=False, bkg_color='white',
@@ -111,7 +113,7 @@ def plot_history(histories, epochs, plot_filename=None, method_names=None, show=
         return fig, axs
 
 
-def TensorboardToNumpy(event_filename: str, id_selection='', field ='histo'):
+def TensorboardToNumpy(event_filename: str, id_selection='', field='histo'):
     # original:
     # https://stackoverflow.com/questions/47232779/how-to-extract-and-save-images-from-tensorboard-event-summary
     assert field in ['image', 'histo', 'audio', 'tensor', 'simple_value']
@@ -134,19 +136,19 @@ def TensorboardToNumpy(event_filename: str, id_selection='', field ='histo'):
         for v in event.summary.value:
             if id_selection in v.tag and v.HasField(field):
                 item = v.__getattribute__(field)
-                mean = item.sum/item.num
-                ex2 = item.sum_squares/item.num
-                variance = ex2 - mean**2
+                mean = item.sum / item.num
+                ex2 = item.sum_squares / item.num
+                variance = ex2 - mean ** 2
 
                 means[event.step].update({v.tag: mean})
                 stds[event.step][v.tag] = np.sqrt(variance)
 
-    means  = {k: means[k] for k in sorted(means.keys())}
-    stds  = {k: stds[k] for k in sorted(stds.keys())}
+    means = {k: means[k] for k in sorted(means.keys())}
+    stds = {k: stds[k] for k in sorted(stds.keys())}
     return means, stds
 
 
-def TensorboardToNumpy_new(event_filename: str, id_selection='', field ='histo'):
+def TensorboardToNumpy_new(event_filename: str, id_selection='', field='histo'):
     from tensorboard.backend.event_processing.event_file_loader import EventFileLoader
     # Just in case, PATH_OF_FILE is the path of the file, not the folder
     loader = EventFileLoader(event_filename)
