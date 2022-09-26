@@ -98,7 +98,7 @@ class PaddingLookAheadMasks(tf.keras.layers.Layer):
 
 # attention and ff
 
-def scaled_dot_product_attention_original(q, k, v, mask):
+def scaled_dot_product_attention_original(q, k, v, mask=None):
     """Calculate the attention weights.
     q, k, v must have matching leading dimensions.
     k, v must have matching penultimate dimension, i.e.: seq_len_k = seq_len_v.
@@ -241,7 +241,8 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 def point_wise_feed_forward_network(d_model, dff, config):
     activation = tf.keras.layers.ReLU()
     # kernel_initializer = 'he_normal'
-    kernel_initializer = tf.keras.initializers.VarianceScaling(scale=2., mode='fan_in', distribution='untruncated_normal')
+    kernel_initializer = tf.keras.initializers.VarianceScaling(scale=2., mode='fan_in',
+                                                               distribution='untruncated_normal')
     bias_initializer = 'zeros'
 
     # 2/(n_in + n_out) Glorot
@@ -254,12 +255,14 @@ def point_wise_feed_forward_network(d_model, dff, config):
     elif 'swish' in config:
         activation = RePU(base_activation='swish')
         if 'critical' in config:
-            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.988, mode='fan_in', distribution='untruncated_normal')
+            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.988, mode='fan_in',
+                                                                       distribution='untruncated_normal')
             bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=tf.sqrt(0.555))
     elif 'guderman' in config:
         activation = RePU(base_activation='guderman')
         if 'critical' in config:
-            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.990, mode='fan_in', distribution='untruncated_normal')
+            kernel_initializer = tf.keras.initializers.VarianceScaling(scale=1.990, mode='fan_in',
+                                                                       distribution='untruncated_normal')
             bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=tf.sqrt(0.103))
 
     return tf.keras.Sequential([
@@ -269,7 +272,6 @@ def point_wise_feed_forward_network(d_model, dff, config):
         tf.keras.layers.Dense(d_model, kernel_initializer=kernel_initializer, bias_initializer=bias_initializer)
         # (batch_size, seq_len, d_model)
     ])
-
 
 
 # encoder and decoder
@@ -364,9 +366,16 @@ class GPTBlock(tf.keras.layers.Layer):
 
 
 class TransformerEncoder(tf.keras.layers.Layer):
+    def get_config(self):
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(self.init_args.items()))
+
     def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-                 maximum_position_encoding, rate=0.1, config='original_transformer'):
-        super().__init__()
+                 maximum_position_encoding, rate=0.1, config='original_transformer', **kwargs):
+        self.init_args = dict(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
+                              input_vocab_size=input_vocab_size, maximum_position_encoding=maximum_position_encoding,
+                              rate=rate, config=config)
+        super().__init__(**kwargs)
 
         self.d_model = d_model
         self.num_layers = num_layers
@@ -397,8 +406,15 @@ class TransformerEncoder(tf.keras.layers.Layer):
 
 
 class TransformerDecoder(tf.keras.layers.Layer):
+    def get_config(self):
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(self.init_args.items()))
+
     def __init__(self, num_layers, d_model, num_heads, dff, target_vocab_size,
                  maximum_position_encoding, rate=0.1, config='original_transformer'):
+        self.init_args = dict(num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
+                              target_vocab_size=target_vocab_size, maximum_position_encoding=maximum_position_encoding,
+                              rate=rate, config=config)
         super().__init__()
 
         self.d_model = d_model

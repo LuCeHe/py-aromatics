@@ -1,5 +1,6 @@
 import os
 
+from GenericTools.keras_tools.esoteric_tasks.light_generator import LightGenerator
 from GenericTools.keras_tools.esoteric_tasks.mnist import getMNIST
 from GenericTools.keras_tools.esoteric_tasks.numpy_generator import NumpyClassificationGenerator
 from GenericTools.keras_tools.esoteric_tasks.random_task import RandomTask
@@ -26,6 +27,20 @@ def Task(batch_size=64, steps_per_epoch=None, epochs=1, task_name='wow', data_sp
             data_path=data_path, n_dialogues=n_dialogues, batch_size=batch_size, steps_per_epoch=steps_per_epoch,
             encoder_maxlen=encoder_maxlen, decoder_maxlen=decoder_maxlen, epochs=epochs,
             tokenizer_choice='bpe', data_split=data_split, shuffle=shuffle)
+
+    if task_name == 'light':
+        encoder_maxlen = str2val(string_config, 'encodermaxlen', int, default=maxlen)
+        decoder_maxlen = str2val(string_config, 'decodermaxlen', int, default=maxlen)
+
+        gen = LightGenerator(
+            epochs=epochs,
+            batch_size=batch_size,
+            steps_per_epoch=steps_per_epoch,
+            encoder_maxlen=encoder_maxlen,
+            decoder_maxlen=decoder_maxlen,
+            data_split=data_split,
+            shuffle=shuffle
+        )
 
     elif task_name == 'random':
         # example_task_name = 'random_intypes:[int,int,float]_inshapes:[(3,),(3,),(3,)]' \
