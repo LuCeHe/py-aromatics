@@ -44,6 +44,9 @@ class HF_ModelUpgrade(TFGenerationMixin):
         self.fixed_length_input = False
         self.curDim = 0
 
+    def call(self, *args, **kwargs):
+        self.__call__(*args, **kwargs)
+
     def __call__(self, input_ids, return_dict=False, output_attentions=False, output_hidden_states=False):
         assert self.curDim < self.max_length
         self.curDim += 1
