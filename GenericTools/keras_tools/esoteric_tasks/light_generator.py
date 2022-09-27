@@ -87,9 +87,20 @@ class LightGenerator(tf.keras.utils.Sequence):
 
         knowledge = {k: tf.keras.preprocessing.sequence.pad_sequences(
             data[k], value=self.pad_idx
-        )[..., :self.encoder_maxlen]
+        )
                      for k in self.knowledge_keys
                      }
+
+        maxlen = max([knowledge[k].shape[1] for k in self.knowledge_keys])
+
+        knowledge = {
+            k: np.concatenate([
+                self.pad_idx * np.ones((self.batch_size, maxlen - v.shape[1])), v
+            ], axis=1)[..., :self.encoder_maxlen]
+            for k, v in knowledge.items()
+        }
+
+
         return {
             **knowledge,
             'input_targets': input_targets[..., :self.decoder_maxlen],
@@ -122,4 +133,4 @@ if __name__ == '__main__':
     )
 
     batch = gen.__getitem__()
-    print([b.shape for b in batch[0]], batch[1].shape)
+    print([b.shape for b in batch[0]])
