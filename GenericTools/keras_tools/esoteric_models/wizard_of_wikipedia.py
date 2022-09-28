@@ -24,8 +24,8 @@ def metrics_wow(num_classes, mask_value):
         sparse_perplexity,
         sparse_f1_on_max,
         # masked_sparse_crossentropy(mask_value),
-        # masked_sparse_perplexity(mask_value),
-        # masked_f1_on_max(num_classes, mask_value),
+        masked_sparse_perplexity(mask_value),
+        masked_f1_on_max(num_classes, mask_value),
     ]
     return metrics
 

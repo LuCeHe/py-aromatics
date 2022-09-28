@@ -13,8 +13,13 @@ def history_pick(k, v, min_epochs=0):
         elif any([n in k for n in ['acc']]):
             o = np.nanmax(v[min_epochs:])
         else:
-            o = f'{round(v[0], 3)}/{round(v[-1], 3)}'
-            o = ((k, o), (k + '_initial', v[0]), (k + '_final', v[-1]))
+            try:
+                print(v)
+                o = f'{round(v[0], 3)}/{round(v[-1], 3)}'
+                o = ((k, o), (k + '_initial', v[0]), (k + '_final', v[-1]))
+            except Exception as e:
+                print(e)
+                o = str(v)
 
         if not isinstance(o, tuple):
             o = (k, o),
