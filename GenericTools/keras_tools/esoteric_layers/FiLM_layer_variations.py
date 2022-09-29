@@ -36,20 +36,24 @@ class FiLM1D(tf.keras.layers.Layer):
         return film
 
 
-class FiLM_Fusion(tf.keras.layers.Layer):
+class FiLM_Fusion_2ways(tf.keras.layers.Layer):
 
-    def __init__(self, filters, initializer='orthogonal', kernel_size=3, **kwargs):
+    def __init__(self, filters, initializer='orthogonal', kernel_size=3, dilation_rate=1, **kwargs):
         super().__init__(**kwargs)
 
         self.initializer = initializer
         self.kernel_size = kernel_size
         self.filters = filters
 
-        self.beta1 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer)
-        self.gamma1 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer)
+        self.beta1 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer,
+                            dilation_rate=dilation_rate)
+        self.gamma1 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer,
+                            dilation_rate=dilation_rate)
 
-        self.beta2 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer)
-        self.gamma2 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer)
+        self.beta2 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer,
+                            dilation_rate=dilation_rate)
+        self.gamma2 = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer,
+                            dilation_rate=dilation_rate)
 
     def call(self, inputs, **kwargs):
         in1, in2 = inputs
@@ -64,6 +68,32 @@ class FiLM_Fusion(tf.keras.layers.Layer):
         in1 = Add()([Multiply()([in1, gamma2]), beta2])
 
         return (in2, in1)
+
+
+FiLM_Fusion = FiLM_Fusion_2ways
+
+
+class FiLM_Fusion_1way(tf.keras.layers.Layer):
+
+    def __init__(self, filters, initializer='orthogonal', kernel_size=3, **kwargs):
+        super().__init__(**kwargs)
+
+        self.initializer = initializer
+        self.kernel_size = kernel_size
+        self.filters = filters
+
+        self.beta = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer)
+        self.gamma = Conv1D(self.filters, self.kernel_size, padding='causal', kernel_initializer=self.initializer)
+
+    def call(self, inputs, **kwargs):
+        in1, in2 = inputs
+
+        beta = self.beta(in1)
+        gamma = self.gamma(in1)
+
+        in2 = Add()([Multiply()([in2, gamma]), beta])
+
+        return in2
 
 
 if __name__ == '__main__':
