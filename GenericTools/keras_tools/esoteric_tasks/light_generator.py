@@ -119,7 +119,7 @@ class LightGenerator(tf.keras.utils.Sequence):
                    batch['description'],
                    batch['input_targets'],
                    batch['output_targets']
-               ],
+               ],batch['output_targets']
 
 
 if __name__ == '__main__':

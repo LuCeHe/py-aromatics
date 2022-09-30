@@ -192,6 +192,7 @@ def masked_sparse_perplexity(mask_value):
 
     return masked_perplexity
 
+masked_perplexity = masked_sparse_perplexity
 
 def f1(y_true, y_pred):
     actual, predicted = y_true, y_pred

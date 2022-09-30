@@ -1,6 +1,6 @@
 
 from GenericTools.keras_tools.esoteric_layers.add_loss_layer import AddLossLayer
-from GenericTools.keras_tools.esoteric_layers.add_metrics_layer import AddMetricsLayer
+from GenericTools.keras_tools.esoteric_layers.add_metrics_layer import AddMetricsLayer, FakeAddMetricsLayer
 from GenericTools.keras_tools.esoteric_layers.close_graph import CloseGraph
 from GenericTools.keras_tools.esoteric_layers.contrastive_loss_language import ContrastiveLossLayer
 from GenericTools.keras_tools.esoteric_layers.dropword import DropWord

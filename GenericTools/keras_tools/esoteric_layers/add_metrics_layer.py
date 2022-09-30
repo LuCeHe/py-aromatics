@@ -26,3 +26,23 @@ class AddMetricsLayer(tf.keras.layers.Layer):
             'prefix_id': self.prefix_id,
         }
         return dict(list(super().get_config().items()) + list(config.items()))
+
+
+
+class FakeAddMetricsLayer(tf.keras.layers.Layer):
+
+    def __init__(self, metrics, prefix_id='', **kwargs):
+        super().__init__(**kwargs)
+        self.additional_metrics = metrics
+        self.prefix_id = prefix_id
+
+    def call(self, inputs, **kwargs):
+        true_output, pred_output = inputs
+        return pred_output
+
+    def get_config(self):
+        config = {
+            'metrics': self.additional_metrics,
+            'prefix_id': self.prefix_id,
+        }
+        return dict(list(super().get_config().items()) + list(config.items()))
