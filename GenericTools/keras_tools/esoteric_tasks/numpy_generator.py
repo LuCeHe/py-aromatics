@@ -29,7 +29,7 @@ class NumpyClassificationGenerator(tf.keras.utils.Sequence):
         self.batch_index = 0
 
         self.steps_per_epoch = int(np.floor((self.X.shape[0]) / self.batch_size)) \
-            if steps_per_epoch == None else steps_per_epoch
+            if steps_per_epoch == None or steps_per_epoch<0 else steps_per_epoch
 
     def on_epoch_end(self):
         self.batch_index = 0

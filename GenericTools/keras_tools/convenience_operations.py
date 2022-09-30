@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import numpy as np
 
 def dynamic_zeros(x, d):
     batch_size = tf.shape(x)[0]
@@ -94,6 +94,52 @@ def snake(logits, frequency=1):
 
     return logits + (1 - tf.cos(2 * frequency * logits)) / (2 * frequency)
 
+
+
+def sample_axis(tensor, max_dim=1024, return_deshuffling=False):
+    # FIXME, not sure if functional for axis different from 1
+    axis = 1
+    if tensor.shape[axis] > max_dim:
+        newdim_inp = sorted(np.random.choice(tensor.shape[axis], max_dim, replace=False))
+        tp = tf.transpose(tensor)
+        g = tf.gather(tp, indices=newdim_inp)
+        out_tensor = tf.transpose(g)
+    else:
+        out_tensor = tensor
+
+    if not return_deshuffling:
+        return out_tensor
+
+    else:
+        if tensor.shape[axis] > max_dim:
+            remaining_indices = list(set(range(tensor.shape[axis])).difference(set(newdim_inp)))
+
+            shuffled_indices = newdim_inp + remaining_indices
+            deshuffle_indices = np.array(shuffled_indices).argsort()
+
+            # sample = tf.gather(params, indices=newdim_inp).numpy()
+            remainder_transpose = tf.gather(tp, indices=remaining_indices)
+            remainder = tf.transpose(remainder_transpose)
+        else:
+            remainder, deshuffle_indices = None, None
+
+        return out_tensor, remainder, deshuffle_indices
+
+
+def desample_axis(sample, remainder, deshuffle_indices):
+
+    if not remainder is None:
+        # FIXME, not sure if functional for axis different from 1
+        axis = 1
+
+        concat = tf.concat([sample, remainder], axis=axis)
+        concat = tf.transpose(concat)
+        deshuffled = tf.gather(concat, indices=deshuffle_indices)
+        deshuffled = tf.transpose(deshuffled)
+    else:
+        deshuffled = sample
+
+    return deshuffled
 
 if __name__ == '__main__':
     t = tf.random.uniform((2, 3, 4)).numpy()

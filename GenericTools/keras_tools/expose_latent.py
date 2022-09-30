@@ -32,3 +32,22 @@ def expose_latent_model(original_model, exclude_layers=[], include_layers=[], id
         return test_model, layer_names
     else:
         return test_model
+
+
+
+def split_model(model, pairs):
+    lnames = [layer.name for layer in model.layers]
+
+    input_shape = model.layers[pairs[0] + 1].input_shape[1:]
+    premodel = tf.keras.models.Model(model.inputs, model.get_layer(lnames[pairs[0]]).output)
+
+    DL_input = tf.keras.layers.Input(input_shape)
+    DL_model = DL_input
+    for layer in model.layers[pairs[0] + 1:pairs[1] + 1]:
+        if isinstance(layer.input, list):
+            break
+        DL_model = layer(DL_model)
+    intermodel = tf.keras.models.Model(inputs=DL_input, outputs=DL_model)
+
+    return premodel, intermodel
+
