@@ -97,13 +97,17 @@ class FiLM_Fusion_1way(tf.keras.layers.Layer):
 
 
 if __name__ == '__main__':
-    sound = Input((300, 3))
-    spike = Input((300, 3))
-    filmed_sound = FiLM1D()([sound, spike])
-    filmed_spike = FiLM1D()([spike, sound])
+    # sound = Input((300, 3))
+    # spike = Input((300, 3))
+    # filmed_sound = FiLM1D()([sound, spike])
+    # filmed_spike = FiLM1D()([spike, sound])
+    #
+    # o = Concatenate(axis=-1)([filmed_sound, filmed_spike])
+    #
+    # model = Model([sound, spike], o)
+    #
+    # model.summary()
 
-    o = Concatenate(axis=-1)([filmed_sound, filmed_spike])
+    import itertools
 
-    model = Model([sound, spike], o)
-
-    model.summary()
+    print(list(itertools.permutations('kvq')))
