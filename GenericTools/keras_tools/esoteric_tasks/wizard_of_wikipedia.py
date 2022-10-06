@@ -2,12 +2,11 @@ import os, shutil, json, random, h5py, argparse
 from tokenizers import Tokenizer
 # from transformers import GPT2Tokenizer, AutoTokenizer, AutoConfig
 import tensorflow as tf
-from tensorflow.keras.utils import pad_sequences
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
 
-from GenericTools.language_tools.unpadding import unpad_sequence
+from GenericTools.language_tools.unpadding import unpad_sequence, pad_sequences
 from GenericTools.stay_organized.download_utils import download_and_unzip
 from GenericTools.stay_organized.mpl_tools import load_plot_settings
 from GenericTools.stay_organized.utils import str2val
