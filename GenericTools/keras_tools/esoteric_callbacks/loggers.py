@@ -1,15 +1,35 @@
-import collections, csv, io
+import collections, csv, io, os
 
 import tensorflow as tf
 import numpy as np
 
 from tensorflow.python.lib.io import file_io
-from tensorflow.python.keras.utils.io_utils import path_to_string
+# from tensorflow.python.keras.utils.io_utils import path_to_string
 
 
 # original by DomJack
 # https://stackoverflow.com/questions/49127214/keras-how-to-output-learning-rate-onto-tensorboard
 
+
+def path_to_string(path):
+  """Convert `PathLike` objects to their string representation.
+
+  If given a non-string typed path object, converts it to its string
+  representation.
+
+  If the object passed to `path` is not among the above, then it is
+  returned unchanged. This allows e.g. passthrough of file objects
+  through this function.
+
+  Args:
+    path: `PathLike` object that represents a path
+
+  Returns:
+    A string representation of the path argument, if Python support exists.
+  """
+  if isinstance(path, os.PathLike):
+    return os.fspath(path)
+  return path
 
 class LearningRateLogger(tf.keras.callbacks.Callback):
     def __init__(self):
