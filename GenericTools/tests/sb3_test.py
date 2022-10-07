@@ -8,9 +8,8 @@ from sb3_contrib import RecurrentPPO, QRDQN, TRPO
 
 FILENAME = os.path.realpath(__file__)
 CDIR = os.path.dirname(FILENAME)
-EXPERIMENTS = os.path.join(CDIR, 'experiments')
+EXPERIMENTS = os.path.abspath(os.path.join(CDIR, '..', '..', '..', 'experiments'))
 os.makedirs(EXPERIMENTS, exist_ok=True)
-
 
 model_dict = {
     'RecurrentPPO': lambda env, seed: RecurrentPPO("MlpLstmPolicy", env, verbose=1, seed=seed),
