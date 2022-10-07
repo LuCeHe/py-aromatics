@@ -2,7 +2,7 @@ from tensorflow.keras import backend as K
 import numpy as np
 import tensorflow as tf
 from scipy.ndimage import distance_transform_edt as distance
-import tensorflow_addons as tfa
+# import tensorflow_addons as tfa
 
 from GenericTools.keras_tools.esoteric_losses.forecasting import smape_loss
 
