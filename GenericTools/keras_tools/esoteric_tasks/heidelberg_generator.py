@@ -10,8 +10,6 @@ from GenericTools.keras_tools.esoteric_tasks.heidelberg_preprocess import genera
 FILENAME = os.path.realpath(__file__)
 CDIR = os.path.dirname(FILENAME)
 
-
-
 data_links = [
     # 'https://compneuro.net/datasets/hd_audio.tar.gz',
     # 'https://compneuro.net/datasets/md5sums.txt',
@@ -26,7 +24,6 @@ data_links = [
     # 'https://compneuro.net/datasets/ssc_valid.h5.gz',
     # 'https://compneuro.net/datasets/ssc_valid.h5.zip',
 ]
-
 
 
 def test_non_spiking():
@@ -160,8 +157,8 @@ class SpokenHeidelbergDigits(BaseGenerator):
         else:
             raise NotImplementedError
 
-        self.X = np.load(path_X(set_name))[set]
-        self.y = np.load(path_y(set_name))[set]
+        self.X = np.load(path_X(set_name), mmap_mode='r')[set]
+        self.y = np.load(path_y(set_name), mmap_mode='r')[set]
         self.random_indices = np.array(list(range(self.X.shape[0])))
         np.random.shuffle(self.random_indices)
 
@@ -185,8 +182,7 @@ def test_generator():
     batch = gen.__getitem__()
     print(batch[0])
 
-
 # if __name__ == '__main__':
 #     download_and_unzip(data_links, HEIDELBERGDIR)
-    # test_generator()
-    # test_non_spiking()
+# test_generator()
+# test_non_spiking()

@@ -77,7 +77,7 @@ class AdaBelief(DecoupledWeightDecayExtension, optimizer_v2.OptimizerV2):
         self._set_hyper("decay", self._initial_decay)
         self._set_hyper("beta_1", beta_1)
         self._set_hyper("beta_2", beta_2)
-        self.epsilon = epsilon or tf.backend_config.epsilon()
+        self.epsilon = epsilon
         self.exclude_from_weight_decay = exclude_from_weight_decay
         self.remove_nans = remove_nans
         self.remove_mean = remove_mean

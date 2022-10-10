@@ -22,7 +22,7 @@ DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', '..', '..', 'data'))
 os.makedirs(DATADIR, exist_ok=True)
 STATSPATH = os.path.join(DATADIR, 'task_stats.csv')
 
-language_tasks = ['ptb', 'wiki103', 'wmt14', 'time_ae_merge', 'monkey', 'wordptb']
+language_tasks = ['ptb', 'wiki103', 'wmt14', 'time_ae_merge', 'monkey', 'wordptb', 'wordptb1']
 
 
 def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time_ae', train_val_test='train',
@@ -72,6 +72,20 @@ def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time
             char_or_word='word',
             config=comments)
 
+
+    elif 'wordptb1' == name:
+        gen = PTBGenerator(
+            data_dir=DATADIR,
+            batch_size=batch_size,
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch,
+            maxlen=maxlen,
+            repetitions=timerepeat,
+            train_val_test=train_val_test,
+            neutral_phase_length=neutral_phase_length,
+            category_coding='',
+            char_or_word='word',
+            config=comments + '_ptb1')
 
     elif 'wordptb_oh' == name:
         gen = PTBGenerator(
@@ -154,7 +168,6 @@ def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time
         )
 
     elif name == 'heidelberg':
-        print(DATADIR)
         gen = SpokenHeidelbergDigits(
             data_dir=DATADIR,
             epochs=epochs,
