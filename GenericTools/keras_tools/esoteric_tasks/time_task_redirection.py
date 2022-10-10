@@ -154,6 +154,7 @@ def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time
         )
 
     elif name == 'heidelberg':
+        print(DATADIR)
         gen = SpokenHeidelbergDigits(
             data_dir=DATADIR,
             epochs=epochs,
