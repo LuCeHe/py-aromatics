@@ -16,8 +16,9 @@ def history_pick(k, v, min_epochs=0):
             try:
                 print(v)
                 o = f'{round(v[0], 3)}/{round(v[-1], 3)}'
-                o = ((k, o), (k + '_initial', v[0]), (k + '_final', v[-1]),
-                     (k + ' mean', np.nanmean(v)), (k + ' min', np.nanmin(v)), (k + ' max', np.nanmax(v))
+                o = ((k, o), (k + ' initial', v[0]), (k + ' final', v[-1]),
+                     (k + ' mean', np.nanmean(v)), (k + ' min', np.nanmin(v)), (k + ' max', np.nanmax(v)),
+                     (k + ' list', v)
                      )
             except Exception as e:
                 print(e)
