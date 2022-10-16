@@ -23,7 +23,7 @@ def simplify_col_names(df):
 
 def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json'],
                           experiments_identifier='', exclude_files=['']):
-    if True: #not os.path.exists(h5path):
+    if not os.path.exists(h5path):
 
         ds = unzip_good_exps(
             zips_folder, unzips_folder,
@@ -38,14 +38,12 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
             for ext in extension_of_interest:
                 fps = glob.glob(os.path.join(d, f'**/*{ext}'), recursive=True)
                 filepaths.extend(fps)
-                print(fps)
 
             for e in exclude_files:
                 filepaths = [fp for fp in filepaths if not e in fp]
 
             for fp in filepaths:
                 json_path = os.path.join(d, fp)
-                print(json_path)
                 if os.path.exists(json_path):
                     if json_path.endswith('checkpoint'):
                         history_df = pd.read_csv(json_path)
@@ -62,7 +60,6 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
         df = pd.DataFrame.from_records(list_results)
 
         df.to_hdf(h5path, key='df', mode='w')
-        print(df.to_string())
     else:
         df = pd.read_hdf(h5path, 'df')  # load it
 
