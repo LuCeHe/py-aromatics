@@ -23,7 +23,7 @@ def simplify_col_names(df):
 
 def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv'],
                           experiments_identifier='', exclude_files=['']):
-    if True: #not os.path.exists(h5path):
+    if True:  # not os.path.exists(h5path):
 
         ds = unzip_good_exps(
             zips_folder, unzips_folder,
@@ -33,7 +33,7 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
 
         list_results = []
         for d in tqdm(ds, desc='Creating pandas'):
-            # print('-'*30)
+            print('-' * 30)
             results = {}
             filepaths = []
             for ext in extension_of_interest:
@@ -48,6 +48,11 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
                 if os.path.exists(fp):
                     if fp.endswith('checkpoint') or fp.endswith('.csv'):
                         history_df = pd.read_csv(fp)
+                        if' "env_id": "stocks-v1"}' in history_df.columns:
+                            history_df = pd.DataFrame(history_df.iloc[:, 1].values[1:],
+                                                      columns=['total_profit']).astype(float)
+                        # print(history_df.to_string())
+
                         res = {k: history_df[k].tolist() for k in history_df.columns.tolist()}
                     else:
                         with open(fp) as f:
@@ -55,6 +60,8 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
 
                     results.update(h for k, v in res.items() for h in history_pick(k, v))
             results.update(path=d)
+            print(d)
+            print(results)
             list_results.append(results)
 
         df = pd.DataFrame.from_records(list_results)
