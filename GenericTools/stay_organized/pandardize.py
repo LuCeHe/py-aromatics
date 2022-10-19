@@ -40,9 +40,9 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
                 fps = glob.glob(os.path.join(d, f'**/*{ext}'), recursive=True)
                 filepaths.extend(fps)
 
-
             for e in exclude_files:
                 filepaths = [fp for fp in filepaths if not e in fp]
+
             for fp in filepaths:
                 # print(fp)
                 json_path = os.path.join(d, fp)
