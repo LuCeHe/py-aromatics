@@ -306,7 +306,7 @@ def similar(a, b):
 def summarize_logs(
         containing_folder,
         remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA:', 'Lmod ', 'cuda/11.0', 'is deprecated'],
-        error_keys=['Aborted', 'error', 'Error'],
+        error_keys=['Aborted', 'error', 'Error', '(core dumped)'],
         completion_keys=['DONE', 'All done', 'Completed after'],
         error_similarity_threshold=.8,
         comments=''
