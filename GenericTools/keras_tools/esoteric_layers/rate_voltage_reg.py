@@ -66,7 +66,7 @@ class RateVoltageRegularization(tf.keras.layers.Layer):
 
     def get_config(self):
         config = {
-            'type': self.type,
+            'config': self.config,
             'reg_cost': self.reg_cost,
         }
 
