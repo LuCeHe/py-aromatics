@@ -10,8 +10,10 @@ def history_pick(k, v, min_epochs=0):
     if isinstance(v, list):
         if any([n in k for n in ['loss', 'perplexity', 'entropy', 'bpc']]):
             o = np.nanmin(v[min_epochs:])
+            # o = v[11]
         elif any([n in k for n in ['acc']]):
             o = np.nanmax(v[min_epochs:])
+            # o = v[11]
         else:
             try:
                 # print(v)
