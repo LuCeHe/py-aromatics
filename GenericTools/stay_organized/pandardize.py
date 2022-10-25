@@ -23,7 +23,7 @@ def simplify_col_names(df):
 
 def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv'],
                           experiments_identifier='', exclude_files=['']):
-    if  not os.path.exists(h5path):
+    if not os.path.exists(h5path):
 
         ds = unzip_good_exps(
             zips_folder, unzips_folder,
@@ -48,7 +48,7 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
                 if os.path.exists(fp):
                     if fp.endswith('checkpoint') or fp.endswith('.csv'):
                         history_df = pd.read_csv(fp)
-                        if' "env_id": "stocks-v1"}' in history_df.columns:
+                        if ' "env_id": "stocks-v1"}' in history_df.columns:
                             history_df = pd.DataFrame(history_df.iloc[:, 1].values[1:],
                                                       columns=['total_profit']).astype(float)
 

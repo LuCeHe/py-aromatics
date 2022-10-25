@@ -144,22 +144,22 @@ class SpokenHeidelbergDigits(BaseGenerator):
 
         if self.tvt == 'test':
             set_name = 'test'
-            set = range(0, 2088)
+            self.set = range(0, 2088)
 
         elif self.tvt in ['validation', 'val']:
             set_name = 'train'
-            set = range(int(95 * 8155 / 100), 8155)
+            self.set = range(int(95 * 8155 / 100), 8155)
 
         elif self.tvt == 'train':
             set_name = 'train'
-            set = range(0, int(95 * 8155 / 100))
+            self.set = range(0, int(95 * 8155 / 100))
 
         else:
             raise NotImplementedError
 
-        self.X = np.load(path_X(set_name), mmap_mode='r')[set]
-        self.y = np.load(path_y(set_name), mmap_mode='r')[set]
-        self.random_indices = np.array(list(range(self.X.shape[0])))
+        self.X = np.load(path_X(set_name), mmap_mode='r')
+        self.y = np.load(path_y(set_name), mmap_mode='r')
+        self.random_indices = np.array(list(self.set))
         np.random.shuffle(self.random_indices)
 
     def data_generation(self):
