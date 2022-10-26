@@ -10,7 +10,7 @@ def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_fo
                     unzip_what=None):
     r"""
     Unzips files collected in a folder, possibly from experiments, and unzips only desired files in temporary folder.
-    By keeping the unzipped files in a different folder, it is faster to eliminate them when the analysis is done,
+    By keeping the unzipped files in a temporary folder, it is faster to eliminate them when the analysis is done,
     and they are no longer necessary.
 
         Args:
