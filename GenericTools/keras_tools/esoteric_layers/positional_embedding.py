@@ -32,7 +32,6 @@ def string_to_emb(embedding, n_neurons):
     return emb_dim, factorized_dim, symbol_embedding, position_embedding
 
 
-
 class ZeroMeanEmbedding(tf.keras.layers.Embedding):
     """
     inspired by https://arxiv.org/pdf/1702.01417.pdf
@@ -183,8 +182,7 @@ class EmbeddingLayer(tf.keras.layers.Layer):
         self.mean = mean
         self.initializer = initializer
         if self.initializer is None:
-            self.initializer = tf.random_normal_initializer(mean=self.mean,
-                                                            stddev=self.stddev)
+            self.initializer = tf.random_normal_initializer(mean=self.mean, stddev=self.stddev)
 
     def build(self, input_shape):
         self.embedding_weights = self.add_weight(
@@ -274,11 +272,12 @@ def get_position_sinusoid(seq_len, hidden_size, min_timescale=1.0, max_timescale
 
 if __name__ == '__main__':
     import numpy as np
+
     vb = 100
     bs, sl, dm = 2, 3, 4
     factorized_dim = 5
     emb = SymbolAndPositionEmbedding(maxlen=sl, vocab_size=vb, embed_dim=dm, factorized_dim=factorized_dim)
-    il = tf.keras.layers.Input((sl, ))
+    il = tf.keras.layers.Input((sl,))
     x = emb(il, mode='embedding')
     x = tf.keras.layers.Dense(2)(x)
     x = tf.keras.layers.Dense(dm)(x)
@@ -287,6 +286,6 @@ if __name__ == '__main__':
 
     model.summary()
 
-    batch = np.random.choice(vb, size=(bs, sl, ))
+    batch = np.random.choice(vb, size=(bs, sl,))
     prediction = model.predict(batch)
     print(prediction.shape)
