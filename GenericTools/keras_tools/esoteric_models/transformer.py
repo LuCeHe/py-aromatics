@@ -195,12 +195,13 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         assert d_model % self.num_heads == 0
 
         self.depth = d_model // self.num_heads
+        print('here!', self.depth)
 
-        self.wq = tf.keras.layers.Dense(d_model)
-        self.wk = tf.keras.layers.Dense(d_model)
-        self.wv = tf.keras.layers.Dense(d_model)
+        self.wq = tf.keras.layers.Dense(d_model, use_bias=False)
+        self.wk = tf.keras.layers.Dense(d_model, use_bias=False)
+        self.wv = tf.keras.layers.Dense(d_model, use_bias=False)
 
-        self.dense = tf.keras.layers.Dense(d_model)
+        self.dense = tf.keras.layers.Dense(d_model, use_bias=False)
 
         self.scaled_dot_product_attention = choose_attention(config)
 
@@ -507,7 +508,7 @@ class Transformer(tf.keras.Model):
         self.decoder = TransformerDecoder(num_layers, d_model, num_heads, dff,
                                           target_vocab_size, pe_target, rate, config=config)
 
-        self.final_layer = tf.keras.layers.Dense(target_vocab_size)
+        # self.final_layer = tf.keras.layers.Dense(target_vocab_size)
         self.pad_idx = pad_idx
 
     def call(self, inputs):
@@ -520,11 +521,11 @@ class Transformer(tf.keras.Model):
 
         # dec_output.shape == (batch_size, tar_seq_len, d_model)
         dec_output, attention_weights = self.decoder(
-            tar, enc_output, look_ahead_mask, dec_padding_mask)
+            tar, enc_output, look_ahead_mask, dec_padding_mask, output_type='embedding_projection')
 
-        final_output = self.final_layer(dec_output)  # (batch_size, tar_seq_len, target_vocab_size)
+        # final_output = self.final_layer(dec_output)  # (batch_size, tar_seq_len, target_vocab_size)
 
-        return final_output, attention_weights
+        return dec_output, attention_weights
 
 
 def test_gpt():
@@ -540,4 +541,13 @@ def test_gpt():
 
 
 if __name__ == '__main__':
-    test_gpt()
+    # test_gpt()
+    maxlen = 128
+    vocab_size = 32000
+    transformer = Transformer(num_layers=6, d_model=512, num_heads=8, dff=2048, input_vocab_size=vocab_size,
+                              target_vocab_size=vocab_size, pe_input=maxlen, pe_target=maxlen, pad_idx=0)
+    batch = np.random.choice(vocab_size, size=(3, maxlen))
+    out = transformer((batch, batch))
+    transformer.summary()
+    print(transformer.count_params())
+    print(out[0].shape)

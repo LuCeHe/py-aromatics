@@ -174,15 +174,13 @@ class EmbeddingLayer(tf.keras.layers.Layer):
     originally: https://github.com/akanyaani/gpt-2-tensorflow2.0/blob/master/layers/embedding_layer.py
     """
 
-    def __init__(self, vocab_size, embedding_size, initializer=None, stddev=0.01, mean=0.0, **kwargs):
+    def __init__(self, vocab_size, embedding_size, initializer='uniform', stddev=0.01, mean=0.0, **kwargs):
         super(EmbeddingLayer, self).__init__(**kwargs)
         self.vocab_size = vocab_size
         self.embedding_size = embedding_size
         self.stddev = stddev
         self.mean = mean
         self.initializer = initializer
-        if self.initializer is None:
-            self.initializer = tf.random_normal_initializer(mean=self.mean, stddev=self.stddev)
 
     def build(self, input_shape):
         self.embedding_weights = self.add_weight(
@@ -215,7 +213,7 @@ class EmbeddingLayer(tf.keras.layers.Layer):
             return embeddings
 
     def projection(self, inputs):
-        with tf.name_scope("output_layer"):
+        with tf.name_scope("projection"):
             batch_size = tf.shape(inputs)[0]
             seq_len = tf.shape(inputs)[1]
 
