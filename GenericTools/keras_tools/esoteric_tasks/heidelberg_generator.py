@@ -117,7 +117,6 @@ class SpokenHeidelbergDigits(BaseGenerator):
                 original_filename = os.path.join(self.HEIDELBERGDIR, "shd_{}.h5".format(set))
 
                 test_X, test_y = generate_dataset(original_filename, dt=4e-3)
-                print(test_X.shape, test_y.shape)
                 np.save(os.path.join(self.HEIDELBERGDIR, "{}X_4ms.npy".format(set)), test_X)
                 np.save(os.path.join(self.HEIDELBERGDIR, "{}y_4ms.npy".format(set)), test_y)
 

@@ -23,7 +23,6 @@ class BaseGenerator(tf.keras.utils.Sequence):
         i = np.repeat(i, self.repetitions, axis=1)
         o = np.repeat(o, self.repetitions, axis=1)
 
-        print(o.shape, i.shape)
         if self.output_type == '[im]o':
             return (i, m), o
         elif self.output_type == '[imo]':
