@@ -9,6 +9,7 @@ from GenericTools.keras_tools.esoteric_tasks.heidelberg_preprocess import genera
 
 FILENAME = os.path.realpath(__file__)
 CDIR = os.path.dirname(FILENAME)
+DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', '..', '..', 'data'))
 
 data_links = [
     # 'https://compneuro.net/datasets/hd_audio.tar.gz',
@@ -134,7 +135,7 @@ class SpokenHeidelbergDigits(BaseGenerator):
         self.batch_size = batch_size
         self.batch_index = 0
 
-        self.steps_per_epoch = int(np.floor((self.X.shape[0]) / self.batch_size)) \
+        self.steps_per_epoch = int(len(self.set) / self.batch_size) \
             if steps_per_epoch == None else steps_per_epoch
 
     def on_epoch_end(self):
@@ -173,16 +174,18 @@ class SpokenHeidelbergDigits(BaseGenerator):
 
 def test_generator():
     gen = SpokenHeidelbergDigits(
+        data_dir=DATADIR,
         epochs=1,
         tvt='train',
         batch_size=32,
-        repetitions=3,
+        repetitions=2,
         steps_per_epoch=None
     )
-    batch = gen.__getitem__()
-    print(batch[0])
+    print(gen.steps_per_epoch)
+    for i in range(gen.steps_per_epoch):
+        batch = gen.__getitem__()
+        print(i, [b.shape for b in batch[0]])
 
-# if __name__ == '__main__':
-#     download_and_unzip(data_links, HEIDELBERGDIR)
-# test_generator()
-# test_non_spiking()
+
+if __name__ == '__main__':
+    test_generator()

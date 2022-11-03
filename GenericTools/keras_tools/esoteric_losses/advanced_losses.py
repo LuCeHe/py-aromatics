@@ -59,8 +59,11 @@ def mode_accuracy(y_true, y_pred):
 
 
 def sparse_mode_accuracy(y_true, y_pred):
-    y_pred = tf.cast(tf.argmax(tf.reduce_sum(y_pred, axis=1), axis=1), tf.float32)
+    # print(y_true)
+    # print(y_pred.shape, y_true.shape)
+    y_pred = tf.cast(tf.argmax(tf.reduce_mean(y_pred, axis=1), axis=1), tf.float32)
     y_true = tf.cast(tf.reduce_mean(y_true, axis=1), tf.float32)
+    # print(y_pred.shape, y_true.shape)
     equal = tf.cast(tf.math.equal(y_pred, y_true), tf.float32)
     acc = tf.reduce_mean(equal)
     return acc
