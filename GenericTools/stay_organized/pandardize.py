@@ -33,11 +33,10 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
 
         list_results = []
         for d in tqdm(ds, desc='Creating pandas'):
-            # print('-' * 30)
+
             results = {}
             filepaths = []
             for ext in extension_of_interest:
-                # print(ext)
                 fps = glob.glob(os.path.join(d, f'**/*{ext}'), recursive=True)
                 filepaths.extend(fps)
 
@@ -65,6 +64,6 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
 
         df.to_hdf(h5path, key='df', mode='w')
     else:
-        df = pd.read_hdf(h5path, 'df')  # load it
+        df = pd.read_hdf(h5path, 'df')
 
     return df
