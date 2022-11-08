@@ -33,6 +33,7 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
 
         list_results = []
         for d in tqdm(ds, desc='Creating pandas'):
+            print(d)
 
             results = {}
             filepaths = []
@@ -44,19 +45,22 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
                 filepaths = [fp for fp in filepaths if not e in fp]
 
             for fp in filepaths:
-                if os.path.exists(fp):
-                    if fp.endswith('checkpoint') or fp.endswith('.csv'):
-                        history_df = pd.read_csv(fp)
-                        if ' "env_id": "stocks-v1"}' in history_df.columns:
-                            history_df = pd.DataFrame(history_df.iloc[:, 1].values[1:],
-                                                      columns=['total_profit']).astype(float)
+                try:
+                    if os.path.exists(fp):
+                        if fp.endswith('checkpoint') or fp.endswith('.csv'):
+                            history_df = pd.read_csv(fp)
+                            if ' "env_id": "stocks-v1"}' in history_df.columns:
+                                history_df = pd.DataFrame(history_df.iloc[:, 1].values[1:],
+                                                          columns=['total_profit']).astype(float)
 
-                        res = {k: history_df[k].tolist() for k in history_df.columns.tolist()}
-                    else:
-                        with open(fp) as f:
-                            res = json.load(f)
+                            res = {k: history_df[k].tolist() for k in history_df.columns.tolist()}
+                        else:
+                            with open(fp) as f:
+                                res = json.load(f)
 
-                    results.update(h for k, v in res.items() for h in history_pick(k, v))
+                        results.update(h for k, v in res.items() for h in history_pick(k, v))
+                except Exception as e:
+                    print(e)
             results.update(path=d)
             list_results.append(results)
 
