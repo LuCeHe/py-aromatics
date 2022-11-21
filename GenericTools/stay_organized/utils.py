@@ -263,6 +263,7 @@ def filetail(f, lines=20):
             and block_end_byte > 0 \
             and f.tell() + block_number * BLOCK_SIZE > 0 \
             and f.tell() <= previous_tell:
+        tell = f.tell()
         if (block_end_byte - BLOCK_SIZE > 0):
             print(previous_tell, f.tell(), block_number, os.SEEK_SET)
             f.seek(f.tell() + block_number * BLOCK_SIZE, os.SEEK_SET)
@@ -274,7 +275,7 @@ def filetail(f, lines=20):
         lines_to_go -= lines_found
         block_end_byte -= BLOCK_SIZE
         block_number -= 1
-        previous_tell = f.tell()
+        previous_tell = tell
     all_read_text = ''.join(reversed(blocks))
     return all_read_text.splitlines()[-total_lines_wanted:]
 
