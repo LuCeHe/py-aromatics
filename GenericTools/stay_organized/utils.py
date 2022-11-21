@@ -262,8 +262,9 @@ def filetail(f, lines=20):
             and block_end_byte > 0 \
             and f.tell() + block_number * BLOCK_SIZE > 0 \
             and f.tell() <= previous_tell:
+
         if (block_end_byte - BLOCK_SIZE > 0):
-            print(f.tell(), block_number, os.SEEK_SET)
+            print(previous_tell, f.tell(), block_number, os.SEEK_SET)
             f.seek(f.tell() + block_number * BLOCK_SIZE, os.SEEK_SET)
             blocks.append(f.read(BLOCK_SIZE))
         else:
