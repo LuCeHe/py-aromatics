@@ -110,7 +110,8 @@ class SpokenHeidelbergDigits(BaseGenerator):
         npy_shd_train_filename = os.path.join(self.HEIDELBERGDIR, "trainX_4ms.npy")
         if not os.path.exists(shd_train_filename):
             os.makedirs(self.HEIDELBERGDIR, exist_ok=True)
-            download_and_unzip(data_links, self.HEIDELBERGDIR)
+            if len(os.listdir(self.HEIDELBERGDIR)) == 0:
+                download_and_unzip(data_links, self.HEIDELBERGDIR)
 
         if not os.path.exists(npy_shd_train_filename):
             for set in ['train', 'test']:
