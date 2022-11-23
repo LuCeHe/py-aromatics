@@ -102,9 +102,10 @@ class SpokenHeidelbergDigits(BaseGenerator):
             tvt='train',
             batch_size=32,
             repetitions=3,
-            steps_per_epoch=None
+            steps_per_epoch=None,
+            string_config='',
     ):
-
+        self.string_config =string_config
         self.HEIDELBERGDIR = os.path.join(data_dir, 'SpikingHeidelbergDigits')
         shd_train_filename = os.path.join(self.HEIDELBERGDIR, "shd_train.h5")
         npy_shd_train_filename = os.path.join(self.HEIDELBERGDIR, "trainX_4ms.npy")
@@ -126,7 +127,7 @@ class SpokenHeidelbergDigits(BaseGenerator):
 
         self.on_epoch_end()
         self.length = self.X.shape[1]
-        self.in_dim = self.X.shape[2]
+        self.in_dim = self.X.shape[2] if not 'maxpoolshd' in self.string_config else self.X.shape[2]//10
         self.out_dim = 20
         self.in_len = self.length * repetitions
         self.out_len = self.length * repetitions
@@ -167,6 +168,11 @@ class SpokenHeidelbergDigits(BaseGenerator):
         indices = self.random_indices[:self.batch_size]
         self.random_indices = self.random_indices[self.batch_size:]
         batch = self.X[indices]
+        if 'maxpoolshd' in self.string_config:
+            batch = tf.keras.layers.MaxPool1D(
+                pool_size=10, strides=10, padding="valid", data_format="channels_first"
+            )(    batch)
+
         target = self.y[indices]
         target = np.repeat(target[..., None], self.length, 1)
         return {'input_spikes': batch, 'target_output': target, 'mask': 1.}
@@ -179,12 +185,19 @@ def test_generator():
         tvt='train',
         batch_size=32,
         repetitions=2,
-        steps_per_epoch=None
+        steps_per_epoch=1,
+        string_config='maxpoolshd'
     )
     print(gen.steps_per_epoch)
     for i in range(gen.steps_per_epoch):
         batch = gen.__getitem__()
         print(i, [b.shape for b in batch[0]])
+
+    image = batch[0][0]
+    print(image.shape)
+    fig, ax = plt.subplots(1, 1, figsize=(6, 15), gridspec_kw={'hspace': 0})
+    im = ax.pcolormesh(image[0])
+    plt.show()
 
 
 if __name__ == '__main__':

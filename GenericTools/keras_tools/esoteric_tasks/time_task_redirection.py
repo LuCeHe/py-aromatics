@@ -174,7 +174,9 @@ def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time
             batch_size=batch_size,
             tvt=train_val_test,
             steps_per_epoch=steps_per_epoch,
-            repetitions=timerepeat)
+            repetitions=timerepeat,
+        string_config = comments
+        )
 
 
     elif name == 'lca':
