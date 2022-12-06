@@ -122,6 +122,7 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
             self.pos_emb = lambda x: 0
 
     def embedding(self, inputs):
+        print('inside!', inputs)
         with tf.name_scope("embedding"):
             seq_len = tf.shape(inputs)[1]
 

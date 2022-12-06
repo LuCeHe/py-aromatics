@@ -22,12 +22,15 @@ def simplify_col_names(df):
 
 
 def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv'],
-                          experiments_identifier='', exclude_files=['']):
+                          experiments_identifier=[], exclude_files=['']):
+    if isinstance(experiments_identifier, str):
+        experiments_identifier = [experiments_identifier]
+
     if not os.path.exists(h5path):
 
         ds = unzip_good_exps(
             zips_folder, unzips_folder,
-            exp_identifiers=[experiments_identifier], except_folders=[],
+            exp_identifiers=experiments_identifier, except_folders=[],
             unzip_what=extension_of_interest
         )
 
