@@ -38,7 +38,7 @@ def expose_latent_model(original_model, exclude_layers=[], include_layers=[], id
 def split_model(model, pairs):
     lnames = [layer.name for layer in model.layers]
 
-    input_shape = model.layers[pairs[0] + 1].input_shape[1:]
+    input_shape = model.get_layer(lnames[pairs[0] + 1]).input_shape[1:]
     premodel = tf.keras.models.Model(model.inputs, model.get_layer(lnames[pairs[0]]).output)
 
     DL_input = tf.keras.layers.Input(input_shape)
