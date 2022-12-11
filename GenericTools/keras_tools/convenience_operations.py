@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
+
 def dynamic_zeros(x, d):
     batch_size = tf.shape(x)[0]
     return tf.zeros(tf.stack([batch_size, 1, d]))
@@ -95,15 +96,12 @@ def snake(logits, frequency=1):
     return logits + (1 - tf.cos(2 * frequency * logits)) / (2 * frequency)
 
 
-
-def sample_axis(tensor, max_dim=1024, return_deshuffling=False):
+def sample_axis(tensor, max_dim=1024, return_deshuffling=False, axis=1):
     # FIXME, not sure if functional for axis different from 1
-    axis = 1
+
     if tensor.shape[axis] > max_dim:
         newdim_inp = sorted(np.random.choice(tensor.shape[axis], max_dim, replace=False))
-        tp = tf.transpose(tensor)
-        g = tf.gather(tp, indices=newdim_inp)
-        out_tensor = tf.transpose(g)
+        out_tensor = tf.gather(tensor, indices=newdim_inp, axis=axis)
     else:
         out_tensor = tensor
 
@@ -117,32 +115,84 @@ def sample_axis(tensor, max_dim=1024, return_deshuffling=False):
             shuffled_indices = newdim_inp + remaining_indices
             deshuffle_indices = np.array(shuffled_indices).argsort()
 
-            # sample = tf.gather(params, indices=newdim_inp).numpy()
-            remainder_transpose = tf.gather(tp, indices=remaining_indices)
-            remainder = tf.transpose(remainder_transpose)
+            remainder = tf.gather(tensor, indices=remaining_indices, axis=axis)
         else:
             remainder, deshuffle_indices = None, None
 
         return out_tensor, remainder, deshuffle_indices
 
 
-def desample_axis(sample, remainder, deshuffle_indices):
-
+def desample_axis(sample, remainder, deshuffle_indices, axis = 1):
     if not remainder is None:
-        # FIXME, not sure if functional for axis different from 1
-        axis = 1
-
         concat = tf.concat([sample, remainder], axis=axis)
-        concat = tf.transpose(concat)
-        deshuffled = tf.gather(concat, indices=deshuffle_indices)
-        deshuffled = tf.transpose(deshuffled)
+        deshuffled = tf.gather(concat, indices=deshuffle_indices, axis=axis)
     else:
         deshuffled = sample
 
     return deshuffled
 
-if __name__ == '__main__':
+
+def test_shuffling():
     t = tf.random.uniform((2, 3, 4)).numpy()
     st = tf_shuffle_axis(t, axis=2)
     print(t)
     print(st)
+
+
+def test_sampling_desampling():
+
+    test_several_samples = False
+    test_choosing_axis = False
+    test_deslice = True
+
+    if test_several_samples:
+        print('-' * 20)
+        t = tf.random.uniform((2, 34))
+        st, remainder, deshuffle_indices = sample_axis(t, max_dim=4, return_deshuffling=True)
+        print('original shape:', t.shape)
+        print('sample shape:  ', st.shape)
+        print('reminder shape:', remainder.shape)
+        print(deshuffle_indices)
+        dst = desample_axis(st, remainder, deshuffle_indices)
+        print('Is the desampled tensor equal to how it was at the beginning?', np.all(dst == t))
+
+    if test_choosing_axis:
+        for axis in [0, 1, 2]:
+            print('-' * 20)
+
+            t = tf.random.uniform((2, 3, 4))
+            st, remainder, deshuffle_indices = sample_axis(t, max_dim=1, return_deshuffling=True, axis=axis)
+            print('original shape:', t.shape)
+            print('sample shape:  ', st.shape)
+            print('reminder shape:', remainder.shape)
+            print(deshuffle_indices)
+            dst = desample_axis(st, remainder, deshuffle_indices, axis=axis)
+            print('desampld shape:', dst.shape)
+            print('Is the desampled tensor equal to how it was at the beginning?', np.all(dst==t))
+
+    if test_deslice:
+        print('-' * 20)
+
+        deslice_axis=[1,2]
+        t = tf.random.uniform((2, 3, 4, 5))
+        st = t
+        reminders = []
+        deshuffles = []
+        for axis in deslice_axis:
+            st, remainder, deshuffle_indices = sample_axis(st, max_dim=1, return_deshuffling=True, axis=axis)
+            reminders.append(remainder)
+            deshuffles.append(deshuffle_indices)
+
+            print('original shape:', t.shape)
+            print('sample shape:  ', st.shape)
+            print('reminder shape:', remainder.shape)
+            print(deshuffle_indices)
+
+        for j, _ in enumerate(deslice_axis):
+            i = -j - 1
+            st = desample_axis(st, reminders[i], deshuffles[i], axis=deslice_axis[i])
+            print('desampld shape:', st.shape)
+        print('Is the desampled tensor equal to how it was at the beginning?', np.all(st==t))
+
+if __name__ == '__main__':
+    test_sampling_desampling()
