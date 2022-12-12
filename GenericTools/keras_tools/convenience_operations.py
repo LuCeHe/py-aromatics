@@ -97,8 +97,6 @@ def snake(logits, frequency=1):
 
 
 def sample_axis(tensor, max_dim=1024, return_deshuffling=False, axis=1):
-    # FIXME, not sure if functional for axis different from 1
-
     if tensor.shape[axis] > max_dim:
         newdim_inp = sorted(np.random.choice(tensor.shape[axis], max_dim, replace=False))
         out_tensor = tf.gather(tensor, indices=newdim_inp, axis=axis)
