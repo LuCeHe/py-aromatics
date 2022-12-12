@@ -139,8 +139,8 @@ def test_shuffling():
 
 def test_sampling_desampling():
 
-    test_several_samples = False
-    test_choosing_axis = False
+    test_several_samples = True
+    test_choosing_axis = True
     test_deslice = True
 
     if test_several_samples:
