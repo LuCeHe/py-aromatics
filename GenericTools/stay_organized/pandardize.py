@@ -86,7 +86,7 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
 
         for gpath in zips_folder:
             new.extend([p.replace('.zip', '') for p in os.listdir(gpath) if 'zip' in p])
-        missing = [p for p in new if not p in old]
+        missing = [p for p in new if not p in old and experiments_identifier in p]
 
         newh5path = h5path.replace('.h5', '_missing.h5')
 
