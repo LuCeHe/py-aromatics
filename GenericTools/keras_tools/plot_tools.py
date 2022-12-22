@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 
-from keras_tools.convergence_metric import convergence_estimation
+from GenericTools.keras_tools.convergence_metric import convergence_estimation
 
 
 # reduce_prod
