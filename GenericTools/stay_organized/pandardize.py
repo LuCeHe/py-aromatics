@@ -22,7 +22,7 @@ def simplify_col_names(df):
 
 
 def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv'],
-                          experiments_identifier=[], exclude_files=['']):
+                          experiments_identifier=[], exclude_files=[''], exclude_columns=[]):
     if isinstance(experiments_identifier, str):
         experiments_identifier = [experiments_identifier]
 
@@ -36,7 +36,7 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
 
         list_results = []
         for d in tqdm(ds, desc='Creating pandas'):
-            print(d)
+            # print(d)
 
             results = {}
             filepaths = []
@@ -69,6 +69,13 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
 
         df = pd.DataFrame.from_records(list_results)
 
+        for c_name in exclude_columns:
+            df = df[df.columns.drop(list(df.filter(regex=c_name)))]
+        # print(df.to_string())
+        d = df.describe()
+        m = d.idxmax(axis=1)
+        print(d.to_string())
+        print(m.to_string())
         df.to_hdf(h5path, key='df', mode='w')
     else:
         df = pd.read_hdf(h5path, 'df')
@@ -76,9 +83,9 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
 
 
 def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv'],
-                          experiments_identifier=[], exclude_files=[''], check_for_new=False):
+                          experiments_identifier=[], exclude_files=[''], exclude_columns=[], check_for_new=False):
     df = zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=extension_of_interest,
-                          experiments_identifier=experiments_identifier, exclude_files=exclude_files)
+                          experiments_identifier=experiments_identifier, exclude_files=exclude_files,exclude_columns=exclude_columns)
 
     if check_for_new:
         new = []
@@ -93,9 +100,10 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
         if len(missing) > 0:
             ndf = zips_to_pandas(
                 h5path=newh5path, zips_folder=zips_folder, unzips_folder=unzips_folder, experiments_identifier=missing,
-                exclude_files=['cout.txt']
+                exclude_files=['cout.txt'],exclude_columns=exclude_columns
             )
             bigdf = pd.concat([df, ndf])
+            print(bigdf.to_string())
             bigdf.to_hdf(h5path, key='df', mode='w')
             df = bigdf
 

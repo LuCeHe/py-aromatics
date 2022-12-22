@@ -11,7 +11,7 @@ def run_experiments(
     delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
 
     # stop training 2 hours before the total allocated time, to run tests
-    stop_training = delta.total_seconds() - duration['prestop_training_hours'] * 3600
+    stop_training = int(delta.total_seconds() - duration['prestop_training_hours'] * 3600)
 
     hours, remainder = divmod(delta.total_seconds(), 3600)
     minutes, seconds = divmod(remainder, 60)
