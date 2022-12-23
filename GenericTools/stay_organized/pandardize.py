@@ -111,3 +111,42 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
 
 
     return df
+
+
+
+def complete_missing_exps(sdf, exps, coi):
+
+    data = {k: [] for k in coi}
+    for d in exps:
+        for k in data.keys():
+            insertion = d[k]
+            data[k].append(insertion)
+
+    all_exps = pd.DataFrame.from_dict(data)
+    # print(all_exps.to_string())
+
+    # remove the experiments that were run successfully
+    df = pd.concat([sdf, all_exps])
+    df = df.drop_duplicates(keep=False)
+
+    keys = list(all_exps.columns.values)
+    i1 = all_exps.set_index(keys).index
+    i2 = df.set_index(keys).index
+    df = df[i2.isin(i1)]
+
+    sdf = sdf.drop_duplicates()
+
+    # df = df[~df['task_name'].str.contains('wordptb1')]
+    # df = df[~df['task_name'].str.contains('wordptb')]
+    # df = df[df['task_name'].str.contains('wordptb')]
+
+    print('left, done, all: ', df.shape, sdf.shape, all_exps.shape)
+    print('left')
+    print(df.to_string())
+
+    experiments = []
+    for index, row in df.iterrows():
+        experiment = {k: [row[k]] for k in df.columns}
+        experiments.append(experiment)
+
+    print(experiments)
