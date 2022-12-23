@@ -74,8 +74,7 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
         # print(df.to_string())
         d = df.describe()
         m = d.idxmax(axis=1)
-        print(d.to_string())
-        print(m.to_string())
+
         df.to_hdf(h5path, key='df', mode='w')
     else:
         df = pd.read_hdf(h5path, 'df')
