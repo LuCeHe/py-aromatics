@@ -195,7 +195,6 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         assert d_model % self.num_heads == 0
 
         self.depth = d_model // self.num_heads
-        print('here!', self.depth)
 
         self.wq = tf.keras.layers.Dense(d_model, use_bias=False)
         self.wk = tf.keras.layers.Dense(d_model, use_bias=False)

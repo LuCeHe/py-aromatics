@@ -11,6 +11,16 @@ def mase(y_true, y_pred):
     return diff / sust
 
 
+
+def mase2(y_true, y_pred):
+    M = tf.reduce_max(y_true)
+    m = tf.reduce_min(y_true)
+    sust = tf.abs(M - m)
+    diff = tf.reduce_mean(tf.abs(y_pred - y_true))
+
+    return diff / sust
+
+
 def smape_loss(y_true, y_pred):
     # by PigSpdr:
     # https://datascience.stackexchange.com/questions/41093/using-smape-as-a-loss-function-for-an-lstm
@@ -52,6 +62,10 @@ def smape_loss_c(y_true, y_pred):
 
 def owa(y_true, y_pred):
     return mase(y_true, y_pred) + smape_loss(y_true, y_pred)
+
+def owa2(y_true, y_pred):
+    return mase2(y_true, y_pred) + smape_loss(y_true, y_pred)
+
 
 
 def match_directions_rate(y_true, y_pred):

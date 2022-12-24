@@ -278,6 +278,7 @@ def si_sdr_loss(y_true, y_pred):
 
 
 def pearson_r(y_true, y_pred):
+    epsilon= 1e-8
     # original: https://github.com/WenYanger/Keras_Metrics/
     x = y_true
     y = y_pred
@@ -287,7 +288,7 @@ def pearson_r(y_true, y_pred):
     r_num = K.sum(xm * ym)
     x_square_sum = K.sum(xm * xm)
     y_square_sum = K.sum(ym * ym)
-    r_den = K.sqrt(x_square_sum * y_square_sum)
+    r_den = K.sqrt(x_square_sum * y_square_sum)+epsilon
     r = r_num / r_den
     return K.mean(r)
 
@@ -308,7 +309,7 @@ def pearson_r_a(y_true, y_pred):
 
 
 def pearson_loss(y_true, y_pred):
-    return - pearson_r(y_true, y_pred)
+    return - pearson_r_a(y_true, y_pred)
 
 
 @tf.custom_gradient
