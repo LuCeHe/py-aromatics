@@ -15,14 +15,8 @@ def history_pick(k, v, min_epochs=0):
 
 
     if isinstance(v, list):
-        # if any([n in k for n in ['loss', 'perplexity', 'entropy', 'bpc']]):
-        #     o = np.nanmin(v[min_epochs:])
-        #     # o = v[11]
-        # elif any([n in k for n in ['acc']]):
-        #     o = np.nanmax(v[min_epochs:])
-        #     # o = v[11]
-        # else:
-        try:
+        if True:
+        # try:
             o = [(k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'), (k + ' initial', v[0]), (k + ' final', v[-1]),
                  (k + ' mean', np.nanmean(v)), (k + ' min', np.nanmin(v)), (k + ' max', np.nanmax(v)),
                  (k + ' list', v), (k + ' len', len(v)),
@@ -31,9 +25,9 @@ def history_pick(k, v, min_epochs=0):
             # if 'loss' == k:
             #     o += [('convergence', convergence_estimation(v))]
             o = tuple(o)
-        except Exception as e:
-            print(e)
-            o = str(v)
+        # except Exception as e:
+        #     print(e)
+        #     o = str(v)
 
         if not isinstance(o, tuple):
             o = (k, o),

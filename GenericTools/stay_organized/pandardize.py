@@ -48,7 +48,8 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                 filepaths = [fp for fp in filepaths if not e in fp]
 
             for fp in filepaths:
-                try:
+                if True:
+                # try:
                     if os.path.exists(fp):
                         if fp.endswith('checkpoint') or fp.endswith('.csv'):
                             history_df = pd.read_csv(fp)
@@ -62,8 +63,8 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                                 res = json.load(f)
 
                         results.update(h for k, v in res.items() for h in history_pick(k, v))
-                except Exception as e:
-                    print(e)
+                # except Exception as e:
+                #     print(e)
             results.update(path=d)
             list_results.append(results)
 
