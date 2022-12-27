@@ -28,8 +28,8 @@ def history_pick(k, v, min_epochs=0):
                  (k + ' list', v), (k + ' len', len(v)),
                  (k + ' argmin', np.nanargmin(v)), (k + ' argmax', np.nanargmax(v)),
                  ]
-            if 'loss' == k:
-                o += [('convergence', convergence_estimation(v))]
+            # if 'loss' == k:
+            #     o += [('convergence', convergence_estimation(v))]
             o = tuple(o)
         except Exception as e:
             print(e)
