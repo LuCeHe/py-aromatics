@@ -33,9 +33,9 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
             exp_identifiers=experiments_identifier, except_folders=[],
             unzip_what=extension_of_interest
         )
-
+        print(ds)
         list_results = []
-        for d in tqdm(ds[412:], desc='Creating pandas'):
+        for d in tqdm(ds, desc='Creating pandas'):
             print()
             print(d)
 
@@ -49,8 +49,8 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                 filepaths = [fp for fp in filepaths if not e in fp]
 
             for fp in filepaths:
-                if True:
-                # try:
+                # if True:
+                try:
                     if os.path.exists(fp):
                         if fp.endswith('checkpoint') or fp.endswith('.csv'):
                             history_df = pd.read_csv(fp)
@@ -64,8 +64,8 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                                 res = json.load(f)
 
                         results.update(h for k, v in res.items() for h in history_pick(k, v))
-                # except Exception as e:
-                #     print(e)
+                except Exception as e:
+                    print(e)
             results.update(path=d)
             list_results.append(results)
 
@@ -101,7 +101,8 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
         if len(missing) > 0:
             ndf = zips_to_pandas(
                 h5path=newh5path, zips_folder=zips_folder, unzips_folder=unzips_folder, experiments_identifier=missing,
-                exclude_files=['cout.txt'],exclude_columns=exclude_columns
+                exclude_files=['cout.txt'], exclude_columns=exclude_columns,
+                extension_of_interest=extension_of_interest,
             )
             bigdf = pd.concat([df, ndf])
             print(bigdf.to_string())
