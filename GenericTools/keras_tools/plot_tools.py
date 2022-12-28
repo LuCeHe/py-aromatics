@@ -15,6 +15,8 @@ def history_pick(k, v, min_epochs=0):
 
 
     if isinstance(v, list):
+        print(k)
+        print(v[:5])
         if True:
         # try:
             o = [(k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'), (k + ' initial', v[0]), (k + ' final', v[-1]),

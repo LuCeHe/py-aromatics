@@ -35,8 +35,9 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
         )
 
         list_results = []
-        for d in tqdm(ds, desc='Creating pandas'):
-            # print(d)
+        for d in tqdm(ds[412:], desc='Creating pandas'):
+            print()
+            print(d)
 
             results = {}
             filepaths = []
