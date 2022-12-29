@@ -22,7 +22,8 @@ def simplify_col_names(df):
 
 
 def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv'],
-                          experiments_identifier=[], exclude_files=[''], exclude_columns=[]):
+                   experiments_identifier=[], exclude_files=[''], exclude_columns=[],
+                   force_keep_column=[]):
     if isinstance(experiments_identifier, str):
         experiments_identifier = [experiments_identifier]
 
@@ -33,7 +34,7 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
             exp_identifiers=experiments_identifier, except_folders=[],
             unzip_what=extension_of_interest
         )
-        print(ds)
+
         list_results = []
         for d in tqdm(ds, desc='Creating pandas'):
             # print()
@@ -63,7 +64,12 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                             with open(fp) as f:
                                 res = json.load(f)
 
-                        results.update(h for k, v in res.items() for h in history_pick(k, v))
+                        results.update(
+                            h
+                            for k, v in res.items() if not any([e in k for e in exclude_columns])
+                            or k in force_keep_column
+                            for h in history_pick(k, v)
+                        )
                 except Exception as e:
                     print(e)
             results.update(path=d)
@@ -71,11 +77,13 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
 
         df = pd.DataFrame.from_records(list_results)
 
+        print(list(df.columns))
         for c_name in exclude_columns:
             df = df[df.columns.drop(list(df.filter(regex=c_name)))]
+        print(list(df.columns))
         # print(df.to_string())
-        d = df.describe()
-        m = d.idxmax(axis=1)
+        # d = df.describe()
+        # m = d.idxmax(axis=1)
 
         df.to_hdf(h5path, key='df', mode='w')
     else:
@@ -84,9 +92,11 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
 
 
 def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv'],
-                          experiments_identifier=[], exclude_files=[''], exclude_columns=[], check_for_new=False):
+                          experiments_identifier=[], exclude_files=[''], exclude_columns=[],
+                          force_keep_column=[], check_for_new=False):
     df = zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=extension_of_interest,
-                          experiments_identifier=experiments_identifier, exclude_files=exclude_files,exclude_columns=exclude_columns)
+                        experiments_identifier=experiments_identifier, exclude_files=exclude_files,
+                        exclude_columns=exclude_columns, force_keep_column=force_keep_column)
 
     if check_for_new:
         new = []
@@ -112,13 +122,10 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
         if os.path.exists(newh5path):
             os.remove(newh5path)
 
-
     return df
 
 
-
 def complete_missing_exps(sdf, exps, coi):
-
     data = {k: [] for k in coi}
     for d in exps:
         for k in data.keys():
