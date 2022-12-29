@@ -37,8 +37,6 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
 
         list_results = []
         for d in tqdm(ds, desc='Creating pandas'):
-            # print()
-            # print(d)
 
             results = {}
             filepaths = []
@@ -66,12 +64,13 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
 
                         results.update(
                             h
-                            for k, v in res.items() if not any([e in k for e in exclude_columns])
-                            or k in force_keep_column
+                            for k, v in res.items() if (not any([e in k for e in exclude_columns])
+                                                        or k in force_keep_column)
                             for h in history_pick(k, v)
                         )
                 except Exception as e:
-                    print(e)
+                    print(fp)
+                    print('    ', e)
             results.update(path=d)
             list_results.append(results)
 

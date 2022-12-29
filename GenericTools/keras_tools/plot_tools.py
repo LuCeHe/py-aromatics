@@ -11,12 +11,13 @@ def history_pick(k, v, min_epochs=0):
     # v = np.array(v)
     if isinstance(v, str):
         if v.startswith('[') and v.endswith(']'):
-            v = [float(n) for n in v[1:-1].split(', ')]
+            if not 'None' in v:
+                v = [float(n) for n in v[1:-1].split(', ')]
+            else:
+                v = '[Nones]'
 
 
     if isinstance(v, list):
-        # print(k)
-        # print(v[:5])
         if True:
         # try:
             o = [(k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'), (k + ' initial', v[0]), (k + ' final', v[-1]),
