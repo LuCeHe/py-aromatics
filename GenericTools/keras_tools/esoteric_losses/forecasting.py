@@ -11,6 +11,13 @@ def mase(y_true, y_pred):
     return diff / sust
 
 
+def msae(y_true, y_pred):
+    bern = tf.cast(tf.random.uniform(shape=tf.shape(y_true), minval=0, maxval=1) > .5, tf.float32)
+    mse = tf.keras.losses.MSE(bern * y_true, bern * y_pred)
+    mae = tf.keras.losses.MAE((1 - bern) * y_true, (1 - bern) * y_pred)
+    loss = mse + mae
+    return loss
+
 
 def mase2(y_true, y_pred):
     M = tf.reduce_max(y_true)
@@ -63,9 +70,9 @@ def smape_loss_c(y_true, y_pred):
 def owa(y_true, y_pred):
     return mase(y_true, y_pred) + smape_loss(y_true, y_pred)
 
+
 def owa2(y_true, y_pred):
     return mase2(y_true, y_pred) + smape_loss(y_true, y_pred)
-
 
 
 def match_directions_rate(y_true, y_pred):
@@ -86,10 +93,9 @@ def drchannel(channel):
     return drc
 
 
-
 if __name__ == '__main__':
-    t = tf.random.normal((2,3))
-    p = tf.random.normal((2,3))
+    t = tf.random.normal((2, 3))
+    p = tf.random.normal((2, 3))
 
-    l = match_directions_rate(t,p)
+    l = match_directions_rate(t, p)
     print(l)

@@ -48,7 +48,10 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                 filepaths = [fp for fp in filepaths if not e in fp]
 
             for fp in filepaths:
-                if True:
+                file_stats = os.stat(fp)
+                if not file_stats.st_size == 0:
+                    # print(fp)
+                    # print(file_stats.st_size)
                 # try:
                     if os.path.exists(fp):
                         if fp.endswith('checkpoint') or fp.endswith('.csv'):
@@ -58,9 +61,11 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                                                           columns=['total_profit']).astype(float)
 
                             res = {k: history_df[k].tolist() for k in history_df.columns.tolist()}
-                        else:
+                        elif fp.endswith('.json') or fp.endswith('.txt'):
                             with open(fp) as f:
                                 res = json.load(f)
+                        else:
+                            res = {}
 
                         results.update(
                             h
