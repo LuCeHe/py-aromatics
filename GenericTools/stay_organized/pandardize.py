@@ -48,8 +48,8 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                 filepaths = [fp for fp in filepaths if not e in fp]
 
             for fp in filepaths:
-                # if True:
-                try:
+                if True:
+                # try:
                     if os.path.exists(fp):
                         if fp.endswith('checkpoint') or fp.endswith('.csv'):
                             history_df = pd.read_csv(fp)
@@ -68,21 +68,14 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                                                         or k in force_keep_column)
                             for h in history_pick(k, v)
                         )
-                except Exception as e:
-                    print(fp)
-                    print('    ', e)
+                # except Exception as e:
+                #     print('\n')
+                #     print(fp)
+                #     print('    ', e)
             results.update(path=d)
             list_results.append(results)
 
         df = pd.DataFrame.from_records(list_results)
-
-        print(list(df.columns))
-        for c_name in exclude_columns:
-            df = df[df.columns.drop(list(df.filter(regex=c_name)))]
-        print(list(df.columns))
-        # print(df.to_string())
-        # d = df.describe()
-        # m = d.idxmax(axis=1)
 
         df.to_hdf(h5path, key='df', mode='w')
     else:
@@ -114,7 +107,7 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
                 extension_of_interest=extension_of_interest,
             )
             bigdf = pd.concat([df, ndf])
-            print(bigdf.to_string())
+            # print(bigdf.to_string())
             bigdf.to_hdf(h5path, key='df', mode='w')
             df = bigdf
 

@@ -1,42 +1,49 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+# import string
 import numpy as np
 
 from GenericTools.keras_tools.convergence_metric import convergence_estimation
 
-
+# alphabet = list(string.ascii_lowercase)
 # reduce_prod
 def history_pick(k, v, min_epochs=0):
+
+    o = None
     # if isinstance(v,list):
     # v = np.array(v)
     if isinstance(v, str):
         if v.startswith('[') and v.endswith(']'):
-            if not 'None' in v:
+            if not 'None' in v and not len(v) == 2:
                 v = [float(n) for n in v[1:-1].split(', ')]
-            else:
+            elif 'None' in v:
                 v = '[Nones]'
 
-
     if isinstance(v, list):
-        if True:
-        # try:
-            o = [(k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'), (k + ' initial', v[0]), (k + ' final', v[-1]),
-                 (k + ' mean', np.nanmean(v)), (k + ' min', np.nanmin(v)), (k + ' max', np.nanmax(v)),
-                 (k + ' list', v), (k + ' len', len(v)),
-                 (k + ' argmin', np.nanargmin(v)), (k + ' argmax', np.nanargmax(v)),
-                 ]
-            # if 'loss' == k:
-            #     o += [('convergence', convergence_estimation(v))]
-            o = tuple(o)
-        # except Exception as e:
-        #     print(e)
-        #     o = str(v)
 
-        if not isinstance(o, tuple):
-            o = (k, o),
+        if not len(v) == 0 and not np.isnan(v).all():
+            if True:
+                # try:
+                o = [(k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'), (k + ' initial', v[0]),
+                     (k + ' final', v[-1]),
+                     (k + ' mean', np.nanmean(v)), (k + ' min', np.nanmin(v)), (k + ' max', np.nanmax(v)),
+                     (k + ' list', v), (k + ' len', len(v)),
+                     (k + ' argmin', np.nanargmin(v)), (k + ' argmax', np.nanargmax(v)),
+                     ]
+                # if 'loss' == k:
+                #     o += [('convergence', convergence_estimation(v))]
+                o = tuple(o)
+            # except Exception as e:
+            #     print(e)
+            #     o = str(v)
+        elif np.isnan(v).all():
+            v = ['nans']
+        else:
+            v = str(v)
 
-    else:
+    if o is None:
         o = (k, v),
+
     return o
 
 
