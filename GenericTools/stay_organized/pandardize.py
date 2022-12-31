@@ -39,6 +39,7 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
         for d in tqdm(ds, desc='Creating pandas'):
 
             results = {}
+            aux_results = {}
             filepaths = []
             for ext in extension_of_interest:
                 fps = glob.glob(os.path.join(d, f'**/*{ext}'), recursive=True)
@@ -50,9 +51,7 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
             for fp in filepaths:
                 file_stats = os.stat(fp)
                 if not file_stats.st_size == 0:
-                    # print(fp)
-                    # print(file_stats.st_size)
-                # try:
+                    # try:
                     if os.path.exists(fp):
                         if fp.endswith('checkpoint') or fp.endswith('.csv'):
                             history_df = pd.read_csv(fp)
@@ -67,12 +66,14 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                         else:
                             res = {}
 
-                        results.update(
+                        aux_results.update(
                             h
-                            for k, v in res.items() if (not any([e in k for e in exclude_columns])
-                                                        or k in force_keep_column)
+                            for k, v in res.items()
                             for h in history_pick(k, v)
                         )
+                        results.update({k: v for k, v in aux_results.items()
+                                        if (not any([e in k for e in exclude_columns])
+                                            or k in force_keep_column)})
                 # except Exception as e:
                 #     print('\n')
                 #     print(fp)
@@ -81,7 +82,7 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
             list_results.append(results)
 
         df = pd.DataFrame.from_records(list_results)
-
+        print(list(df.columns))
         df.to_hdf(h5path, key='df', mode='w')
     else:
         df = pd.read_hdf(h5path, 'df')
