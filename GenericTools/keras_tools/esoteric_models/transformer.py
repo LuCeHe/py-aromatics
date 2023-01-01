@@ -277,7 +277,7 @@ def point_wise_feed_forward_network(d_model, dff, config):
 # encoder and decoder
 
 class EncoderLayer(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads, dff, rate=0.1, config='original_transformer'):
+    def __init__(self, d_model, num_heads, dff, rate=0.1, config='original_transformer', do_fn=None):
         super(EncoderLayer, self).__init__()
 
         self.mha = MultiHeadAttention(d_model, num_heads, config=config)
@@ -286,8 +286,8 @@ class EncoderLayer(tf.keras.layers.Layer):
         self.layernorm1 = layer_normalization(config)
         self.layernorm2 = layer_normalization(config)
 
-        self.dropout1 = tf.keras.layers.Dropout(rate)
-        self.dropout2 = tf.keras.layers.Dropout(rate)
+        self.dropout1 = tf.keras.layers.Dropout(rate) if not do_fn else do_fn
+        self.dropout2 = tf.keras.layers.Dropout(rate) if not do_fn else do_fn
 
     def call(self, x, mask):
         attn_output, _ = self.mha(x, x, x, mask)  # (batch_size, input_seq_len, d_model)

@@ -3,10 +3,7 @@
 # this is useful for training a model with a large batch size
 
 import tensorflow as tf
-import keras
-from keras.layers import Layer
-
-
+import numpy as np
 
 
 class CyclingDropout(tf.keras.layers.Layer):
@@ -23,13 +20,15 @@ class CyclingDropout(tf.keras.layers.Layer):
         self.state_size = (1,)
 
     def build(self, input_shape):
-        self.state = self.add_weight(shape=(1,), initializer='zeros', trainable=False, name='cyclingdropout_state')
+
+        random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
+
+        self.state = self.add_weight(shape=(), initializer='zeros', trainable=False,
+                                     name=f'cyclingdropout_state_{random_string}')
+
+        super().build(input_shape)
 
     def call(self, inputs, training=None, **kwargs):
-        # self.state = tf.keras.backend.in_train_phase(self.state + 1, self.state)
-        s = tf.keras.backend.get_value(self.state)
-        tf.keras.backend.set_value(self.state, s+1)
-        print(self.state, s)
 
         if not training is None:
             tf.keras.backend.set_learning_phase(training)
@@ -37,7 +36,7 @@ class CyclingDropout(tf.keras.layers.Layer):
         if tf.keras.backend.learning_phase():
 
             # cosine between high_p, low_p
-            p = self.high_p + (self.low_p - self.high_p) * (1 + tf.sin(self.freq * self.state * 3.14159 / 2) / 2)
+            p = self.high_p + (self.low_p - self.high_p) * (1 + tf.cos(self.freq * self.state * 3.14159 / 2)) / 2
             n = tf.random.uniform(shape=tf.shape(inputs), minval=0, maxval=1, dtype=tf.float32) > p
             n = tf.cast(n, tf.float32)
 
@@ -45,8 +44,6 @@ class CyclingDropout(tf.keras.layers.Layer):
         else:
             output = inputs
         return output
-
-
 
 
 class rnnCyclingDropout(tf.keras.layers.Layer):
@@ -95,15 +92,18 @@ class CyclingDropoutRNN(tf.keras.layers.RNN):
 
 
 if __name__ == '__main__':
+    from tqdm import tqdm
+
     shape = (2, 50, 100)
     t = tf.ones(shape)
-    r = CyclingDropoutRNN(.5, .2, .1)
+    r = CyclingDropout(.5, .2, .1)
 
     om = []
 
-    for i in range(100):
-        print('-' * 20)
-        print(i)
+    for i in tqdm(range(100)):
+        # print('-' * 20)
+        # print(i)
+        r.state = i
         o = r(t, training=True)
         om.append(o.numpy().mean())
 

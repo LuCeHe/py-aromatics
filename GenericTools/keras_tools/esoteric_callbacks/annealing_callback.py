@@ -40,6 +40,8 @@ hard_annealing = lambda epoch, epochs, value: 0 if epoch < epochs / 2 else 1
 inverse_hard_annealing = lambda epoch, epochs, value: 1 if epoch < epochs / 2 else 0
 
 cosinusoidal_annealing = lambda epoch, epochs, value: 1 / 2 * (1 + tf.cos(value*epoch * 3.14159*2))
+
+add_1 = lambda epoch, epochs, value: value+1
 def get_annealing_schedule(annealing_schedule):
     if annealing_schedule in ['probabilistic_exponential_annealing', 'pea']:
         return probabilistic_exponential_annealing
@@ -53,6 +55,8 @@ def get_annealing_schedule(annealing_schedule):
         return inverse_hard_annealing
     elif annealing_schedule in ['cos']:
         return cosinusoidal_annealing
+    elif annealing_schedule in ['+1']:
+        return add_1
     else:
         raise NotImplementedError
 
