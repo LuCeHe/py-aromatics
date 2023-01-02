@@ -82,7 +82,7 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
             list_results.append(results)
 
         df = pd.DataFrame.from_records(list_results)
-        print(list(df.columns))
+        # print(list(df.columns))
         df.to_hdf(h5path, key='df', mode='w')
     else:
         df = pd.read_hdf(h5path, 'df')
