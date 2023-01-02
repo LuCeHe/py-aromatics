@@ -308,6 +308,7 @@ def summarize_logs(
         containing_folder,
         remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA:', 'Lmod ', 'cuda/11.0', 'is deprecated'],
         error_keys=['Aborted', 'error', 'Error', '(core dumped)'],
+        exclude_as_errors=['mean_squared_error', 'mean_absolute_error'],
         completion_keys=['DONE', 'All done', 'Completed after'],
         error_similarity_threshold=.8,
         comments=''
@@ -374,7 +375,8 @@ def summarize_logs(
                     clean_last_lines[-1] = line
 
                 error_found = any([error_key in line for error_key in error_keys])
-                if error_found:
+                not_error = any([error_key in line for error_key in exclude_as_errors])
+                if error_found and not not_error:
                     errors.append(line)
                     error_d.append(d)
                     failed = 1
