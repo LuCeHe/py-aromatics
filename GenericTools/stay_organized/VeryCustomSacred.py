@@ -86,7 +86,9 @@ class ExtendedExperiment(Experiment):
 
 def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10, ingredients=[]):
     import numpy as np
-    random_string = ''.join([str(r) for r in np.random.choice(10, 4)]) + '-'
+    import string
+    chars = string.ascii_letters + string.digits
+    random_string = ''.join([str(r) for r in np.random.choice(list(chars), 4)]) + '-'
     ex = ExtendedExperiment(name=random_string + experiment_name, base_dir=base_dir, ingredients=ingredients,
                             save_git_info=False)
     ex.observers.append(CustomFileStorageObserver("experiments", ex.main_filename))
