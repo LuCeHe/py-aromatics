@@ -382,6 +382,11 @@ def summarize_logs(
                     failed = 1
                 else:
                     completed = any([completion_key in line for completion_key in completion_keys] + [completed])
+        if not completed and not failed:
+            errors.append(line)
+            error_d.append(d)
+            failed = 1
+
         doc_lines.extend(clean_last_lines)
 
         if isolate_word is None:
