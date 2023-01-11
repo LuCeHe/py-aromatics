@@ -148,7 +148,6 @@ def complete_missing_exps(sdf, exps, coi):
     # df = df[~df['task_name'].str.contains('wordptb')]
     # df = df[df['task_name'].str.contains('wordptb')]
 
-    print('left, done, all: ', df.shape, sdf.shape, all_exps.shape)
     print('left')
     print(df.to_string())
 
@@ -158,3 +157,4 @@ def complete_missing_exps(sdf, exps, coi):
         experiments.append(experiment)
 
     print(experiments)
+    print('left, done, all: ', df.shape, sdf.shape, all_exps.shape)
