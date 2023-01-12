@@ -51,9 +51,19 @@ def axis_shuffle(self, y_true, y_pred, axis):
 def self_shuffle(self, y_true, y_pred, axis):
     sprobs = tf_shuffle_axis(y_pred, axis=axis)
 
-    contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.square(sprobs - y_pred)))
+    contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.abs(sprobs - y_pred)))
     self.add_loss(contrastive_loss)
     self.add_metric(contrastive_loss, name='selfcontrastive', aggregation='mean')
+
+
+
+def negcontrastive(self, y_true, y_pred):
+    sprobs = -y_true
+
+    contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.abs(sprobs - y_pred)))
+    self.add_loss(contrastive_loss)
+    self.add_metric(contrastive_loss, name='negcontrastive', aggregation='mean')
+
 
 
 def contrastive_common(self, y_pred):
@@ -81,7 +91,8 @@ def contrastive_common(self, y_pred):
 class ContrastiveLossLayer(tf.keras.layers.Layer):
 
     def __init__(self, n_random=1,
-                 loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), categorical=True, string_config='', **kwargs):
+                 loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), categorical=True, coef=1,
+                 string_config='', **kwargs):
         super().__init__(**kwargs)
         self.n_random = n_random
         self.string_config = string_config
@@ -96,7 +107,7 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
             raise NotImplementedError
 
         self.loss = loss
-        self.coef = str2val(string_config, 'coefcontrastive', output_type=float, default=1)
+        self.coef = str2val(string_config, 'coefcontrastive', output_type=float, default=coef)
 
         self.contrastives = []
 
@@ -117,15 +128,18 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
 
         # variation of the idea from https://arxiv.org/pdf/2004.13637.pdf
         if 'selfcontrastive' in string_config:
-            axis = str2val(string_config, 'selfcontrastive', output_type=int)
+            axis = str2val(string_config, 'selfcontrastive', output_type=int, default=0)
             axis = [axis] if not isinstance(axis, list) else axis
             for ax in axis:
                 c = partial(self_shuffle, axis=ax)
                 self.contrastives.append(c)
 
-        c = lambda s, t, p: contrastive_common(s, p) \
-            if 'contrastivecommon' in string_config else None
-        self.contrastives.append(c)
+        if 'contrastivecommon' in string_config:
+            c = lambda s, t, p: contrastive_common(s, p)
+            self.contrastives.append(c)
+
+        if 'negcontrastive' in string_config:
+            self.contrastives.append(negcontrastive)
 
     def build(self, input_shape):
         self.coef = self.add_weight(name='contrastivecoef',
@@ -151,14 +165,16 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
         config = {
             'string_config': self.string_config,
             'loss': self.loss,
-            'n_random': self.n_random
+            'n_random': self.n_random,
+            'coef': self.coef,
         }
 
         base_config = super().get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
 
-if __name__ == '__main__':
+
+def test_1():
     t = tf.random.uniform((2, 3, 4))
     sentences = tf.argmax(t, axis=-1)
 
@@ -171,3 +187,14 @@ if __name__ == '__main__':
     model.compile('SGD', tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True))
     model.fit([t, sentences], sentences, epochs=2)
     # model.fit(t, t, epochs=2)
+
+def test_2():
+    y_pred = tf.random.uniform((3, 1))
+    shuffled = tf_shuffle_axis(y_pred, axis=0)
+    print(y_pred)
+    print(shuffled)
+
+
+if __name__ == '__main__':
+    # test_1()
+    test_2()
