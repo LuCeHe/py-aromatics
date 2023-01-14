@@ -14,5 +14,7 @@ def shorten_losses(name):
     shorter_name = shorter_name.replace('max', 'M')
     shorter_name = shorter_name.replace('min', 'm')
     shorter_name = shorter_name.replace('attention_head_count', 'mh')
+    shorter_name = shorter_name.replace('_preprocessinput', '')
+    shorter_name = shorter_name.replace('deslice', 'dsl')
 
     return shorter_name

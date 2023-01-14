@@ -4,6 +4,7 @@ from GenericTools.keras_tools.plot_tools import history_pick
 from tqdm import tqdm
 
 from GenericTools.stay_organized.unzip import unzip_good_exps
+from scipy.stats import pearsonr
 
 
 def simplify_col_names(df):
@@ -158,3 +159,19 @@ def complete_missing_exps(sdf, exps, coi):
 
     print(experiments)
     print('left, done, all: ', df.shape, sdf.shape, all_exps.shape)
+
+
+
+
+def calculate_pvalues(df, wrt=None):
+    # original by toto_tico
+    # https://stackoverflow.com/questions/25571882/pandas-columns-correlation-with-statistical-significance
+    dfcols = pd.DataFrame(columns=df.columns)
+    pvalues = dfcols.transpose().join(dfcols, how='outer')
+    wrt = wrt if isinstance(wrt, list) else df.columns
+    print(wrt)
+    for r in df.columns:
+        for c in wrt:
+            tmp = df[df[r].notnull() & df[c].notnull()]
+            pvalues[r][c] = pearsonr(tmp[r], tmp[c])[1].round(4)
+    return pvalues
