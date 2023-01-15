@@ -56,14 +56,12 @@ def self_shuffle(self, y_true, y_pred, axis):
     self.add_metric(contrastive_loss, name='selfcontrastive', aggregation='mean')
 
 
-
 def negcontrastive(self, y_true, y_pred):
     sprobs = -y_true
 
     contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.abs(sprobs - y_pred)))
     self.add_loss(contrastive_loss)
     self.add_metric(contrastive_loss, name='negcontrastive', aggregation='mean')
-
 
 
 def contrastive_common(self, y_pred):
@@ -75,6 +73,17 @@ def contrastive_common(self, y_pred):
     contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.square(silence_words * y_pred)))
     self.add_loss(contrastive_loss)
     self.add_metric(contrastive_loss, name='contrastive_common', aggregation='mean')
+
+
+def gamma_contrastive(self, y_true, y_pred):
+    alpha = 10.
+    beta = tf.sqrt(4 * alpha)
+    noise = tf.random.gamma(tf.shape(y_true), alpha=alpha, beta=beta)
+    shifted_trues = y_true - tf.sign(y_true)*noise*tf.math.reduce_std(y_true)
+
+    contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.abs(shifted_trues - y_pred)))
+    self.add_loss(contrastive_loss)
+    self.add_metric(contrastive_loss, name='gammacontrastive', aggregation='mean')
 
 
 # def promote_unlikely_words(self, y_true, y_pred):
@@ -141,6 +150,9 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
         if 'negcontrastive' in string_config:
             self.contrastives.append(negcontrastive)
 
+        if 'gammacontrastive' in string_config:
+            self.contrastives.append(gamma_contrastive)
+
     def build(self, input_shape):
         self.coef = self.add_weight(name='contrastivecoef',
                                     shape=(),
@@ -173,7 +185,6 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-
 def test_1():
     t = tf.random.uniform((2, 3, 4))
     sentences = tf.argmax(t, axis=-1)
@@ -188,11 +199,20 @@ def test_1():
     model.fit([t, sentences], sentences, epochs=2)
     # model.fit(t, t, epochs=2)
 
+
 def test_2():
-    y_pred = tf.random.uniform((3, 1))
-    shuffled = tf_shuffle_axis(y_pred, axis=0)
-    print(y_pred)
-    print(shuffled)
+    shape = (2, 3, 100)
+    alpha = 10.
+    beta = tf.sqrt(4 * alpha)
+    y_pred = tf.random.gamma(
+        shape,
+        alpha=alpha,
+        beta=beta
+    ) + 1
+    import matplotlib.pyplot as plt
+    import numpy as np
+    plt.hist(y_pred.numpy().flatten(), bins=100)
+    plt.show()
 
 
 if __name__ == '__main__':

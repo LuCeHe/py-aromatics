@@ -50,8 +50,11 @@ class LearningRateLogger(tf.keras.callbacks.Callback):
                 and isinstance(self.model.optimizer.lr.numpy(), (np.floating, float)):
             lr = self.model.optimizer.lr
 
-        else:
+        elif hasattr(self.model.optimizer.lr, 'lr'):
             lr = self.model.optimizer.lr.lr
+
+        else:
+            lr = self.model.optimizer.lr.initial_learning_rate
 
         logs["learning_rate"] = lr.numpy() if hasattr(lr, 'numpy') else lr
 

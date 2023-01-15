@@ -57,37 +57,40 @@ def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_fo
     ds = sorted(ds)
     destinations = []
     for d in tqdm(ds, desc='Unzipping...'):
+        try:
+            # Create a ZipFile Object and load sample.zip in it
+            with ZipFile(d, 'r') as zipObj:
+                # tail = 'good_' + ''.join([str(i) for i in np.random.choice(9, 5).tolist()])
+                tail = d.split('\\')[-1].replace('.zip', '')
+                destination = os.path.join(*[exp_destination, tail])
+                destinations.append(destination)
+                if not os.path.isdir(destination):
+                    os.mkdir(destination)
 
-        # Create a ZipFile Object and load sample.zip in it
-        with ZipFile(d, 'r') as zipObj:
-            # tail = 'good_' + ''.join([str(i) for i in np.random.choice(9, 5).tolist()])
-            tail = d.split('\\')[-1].replace('.zip', '')
-            destination = os.path.join(*[exp_destination, tail])
-            destinations.append(destination)
-            if not os.path.isdir(destination):
-                os.mkdir(destination)
-
-                # Extract all the contents of zip file in different directory
-                # zipObj.extractall(destination)
-                for z in zipObj.infolist():
-                    do_unzip = not np.any([e in z.filename for e in except_files])
-                    if do_unzip:
-                        try:
-                            if 'other_outputs' in z.filename:
-                                zipObj.extract(z, destination)
-                            elif 'config' in z.filename:
-                                zipObj.extract(z, destination)
-                            if not unzip_what is None:
-                                if isinstance(unzip_what, list):
-                                    for string in unzip_what:
-                                        if string in z.filename:
-                                            zipObj.extract(z, destination)
-                                elif unzip_what == 'all':
+                    # Extract all the contents of zip file in different directory
+                    # zipObj.extractall(destination)
+                    for z in zipObj.infolist():
+                        do_unzip = not np.any([e in z.filename for e in except_files])
+                        if do_unzip:
+                            try:
+                                if 'other_outputs' in z.filename:
                                     zipObj.extract(z, destination)
-                                else:
-                                    raise NotImplementedError
-                        except Exception as e:
-                            print(e)
+                                elif 'config' in z.filename:
+                                    zipObj.extract(z, destination)
+                                if not unzip_what is None:
+                                    if isinstance(unzip_what, list):
+                                        for string in unzip_what:
+                                            if string in z.filename:
+                                                zipObj.extract(z, destination)
+                                    elif unzip_what == 'all':
+                                        zipObj.extract(z, destination)
+                                    else:
+                                        raise NotImplementedError
+                            except Exception as e:
+                                print(e)
+        except Exception as e:
+            print(e)
+            print(d)
     return destinations
 
 
