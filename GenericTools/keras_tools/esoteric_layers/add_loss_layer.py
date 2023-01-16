@@ -5,9 +5,10 @@ from GenericTools.keras_tools.esoteric_losses import get_loss
 
 class AddLossLayer(tf.keras.layers.Layer):
 
-    def __init__(self, loss, coef=1., prefix_id='', **kwargs):
+    def __init__(self, loss, coef=1., prefix_id='', aggregation='mean', **kwargs):
         super().__init__(**kwargs)
         self.loss = loss
+        self.aggregation = aggregation
         self.coef = coef
         self.losses_to_add = loss if isinstance(loss, list) else [loss]
         self.losses_to_add = [get_loss(l) if isinstance(l, str) else l for l in self.losses_to_add]
@@ -44,9 +45,9 @@ class AddLossLayer(tf.keras.layers.Layer):
         true_output, pred_output = inputs
 
         for c, l, n in zip(self.coefs, self.losses_to_add, self.loss_names):
-            loss = tf.reduce_sum(c * l(true_output, pred_output))
+            loss = tf.reduce_mean(c * l(true_output, pred_output))
             self.add_loss(loss)
-            self.add_metric(loss, name=n, aggregation='mean')
+            self.add_metric(loss, name=n, aggregation=self.aggregation)
 
         return pred_output
 
@@ -55,5 +56,6 @@ class AddLossLayer(tf.keras.layers.Layer):
             'coef': self.coef,
             'loss': self.loss,
             'prefix_id': self.prefix_id,
+            'aggregation': self.aggregation,
         }
         return dict(list(super().get_config().items()) + list(config.items()))

@@ -75,6 +75,13 @@ def owa2(y_true, y_pred):
     return mase2(y_true, y_pred) + smape_loss(y_true, y_pred)
 
 
+def mix_reg(y_true, y_pred):
+    mse = tf.keras.losses.MSE(y_true, y_pred)
+    mae = tf.keras.losses.MAE(y_true, y_pred)
+    loss = mse / 4 + mae / 4 + owa2(y_true, y_pred) / 4
+    return loss
+
+
 def match_directions_rate(y_true, y_pred):
     # print('and here')
     st = tf.math.sign(y_true)
