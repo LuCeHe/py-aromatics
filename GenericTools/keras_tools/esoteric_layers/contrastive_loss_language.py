@@ -164,14 +164,14 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
     def call(self, inputs, **kwargs):
 
         if isinstance(inputs, list) and len(inputs) == 2:
-            output_words, probs = inputs
+            y_true, y_pred = inputs
         else:
-            output_words, probs = inputs, inputs
+            y_true, y_pred = inputs, inputs
 
         for c in self.contrastives:
-            c(self, output_words, probs)
+            c(self, y_true, y_pred)
 
-        return probs
+        return y_pred
 
     def get_config(self):
         config = {
