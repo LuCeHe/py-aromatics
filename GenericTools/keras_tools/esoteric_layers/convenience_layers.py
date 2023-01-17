@@ -21,18 +21,21 @@ class AverageOverAxis(Layer):
         return tuple(input_shape)
 
 
-class RepeatOnAxis(Layer):
+class RepeatOnAxis(tf.keras.layers.Layer):
     def __init__(self, repeats, axis, name='RepeatOnAxis', **kwargs):
         self.axis = axis
         self.repeats = repeats
         super().__init__(**kwargs, name=name)
 
-    def call(self, inputs):
+    def call(self, inputs, **kwargs):
         return tf.repeat(inputs, self.repeats, axis=self.axis)
 
     def compute_output_shape(self, input_shape):
-        new_shape = [s if not i == self.axis else s*self.repeats for i, s in enumerate(input_shape)]
+        new_shape = [s if not i == self.axis else s * self.repeats for i, s in enumerate(input_shape)]
+        print('inside!', new_shape)
         return tuple(new_shape)
+
+
 class ExpandDims(tf.keras.layers.Layer):
     def __init__(self, axis, **kwargs):
         super().__init__(**kwargs)
@@ -200,6 +203,7 @@ class SoftmaxVariations(Layer):
             'softplus': self.softplus,
             'remove_max': self.remove_max
         }
+
 
 if __name__ == '__main__':
     tensor = tf.random.uniform((2, 3, 2))
