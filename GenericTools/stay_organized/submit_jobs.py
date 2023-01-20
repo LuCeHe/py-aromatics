@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 
 def run_experiments(
-        experiments=None, init_command='python language_main.py with ',
+        experiments=None, subset = [0, None], init_command='python language_main.py with ',
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
         duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': -1},
         env_name='denv2', n_gpus=0, id='', mem='32G'
@@ -31,7 +31,7 @@ def run_experiments(
         ds = ['']
 
     print('Number jobs: {}'.format(len(ds)))
-    for i, d in enumerate(ds):
+    for i, d in enumerate(ds[subset[0]:subset[1]]):
         if not experiments is None:
             a = '--' if is_argparse else ''
             config_update = ''.join([a + '{}={} '.format(k, v) for k, v in d.items()])
