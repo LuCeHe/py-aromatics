@@ -30,8 +30,11 @@ def run_experiments(
     else:
         ds = ['']
 
-    print('Number jobs: {}'.format(len(ds)))
-    for i, d in enumerate(ds[subset[0]:subset[1]]):
+    ods = ds
+    ds = ds[subset[0]:subset[1]]
+
+    print(f'Number jobs: {len(ds)}/{len(ods)}')
+    for i, d in enumerate(ds):
         if not experiments is None:
             a = '--' if is_argparse else ''
             config_update = ''.join([a + '{}={} '.format(k, v) for k, v in d.items()])
@@ -43,7 +46,7 @@ def run_experiments(
         command = command.replace('  ', ' ')
         print('{}/{}'.format(i + 1, len(ds)), command)
         os.system(command)
-    print('Number jobs: {}'.format(len(ds)))
+    print(f'Number jobs: {len(ds)}/{len(ods)}')
 
 
 def dict2iter(experiments):
