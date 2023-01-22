@@ -79,7 +79,19 @@ def gamma_contrastive(self, y_true, y_pred):
     alpha = 10.
     beta = tf.sqrt(4 * alpha)
     noise = tf.random.gamma(tf.shape(y_true), alpha=alpha, beta=beta)
-    shifted_trues = y_true - tf.sign(y_true)*noise*tf.math.reduce_std(y_true)
+    shifted_trues = y_true - tf.sign(y_true) * noise * tf.math.reduce_std(y_true)
+
+    contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.abs(shifted_trues - y_pred)))
+    self.add_loss(contrastive_loss)
+    self.add_metric(contrastive_loss, name='gammacontrastive', aggregation='mean')
+
+
+def bigamma_contrastive(self, y_true, y_pred):
+    alpha = 10.
+    beta = tf.sqrt(4 * alpha)
+    noise = tf.random.gamma(tf.shape(y_true), alpha=alpha, beta=beta)
+    sign = 2 * tf.cast(tf.random.uniform(tf.shape(y_true)) > 0.5, tf.float32) - 1
+    shifted_trues = y_true + sign * noise * tf.math.reduce_std(y_true)
 
     contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.abs(shifted_trues - y_pred)))
     self.add_loss(contrastive_loss)
@@ -150,7 +162,10 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
         if 'negcontrastive' in string_config:
             self.contrastives.append(negcontrastive)
 
-        if 'gammacontrastive' in string_config:
+        if 'bigammacontrastive' in string_config:
+            self.contrastives.append(bigamma_contrastive)
+
+        elif 'gammacontrastive' in string_config:
             self.contrastives.append(gamma_contrastive)
 
     def build(self, input_shape):
@@ -204,15 +219,9 @@ def test_2():
     shape = (2, 3, 100)
     alpha = 10.
     beta = tf.sqrt(4 * alpha)
-    y_pred = tf.random.gamma(
-        shape,
-        alpha=alpha,
-        beta=beta
-    ) + 1
-    import matplotlib.pyplot as plt
-    import numpy as np
-    plt.hist(y_pred.numpy().flatten(), bins=100)
-    plt.show()
+    y_pred = 2 * tf.cast(tf.random.uniform(shape) > 0.5, tf.float32) - 1
+
+    print(y_pred)
 
 
 if __name__ == '__main__':
