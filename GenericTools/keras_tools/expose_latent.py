@@ -188,11 +188,11 @@ def test_1(model):
     print(model2split.get_layer(last_layer_name).inbound_nodes[0].inbound_layers)
     print(model2split.get_layer(last_layer_name).inbound_nodes[1].inbound_layers)
 
-    head_outputs = [
-        model2split.get_layer(l.name).output
-        for node in model2split.get_layer(last_layer_name).inbound_nodes[:1]
-        for l in node.inbound_layers
-    ]
+    # head_outputs = [
+    #     model2split.get_layer(l.name).output
+    #     for node in model2split.get_layer(last_layer_name).inbound_nodes[:1]
+    #     for l in node.inbound_layers
+    # ]
     head_model = tf.keras.models.Model(
         model2split.input,
         model2split.get_layer(last_layer_name).output
@@ -252,7 +252,7 @@ if __name__ == '__main__':
         model = simple_model()
 
         split_layer_name = 'dense'
-        last_layer_name = 'concatenate'
+        last_layer_name = 'flatten'
 
 
     elif modid == 'trasf':
