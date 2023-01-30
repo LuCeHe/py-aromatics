@@ -13,6 +13,16 @@ from difflib import SequenceMatcher
 logger = logging.getLogger('mylogger')
 
 
+def flaggedtry(function, tryornot=True):
+    if tryornot:
+        try:
+            return function()
+        except Exception as e:
+            print(e)
+            return None
+    else:
+        return function()
+
 def make_directories(time_string=None):
     experiments_folder = "experiments"
     if not os.path.isdir(experiments_folder):

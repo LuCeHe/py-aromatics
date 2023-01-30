@@ -1,6 +1,7 @@
 import tensorflow as tf
 import sys
 
+from GenericTools.stay_organized.utils import flaggedtry
 from alif_sg.neural_models.modified_efficientnet import EfficientNetB0
 
 sys.setrecursionlimit(100000)
@@ -99,26 +100,25 @@ def simple_model_2():
     return model
 
 
-def test_1(model):
-    pairs = [48, 143]
-    # split_model(model, pairs)
+def truer_split_model(model, pairs):
+    lnames = [layer.name for layer in model.layers]
+    split_layer_name = lnames[pairs[0]]
+    last_layer_name = lnames[pairs[1]]
+    # print(pairs, split_layer_name, last_layer_name)
 
     model2split = model
 
     # Determine the split point based on the 'on_head' argument.
-    tail_input = tf.keras.layers.Input(batch_shape=model2split.get_layer(split_layer_name).get_input_shape_at(0))
+    # tail_input = tf.keras.layers.Input(batch_shape=model2split.get_layer(split_layer_name).get_input_shape_at(0))
+    tail_input = None
     all_inputs = {
         l.name: tf.keras.layers.Input(batch_shape=model2split.get_layer(l.name).get_input_shape_at(0))
         for l in model2split.layers if 'input' in l.name
     }
-    all_input_names = [l.name for l in model2split.layers if 'input' in l.name]
-    print(all_input_names)
 
     layer_outputs = {}
     extra_tail_inputs = []
     extra_input_names = []
-
-    count = 0
 
     def _find_backwards(layer):
         """
@@ -133,7 +133,15 @@ def test_1(model):
             return layer_outputs[layer.name]
 
         if layer.name == split_layer_name:
-            out = layer(tail_input)
+            nonlocal tail_input
+
+            output_shape = layer.output_shape if not isinstance(layer.output_shape, list) else layer.output_shape[0]
+            if isinstance(tail_input, list):
+                if len(tail_input) > 1:
+                    raise ValueError('This scenario hasnt been implemented!')
+            tail_input = tf.keras.layers.Input(batch_shape=output_shape)
+
+            out = tail_input
             layer_outputs[layer.name] = out
             return out
 
@@ -155,7 +163,6 @@ def test_1(model):
             except TypeError:
                 # If number of inbound layers == 1
                 prev_layers.append(node.inbound_layers)
-        print(prev_layers)
 
         # Get the output of connected layers in a recursive manner
         pl_outs = []
@@ -163,15 +170,12 @@ def test_1(model):
             plo = _find_backwards(pl)
             if isinstance(plo, tuple):
                 plo = list(plo)
-
-            print('==', plo)
             try:
                 pl_outs.extend(plo)
             except TypeError:
                 pl_outs.append(plo)
 
         # Apply this layer on the collected outputs
-        print('---', pl_outs)
         out = layer(pl_outs[0] if len(pl_outs) == 1 else pl_outs)
         layer_outputs[layer.name] = out
         return out
@@ -181,63 +185,33 @@ def test_1(model):
 
     names = ('head', 'tail')
     # Creating head and tail models
-    print([l.name for l in extra_tail_inputs])
-
-    print(last_layer_name)
-    print(model2split.get_layer(last_layer_name).inbound_nodes)
-    print(model2split.get_layer(last_layer_name).inbound_nodes[0].inbound_layers)
-    print(model2split.get_layer(last_layer_name).inbound_nodes[1].inbound_layers)
-
-    # head_outputs = [
-    #     model2split.get_layer(l.name).output
-    #     for node in model2split.get_layer(last_layer_name).inbound_nodes[:1]
-    #     for l in node.inbound_layers
-    # ]
     head_model = tf.keras.models.Model(
         model2split.input,
-        model2split.get_layer(last_layer_name).output
+        [model2split.get_layer(split_layer_name).output]
         + [model2split.get_layer(ln).output for ln in extra_input_names], name=names[0]
     )
     tail_model = tf.keras.models.Model([tail_input] + extra_tail_inputs, tail_output, name=names[1])
 
-    direct_tail = tf.keras.models.Model(model2split.input, model2split.get_layer(last_layer_name).output)
-    head_model.summary()
-    tail_model.summary()
-
-    input_shapes = [model2split.get_layer(l.name).get_input_shape_at(0) for l in model2split.layers if
-                    'input' in l.name]
-    input_shapes = [tuple([s if not s is None else 10 for s in shape]) for shape in input_shapes]
-    print(input_shapes)
-    # print(shape)
-    input_noise = [tf.random.normal(shape) for shape in input_shapes]
-    two_stages_output = tail_model.predict(head_model.predict(input_noise))
-    direct_output = direct_tail.predict(input_noise)
-    # compare if they produce the same tensor
-    print(two_stages_output)
-    print(direct_output)
-    print(tf.reduce_all(tf.equal(two_stages_output, direct_output)).numpy())
-
-    print('head_model')
-    layer_names = [layer.name for layer in head_model.layers]
-    print(layer_names)
-
-    print('tail_model')
-    layer_names = [layer.name for layer in tail_model.layers]
-    print(layer_names)
-
-    print('direct_tail')
-    layer_names = [layer.name for layer in direct_tail.layers]
-    print(layer_names)
-    print('--')
+    return head_model, tail_model
 
 
-if __name__ == '__main__':
+
+def test_split_model():
+    import numpy as np
     from alif_sg.neural_models.transformer_model import build_model
+    import random
 
-    modid = 'simple'  # eff simple transf
+    n_tries = 10
+    tryornot = True
+    modid = 'transf'  # eff simple transf simple2
 
+    pairs = None
+    jump = None
+    skip_in_layers, skip_out_layers = [], ['input']
+    keep_in_layers = None
+    keep_out_layers = None
     if modid == 'eff':
-        model = EfficientNetB0(
+        bm = lambda: EfficientNetB0(
             include_top=False, weights=None, activation='relu',
             batch_normalization=True,
             kernel_initializer='glorot_uniform',
@@ -245,18 +219,15 @@ if __name__ == '__main__':
             comments=''
         )
 
-        split_layer_name = 'block7a_se_reshape'
-        last_layer_name = 'block7a_se_excite'
-
     elif modid == 'simple':
-        model = simple_model()
+        bm = lambda: simple_model()
+        # pairs with [x, y] all work
 
-        split_layer_name = 'dense'
-        last_layer_name = 'flatten'
+    elif modid == 'simple2':
+        bm = lambda: simple_model_2()
 
-
-    elif modid == 'trasf':
-        model = build_model(
+    elif modid == 'transf':
+        bm = lambda: build_model(
             inputs_timesteps=3,
             target_timesteps=4,
             inputs_vocab_size=2,
@@ -271,13 +242,70 @@ if __name__ == '__main__':
             comments='',
         )
 
-        split_layer_name = 'eidentity_3_1'
-        last_layer_name = 'eidentity_3_3'
+        keep_in_layers = ['embeddinglayer', 'identity_']
+        keep_out_layers = ['identity_']
+        # jump = 10
     else:
         raise ValueError
 
+    model = bm()
     model.summary()
-    test_1(model)
+    lnames = [layer.name for layer in model.layers]
+    del model
 
-    layer_names = [layer.name for layer in model.layers]
-    print(layer_names)
+    keep_in_layers = lnames if keep_in_layers is None else keep_in_layers
+    keep_out_layers = lnames if keep_out_layers is None else keep_out_layers
+
+    inlnames = [
+                   i for i, l in enumerate(lnames)
+                   if not any([s in l for s in skip_in_layers])
+                      and any([s in l for s in keep_in_layers])
+               ][:-1]
+    outlnames = [
+                    i for i, l in enumerate(lnames)
+                    if not any([s in l for s in skip_out_layers])
+                       and any([s in l for s in keep_out_layers])
+                ][1:]
+
+    for i in range(n_tries):
+        tf.keras.backend.clear_session()
+        tf.compat.v1.reset_default_graph()
+
+        model = bm()
+
+        if pairs is None:
+            inp_l = np.random.choice(inlnames)
+            outlist = [i for i in outlnames if i > inp_l]
+            out_l = np.random.choice(outlist)
+
+            pairs = [inp_l, out_l]
+
+        if not jump is None:
+            actual_jump = np.random.choice(list(range(2, jump + 1)))
+            pairs = [pairs[0], pairs[0] + actual_jump]
+
+        head_model, tail_model = None, None
+        output = flaggedtry(lambda: truer_split_model(model, pairs), tryornot=tryornot)
+        if not output is None:
+            head_model, tail_model = output
+
+            lnames = [layer.name for layer in model.layers]
+            last_layer_name = lnames[pairs[1]]
+            direct_tail = tf.keras.models.Model(model.input, model.get_layer(last_layer_name).output)
+
+            input_shapes = [model.get_layer(l.name).get_input_shape_at(0)
+                            for l in model.layers if 'input' in l.name]
+            input_shapes = [tuple([s if not s is None else 10 for s in shape]) for shape in input_shapes]
+
+            input_noise = [tf.random.normal(shape) for shape in input_shapes]
+            two_stages_output = tail_model(head_model(input_noise))
+            direct_output = direct_tail(input_noise)
+            # compare if they produce the same tensor
+            print('Is the output of the split model the same as non split?',
+                  tf.reduce_all(tf.equal(two_stages_output, direct_output)).numpy())
+            del head_model, tail_model, direct_tail, input_shapes, input_noise, two_stages_output, direct_output
+        del model
+        pairs = None
+
+if __name__ == '__main__':
+    test_split_model()

@@ -6,6 +6,10 @@ from tensorflow.keras.models import Model
 
 from GenericTools.keras_tools.convenience_operations import slice_from_to, clip_layer, replace_column
 
+class Identity(tf.keras.layers.Layer):
+    def call(self, inputs, **kwargs):
+        return inputs
+
 
 class AverageOverAxis(Layer):
     def __init__(self, axis, name='AverageOverAxis', **kwargs):
