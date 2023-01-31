@@ -2,9 +2,6 @@ import tensorflow as tf
 import sys
 
 from GenericTools.stay_organized.utils import flaggedtry
-from alif_sg.neural_models.modified_efficientnet import EfficientNetB0
-
-sys.setrecursionlimit(100000)
 
 
 def expose_latent_model(original_model, exclude_layers=[], include_layers=[], idx=None, return_names=False):
@@ -205,12 +202,14 @@ def truer_split_model(model, pairs):
 
 def test_split_model():
     import numpy as np
-    from alif_sg.neural_models.transformer_model import build_model
-    import random
+    from alif_sg.neural_models.modified_efficientnet import EfficientNetB0
+
+    from alif_sg.neural_models.transformer_model import build_model as build_transf
+    from sg_design_lif.neural_models.full_model import build_model as build_alif
 
     n_tries = 10
     tryornot = True
-    modid = 'transf'  # eff simple transf simple2
+    modid = 'alif'  # eff simple transf simple2 alif
     batch_size = 2
 
     pairs = None
@@ -244,9 +243,24 @@ def test_split_model():
     elif modid == 'simple2':
         bm = lambda: simple_model_2()
 
+    elif modid == 'alif':
+        model_args = dict(
+        task_name='wordptb', net_name='maLSNNb', n_neurons='3',
+        lr=0.01, stack='120:3', loss_name='sparse_categorical_crossentropy',
+        embedding='learned:None:None:3', optimizer_name='Adam', lr_schedule='',
+        weight_decay=0., clipnorm=1., initializer='glorot_uniform', comments='',
+        in_len=2, n_in=1, out_len=2,
+        n_out=1, final_epochs=3, seed=0,
+        )
+
+        bm = lambda: build_alif(**model_args)
+        skip_in_layers, skip_out_layers = ['add_metrics_layer'], ['input', 'add_metrics_layer']
+
+
+
     elif modid == 'transf':
         vocab = 2
-        bm = lambda: build_model(
+        bm = lambda: build_transf(
             inputs_timesteps=3,
             target_timesteps=4,
             inputs_vocab_size=vocab,
@@ -269,6 +283,8 @@ def test_split_model():
         # keep_in_layers = ['embeddinglayer', 'identity_']
         # keep_out_layers = ['identity_']
         # jump = 10
+        skip_in_layers, skip_out_layers = [], ['input', 'tf.linalg.matmul']
+
     else:
         raise ValueError
 
