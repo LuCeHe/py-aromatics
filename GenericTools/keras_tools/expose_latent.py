@@ -135,11 +135,17 @@ def truer_split_model(model, pairs):
         if layer.name == split_layer_name:
             nonlocal tail_input
 
+            # print(layer.output_shape)
             output_shape = layer.output_shape if not isinstance(layer.output_shape, list) else layer.output_shape[0]
             if isinstance(tail_input, list):
                 if len(tail_input) > 1:
                     raise ValueError('This scenario hasnt been implemented!')
-            tail_input = tf.keras.layers.Input(batch_shape=output_shape)
+            # print('tail_input', output_shape)
+            # print('tail_input', len(output_shape), output_shape[0])
+            if isinstance(output_shape[0], tuple):
+                tail_input = [tf.keras.layers.Input(batch_shape=o) for o in output_shape]
+            else:
+                tail_input = tf.keras.layers.Input(batch_shape=output_shape)
 
             out = tail_input
             layer_outputs[layer.name] = out
@@ -175,6 +181,8 @@ def truer_split_model(model, pairs):
             except TypeError:
                 pl_outs.append(plo)
 
+        # print(layer.name)
+        # print(pl_outs)
         # Apply this layer on the collected outputs
         out = layer(pl_outs[0] if len(pl_outs) == 1 else pl_outs)
         layer_outputs[layer.name] = out
@@ -195,7 +203,6 @@ def truer_split_model(model, pairs):
     return head_model, tail_model
 
 
-
 def test_split_model():
     import numpy as np
     from alif_sg.neural_models.transformer_model import build_model
@@ -204,12 +211,15 @@ def test_split_model():
     n_tries = 10
     tryornot = True
     modid = 'transf'  # eff simple transf simple2
+    batch_size = 2
 
     pairs = None
     jump = None
-    skip_in_layers, skip_out_layers = [], ['input']
+    skip_in_layers, skip_out_layers = [], ['input', 'tf.linalg.matmul']
     keep_in_layers = None
     keep_out_layers = None
+
+    random_generation = lambda shape: tf.random.normal(shape)
     if modid == 'eff':
         bm = lambda: EfficientNetB0(
             include_top=False, weights=None, activation='relu',
@@ -219,6 +229,14 @@ def test_split_model():
             comments=''
         )
 
+        # pairs that don't work
+        # [163, 167] block6a_dwconv block6a_se_reshape
+        # [56, 217] block3a_project_bn block6d_add
+        # [18, 52] block2a_dwconv block3a_se_reduce
+        # [169, 211] block6a_se_expand block6d_se_reduce
+        # [166, 224] block6a_se_squeeze block7a_se_squeeze
+        # [156, 209] block5c_project_bn block6d_se_squeeze
+
     elif modid == 'simple':
         bm = lambda: simple_model()
         # pairs with [x, y] all work
@@ -227,11 +245,12 @@ def test_split_model():
         bm = lambda: simple_model_2()
 
     elif modid == 'transf':
+        vocab = 2
         bm = lambda: build_model(
             inputs_timesteps=3,
             target_timesteps=4,
-            inputs_vocab_size=2,
-            target_vocab_size=2,
+            inputs_vocab_size=vocab,
+            target_vocab_size=vocab,
             encoder_count=4,
             decoder_count=4,
             attention_head_count=2,
@@ -242,8 +261,13 @@ def test_split_model():
             comments='',
         )
 
-        keep_in_layers = ['embeddinglayer', 'identity_']
-        keep_out_layers = ['identity_']
+        # pairs that work [2, 4], [2, 6]
+        # pairs = [8, 15]
+        # pairs = [2, 6]
+        random_generation = lambda shape: tf.random.uniform(shape, minval=0, maxval=vocab, dtype=tf.int32)
+
+        # keep_in_layers = ['embeddinglayer', 'identity_']
+        # keep_out_layers = ['identity_']
         # jump = 10
     else:
         raise ValueError
@@ -257,15 +281,18 @@ def test_split_model():
     keep_out_layers = lnames if keep_out_layers is None else keep_out_layers
 
     inlnames = [
-                   i for i, l in enumerate(lnames)
-                   if not any([s in l for s in skip_in_layers])
-                      and any([s in l for s in keep_in_layers])
-               ][:-1]
+        i for i, l in enumerate(lnames)
+        if not any([s in l for s in skip_in_layers])
+           and any([s in l for s in keep_in_layers])
+    ]
     outlnames = [
-                    i for i, l in enumerate(lnames)
-                    if not any([s in l for s in skip_out_layers])
-                       and any([s in l for s in keep_out_layers])
-                ][1:]
+        i for i, l in enumerate(lnames)
+        if not any([s in l for s in skip_out_layers])
+           and any([s in l for s in keep_out_layers])
+    ]
+
+    inlnames = [i for i in inlnames if i < max(outlnames)]
+    outlnames = [i for i in outlnames if i > min(inlnames)]
 
     for i in range(n_tries):
         tf.keras.backend.clear_session()
@@ -288,24 +315,34 @@ def test_split_model():
         output = flaggedtry(lambda: truer_split_model(model, pairs), tryornot=tryornot)
         if not output is None:
             head_model, tail_model = output
-
             lnames = [layer.name for layer in model.layers]
             last_layer_name = lnames[pairs[1]]
             direct_tail = tf.keras.models.Model(model.input, model.get_layer(last_layer_name).output)
 
-            input_shapes = [model.get_layer(l.name).get_input_shape_at(0)
-                            for l in model.layers if 'input' in l.name]
-            input_shapes = [tuple([s if not s is None else 10 for s in shape]) for shape in input_shapes]
+            input_names = sorted([l.name for l in model.layers if 'input' in l.name])
+            input_shapes = [head_model.get_layer(ln).get_input_shape_at(0) for ln in input_names]
+            input_shapes = [tuple([s if not s is None else batch_size for s in shape]) for shape in input_shapes]
 
-            input_noise = [tf.random.normal(shape) for shape in input_shapes]
-            two_stages_output = tail_model(head_model(input_noise))
+            # print(input_shapes)
+            head_input_shapes = [head_model.get_layer(l.name).get_input_shape_at(0)
+                                 for l in model.layers if 'input' in l.name]
+
+            input_noise = [random_generation(shape) for shape in input_shapes]
+            head_out = head_model(input_noise)
+            # print('head out', *[o.shape for o in head_out])
+            two_stages_output = tail_model(head_out)
             direct_output = direct_tail(input_noise)
+
             # compare if they produce the same tensor
-            print('Is the output of the split model the same as non split?',
-                  tf.reduce_all(tf.equal(two_stages_output, direct_output)).numpy())
+            two_stages_output = list(two_stages_output)
+            direct_output = list(direct_output)
+            eqs = all([tf.reduce_all(tf.equal(t, d)).numpy() for t, d in zip(two_stages_output, direct_output)])
+
+            print('Is the output of the split model the same as non split?', eqs)
             del head_model, tail_model, direct_tail, input_shapes, input_noise, two_stages_output, direct_output
         del model
         pairs = None
+
 
 if __name__ == '__main__':
     test_split_model()
