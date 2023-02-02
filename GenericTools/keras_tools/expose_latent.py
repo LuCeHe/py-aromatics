@@ -119,7 +119,7 @@ def truer_split_model(model, pairs):
     extra_input_names = []
 
     def _find_backwards(layer):
-        print(layer.name)
+        # print(layer.name)
         """
         Returns outputs of a layer by moving backward and
         finding outputs of previous layers until reaching split layer.

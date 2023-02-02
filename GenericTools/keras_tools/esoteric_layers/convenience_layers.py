@@ -6,9 +6,38 @@ from tensorflow.keras.models import Model
 
 from GenericTools.keras_tools.convenience_operations import slice_from_to, clip_layer, replace_column
 
+
 class Identity(tf.keras.layers.Layer):
     def call(self, inputs, **kwargs):
         return inputs
+
+
+class Concatenate(tf.keras.layers.Layer):
+    def __init__(self, axis, **kwargs):
+        self.axis = axis
+        super().__init__(**kwargs)
+
+    def call(self, inputs, **kwargs):
+        return tf.concat(inputs, axis=self.axis)
+
+
+class DeConcatenate(tf.keras.layers.Layer):
+    def __init__(self, axis, num_or_size_splits, **kwargs):
+        self.axis = axis
+        self.num_or_size_splits = num_or_size_splits
+        super().__init__(**kwargs)
+
+    def call(self, inputs, **kwargs):
+        return tf.split(inputs, num_or_size_splits=self.num_or_size_splits, axis=self.axis)
+
+
+class Compare(tf.keras.layers.Layer):
+    def call(self, inputs, **kwargs):
+        a, b = inputs
+        eqs = tf.reduce_mean(tf.cast(tf.reduce_all(tf.equal(a, b)), tf.float32))
+        self.add_metric(eqs, aggregation='mean', name=self.name)
+
+        return a
 
 
 class AverageOverAxis(Layer):
