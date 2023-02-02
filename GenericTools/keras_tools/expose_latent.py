@@ -1,7 +1,8 @@
-import tensorflow as tf
 import sys
-
+import tensorflow as tf
 from GenericTools.stay_organized.utils import flaggedtry
+
+sys.setrecursionlimit(1000)
 
 
 def expose_latent_model(original_model, exclude_layers=[], include_layers=[], idx=None, return_names=False):
@@ -101,7 +102,7 @@ def truer_split_model(model, pairs):
     lnames = [layer.name for layer in model.layers]
     split_layer_name = lnames[pairs[0]]
     last_layer_name = lnames[pairs[1]]
-    # print(pairs, split_layer_name, last_layer_name)
+    print(pairs, split_layer_name, last_layer_name)
 
     model2split = model
 
@@ -209,7 +210,7 @@ def test_split_model():
 
     n_tries = 10
     tryornot = True
-    modid = 'alif'  # eff simple transf simple2 alif
+    modid = 'transf'  # eff simple transf simple2 alif
     batch_size = 2
 
     pairs = None
@@ -245,12 +246,12 @@ def test_split_model():
 
     elif modid == 'alif':
         model_args = dict(
-        task_name='wordptb', net_name='maLSNNb', n_neurons='3',
-        lr=0.01, stack='120:3', loss_name='sparse_categorical_crossentropy',
-        embedding='learned:None:None:3', optimizer_name='Adam', lr_schedule='',
-        weight_decay=0., clipnorm=1., initializer='glorot_uniform', comments='',
-        in_len=2, n_in=1, out_len=2,
-        n_out=1, final_epochs=3, seed=0,
+            task_name='wordptb', net_name='maLSNNb', n_neurons='3',
+            lr=0.01, stack='120:3', loss_name='sparse_categorical_crossentropy',
+            embedding='learned:None:None:3', optimizer_name='Adam', lr_schedule='',
+            weight_decay=0., clipnorm=1., initializer='glorot_uniform', comments='',
+            in_len=2, n_in=1, out_len=2,
+            n_out=1, final_epochs=3, seed=0,
         )
 
         bm = lambda: build_alif(**model_args)
@@ -282,7 +283,7 @@ def test_split_model():
 
         # keep_in_layers = ['embeddinglayer', 'identity_']
         # keep_out_layers = ['identity_']
-        # jump = 10
+        jump = 10
         skip_in_layers, skip_out_layers = [], ['input', 'tf.linalg.matmul']
 
     else:
@@ -339,10 +340,6 @@ def test_split_model():
             input_shapes = [head_model.get_layer(ln).get_input_shape_at(0) for ln in input_names]
             input_shapes = [tuple([s if not s is None else batch_size for s in shape]) for shape in input_shapes]
 
-            # print(input_shapes)
-            head_input_shapes = [head_model.get_layer(l.name).get_input_shape_at(0)
-                                 for l in model.layers if 'input' in l.name]
-
             input_noise = [random_generation(shape) for shape in input_shapes]
             head_out = head_model(input_noise)
             # print('head out', *[o.shape for o in head_out])
@@ -352,6 +349,7 @@ def test_split_model():
             # compare if they produce the same tensor
             two_stages_output = list(two_stages_output)
             direct_output = list(direct_output)
+            print(direct_output)
             eqs = all([tf.reduce_all(tf.equal(t, d)).numpy() for t, d in zip(two_stages_output, direct_output)])
 
             print('Is the output of the split model the same as non split?', eqs)
