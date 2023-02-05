@@ -80,8 +80,7 @@ def sh_base(time, account, py_location, env_name, n_gpus, mem='32G'):
 #SBATCH --cpus-per-task 4
 {gpus_line}
 
-module load StdEnv/2020 python/3.8 
-module load gcc/10 cuda/11.0 
+module load gcc/10 arrow cuda/11.0 python/3.8 scipy-stack StdEnv/2020 
 source {env_location}
 cd {py_location}
 $1
