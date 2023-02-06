@@ -102,7 +102,7 @@ def truer_split_model(model, pairs):
     lnames = [layer.name for layer in model.layers]
     split_layer_name = lnames[pairs[0]]
     last_layer_name = lnames[pairs[1]]
-    # print(pairs, split_layer_name, last_layer_name)
+    print(pairs, split_layer_name, last_layer_name)
 
     model2split = model
 
@@ -350,7 +350,7 @@ def test_split_model():
             # compare if they produce the same tensor
             two_stages_output = list(two_stages_output)
             direct_output = list(direct_output)
-            print(direct_output)
+            # print(direct_output)
             eqs = all([tf.reduce_all(tf.equal(t, d)).numpy() for t, d in zip(two_stages_output, direct_output)])
 
             print('Is the output of the split model the same as non split?', eqs)
