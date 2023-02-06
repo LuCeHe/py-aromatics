@@ -109,6 +109,11 @@ def truer_split_model(model, pairs):
     # Determine the split point based on the 'on_head' argument.
     # tail_input = tf.keras.layers.Input(batch_shape=model2split.get_layer(split_layer_name).get_input_shape_at(0))
     tail_input = None
+    print(
+        'hey!',
+        [model2split.get_layer(l.name).get_input_shape_at(0)
+         for l in model2split.layers if 'input' in l.name]
+    )
     all_inputs = {
         l.name: tf.keras.layers.Input(batch_shape=model2split.get_layer(l.name).get_input_shape_at(0))
         for l in model2split.layers if 'input' in l.name
@@ -139,12 +144,12 @@ def truer_split_model(model, pairs):
             if isinstance(tail_input, list):
                 if len(tail_input) > 1:
                     raise ValueError('This scenario hasnt been implemented!')
-            # print('tail_input', output_shape)
+            # print('in1', output_shape)
             # print('tail_input', len(output_shape), output_shape[0])
             if isinstance(output_shape[0], tuple):
                 tail_input = [tf.keras.layers.Input(batch_shape=o) for o in output_shape]
             else:
-                tail_input = tf.keras.layers.Input(batch_shape=output_shape)
+                tail_input = tf.keras.layers.Input(batch_shape=output_shape, batch_size=output_shape[0])
 
             out = tail_input
             layer_outputs[layer.name] = out
