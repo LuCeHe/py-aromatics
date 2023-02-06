@@ -33,20 +33,21 @@ def run_experiments(
     ods = ds
     ds = ds[subset[0]:subset[1]]
 
-    print(f'Number jobs: {len(ds)}/{len(ods)}')
-    for i, d in enumerate(ds):
-        if not experiments is None:
-            a = '--' if is_argparse else ''
-            config_update = ''.join([a + '{}={} '.format(k, v) for k, v in d.items()])
-            command = init_command + config_update
-        else:
-            command = init_command
+    if len(ds)>0:
+        print(f'Number jobs: {len(ds)}/{len(ods)}')
+        for i, d in enumerate(ds):
+            if not experiments is None:
+                a = '--' if is_argparse else ''
+                config_update = ''.join([a + '{}={} '.format(k, v) for k, v in d.items()])
+                command = init_command + config_update
+            else:
+                command = init_command
 
-        command = "{} '{}'".format(run_string, command + stop_training)
-        command = command.replace('  ', ' ')
-        print('{}/{}'.format(i + 1, len(ds)), command)
-        os.system(command)
-    print(f'Number jobs: {len(ds)}/{len(ods)}')
+            command = "{} '{}'".format(run_string, command + stop_training)
+            command = command.replace('  ', ' ')
+            print('{}/{}'.format(i + 1, len(ds)), command)
+            os.system(command)
+        print(f'Number jobs: {len(ds)}/{len(ods)}')
 
 
 def dict2iter(experiments):
