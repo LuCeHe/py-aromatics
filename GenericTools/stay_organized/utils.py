@@ -318,7 +318,7 @@ def summarize_logs(
         containing_folder,
         remove_lines_with=[': I tensorflow', 'WARNING:root:', ' - ETA:', 'Lmod ', 'cuda/11.0', 'is deprecated'],
         error_keys=['Aborted', 'error', 'Error', '(core dumped)'],
-        exclude_as_errors=['mean_squared_error', 'mean_absolute_error'],
+        exclude_as_errors=['mean_squared_error', 'mean_absolute_error', 'TracebackException'],
         completion_keys=['DONE', 'All done', 'Completed after'],
         error_similarity_threshold=.8,
         comments=''
