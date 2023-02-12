@@ -102,18 +102,13 @@ def truer_split_model(model, pairs):
     lnames = [layer.name for layer in model.layers]
     split_layer_name = lnames[pairs[0]]
     last_layer_name = lnames[pairs[1]]
-    print(pairs, split_layer_name, last_layer_name)
+    # print(pairs, split_layer_name, last_layer_name)
 
     model2split = model
 
     # Determine the split point based on the 'on_head' argument.
     # tail_input = tf.keras.layers.Input(batch_shape=model2split.get_layer(split_layer_name).get_input_shape_at(0))
     tail_input = None
-    print(
-        'hey!',
-        [model2split.get_layer(l.name).get_input_shape_at(0)
-         for l in model2split.layers if 'input' in l.name]
-    )
     all_inputs = {
         l.name: tf.keras.layers.Input(batch_shape=model2split.get_layer(l.name).get_input_shape_at(0))
         for l in model2split.layers if 'input' in l.name
