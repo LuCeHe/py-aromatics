@@ -6,7 +6,7 @@ def run_experiments(
         experiments=None, subset = [0, None], init_command='python language_main.py with ',
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
         duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': -1},
-        env_name='denv2', n_gpus=0, id='', mem='32G'
+        env_name='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4
 ):
     delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
 
@@ -18,7 +18,8 @@ def run_experiments(
     sh_duration = "{}:{}:00".format(str(int(hours)).zfill(2), str(int(minutes)).zfill(2))
 
     if run_string is None:
-        sh_name = create_sbatch_sh(sh_duration, sh_location, py_location, account, env_name, n_gpus, id, mem=mem)
+        sh_name = create_sbatch_sh(sh_duration, sh_location, py_location, account, env_name, n_gpus, id, mem=mem,
+                                   cpus_per_task=cpus_per_task)
         run_string = 'sbatch ' + sh_name
 
     print()
@@ -59,15 +60,15 @@ def dict2iter(experiments):
     return full_ds
 
 
-def create_sbatch_sh(duration, sh_location, py_location, account, env_name, n_gpus, id, mem='32G'):
+def create_sbatch_sh(duration, sh_location, py_location, account, env_name, n_gpus, id, mem='32G', cpus_per_task=4):
     sh_name = '{0:010x}'.format(int(time.time() * 256))[-7:] + f'-{id}.sh'
     sh_path = os.path.join(sh_location, sh_name)
     with open(sh_path, 'w') as f:
-        f.write(sh_base(duration, account, py_location, env_name, n_gpus, mem))
+        f.write(sh_base(duration, account, py_location, env_name, n_gpus, mem, cpus_per_task=cpus_per_task))
     return sh_path
 
 
-def sh_base(time, account, py_location, env_name, n_gpus, mem='32G'):
+def sh_base(time, account, py_location, env_name, n_gpus, mem='32G', cpus_per_task=4):
     env_location = f'~/scratch/{env_name}/bin/activate'
     if 'cedar' in socket.gethostname():
         env_location = f'~/project/lucacehe/{env_name}/bin/activate'
@@ -78,7 +79,7 @@ def sh_base(time, account, py_location, env_name, n_gpus, mem='32G'):
 #SBATCH --time={time}
 #SBATCH --account={account}
 #SBATCH --mem {mem}
-#SBATCH --cpus-per-task 4
+#SBATCH --cpus-per-task {cpus_per_task}
 {gpus_line}
 
 module load gcc/9.3.0 arrow cuda/11.0 python/3.8 scipy-stack StdEnv/2020 
