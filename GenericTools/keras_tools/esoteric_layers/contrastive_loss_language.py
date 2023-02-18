@@ -17,10 +17,8 @@ def contrastive_disorder(self, y_true, y_pred, ):
     # print(disordered_sentences.shape)
     # print(probs.shape)
     # cl_d = - self.coef_disorder * self.loss(disordered_sentences, probs)
-    contrastive_loss = - self.coef * tf.sigmoid(
-        tf.keras.losses.CategoricalCrossentropy(from_logits=True)(disordered_sentences, y_pred))
-    self.add_loss(contrastive_loss)
-    self.add_metric(contrastive_loss, name='contrastive_disorder', aggregation='mean')
+    contrastive_loss = - tf.keras.losses.CategoricalCrossentropy(from_logits=True)(disordered_sentences, y_pred)
+    return contrastive_loss
 
 
 def contrastive_random(self, y_true, y_pred):
@@ -38,30 +36,28 @@ def contrastive_random(self, y_true, y_pred):
         contrastive_loss = - self.coef * tf.sigmoid(self.loss(random, y_pred))
         self.add_loss(contrastive_loss)
         self.add_metric(contrastive_loss, name='contrastive_random_{}'.format(i), aggregation='mean')
+    return 0
 
 
 def axis_shuffle(self, y_true, y_pred, axis):
     s_true = tf_shuffle_axis(y_true, axis=axis, seed=None, name=None)
 
-    contrastive_loss = - self.coef * tf.tanh(self.loss(s_true, y_pred))
-    self.add_loss(contrastive_loss)
-    self.add_metric(contrastive_loss, name='contrastive_inaxis', aggregation='mean')
+    contrastive_loss = - self.loss(s_true, y_pred)
+    return contrastive_loss
 
 
 def self_shuffle(self, y_true, y_pred, axis):
     sprobs = tf_shuffle_axis(y_pred, axis=axis)
 
-    contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.abs(sprobs - y_pred)))
-    self.add_loss(contrastive_loss)
-    self.add_metric(contrastive_loss, name='selfcontrastive', aggregation='mean')
+    contrastive_loss = - tf.reduce_mean(tf.abs(sprobs - y_pred))
+    return contrastive_loss
 
 
 def negcontrastive(self, y_true, y_pred):
     sprobs = -y_true
 
-    contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.abs(sprobs - y_pred)))
-    self.add_loss(contrastive_loss)
-    self.add_metric(contrastive_loss, name='negcontrastive', aggregation='mean')
+    contrastive_loss = - tf.reduce_mean(tf.abs(sprobs - y_pred))
+    return contrastive_loss
 
 
 def contrastive_common(self, y_pred):
@@ -70,9 +66,8 @@ def contrastive_common(self, y_pred):
     mean = tf.reduce_mean(most_common_words)
     silence_words = tf.cast(most_common_words > mean, tf.float32)[None, None]
 
-    contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.square(silence_words * y_pred)))
-    self.add_loss(contrastive_loss)
-    self.add_metric(contrastive_loss, name='contrastive_common', aggregation='mean')
+    contrastive_loss = - tf.reduce_mean(tf.abs(silence_words * y_pred))
+    return contrastive_loss
 
 
 def gamma_contrastive(self, y_true, y_pred):
@@ -81,9 +76,8 @@ def gamma_contrastive(self, y_true, y_pred):
     noise = tf.random.gamma(tf.shape(y_true), alpha=alpha, beta=beta)
     shifted_trues = y_true - tf.sign(y_true) * noise * tf.math.reduce_std(y_true)
 
-    contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.abs(shifted_trues - y_pred)))
-    self.add_loss(contrastive_loss)
-    self.add_metric(contrastive_loss, name='gammacontrastive', aggregation='mean')
+    contrastive_loss = -tf.reduce_mean(tf.abs(shifted_trues - y_pred))
+    return contrastive_loss
 
 
 def bigamma_contrastive(self, y_true, y_pred):
@@ -93,20 +87,8 @@ def bigamma_contrastive(self, y_true, y_pred):
     sign = 2 * tf.cast(tf.random.uniform(tf.shape(y_true)) > 0.5, tf.float32) - 1
     shifted_trues = y_true + sign * noise * tf.math.reduce_std(y_true)
 
-    contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.abs(shifted_trues - y_pred)))
-    self.add_loss(contrastive_loss)
-    self.add_metric(contrastive_loss, name='gammacontrastive', aggregation='mean')
-
-
-# def promote_unlikely_words(self, y_true, y_pred):
-#     most_common_words = tf.reduce_mean(tf.reduce_mean(y_true, axis=0), axis=0)
-#
-#     mean = tf.reduce_mean(most_common_words)
-#     silence_words = tf.cast(most_common_words > mean, tf.float32)[None, None]
-#
-#     contrastive_loss = - self.coef * tf.tanh(tf.reduce_mean(tf.square(silence_words * y_pred)))
-#     self.add_loss(contrastive_loss)
-#     self.add_metric(contrastive_loss, name='contrastive_common', aggregation='mean')
+    contrastive_loss = -tf.reduce_mean(tf.abs(shifted_trues - y_pred))
+    return contrastive_loss
 
 
 class ContrastiveLossLayer(tf.keras.layers.Layer):
@@ -131,12 +113,15 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
         self.coef = str2val(string_config, 'coefcontrastive', output_type=float, default=coef)
 
         self.contrastives = []
+        self.contrastive_names = []
 
         if 'disordercontrastive' in string_config:
             self.contrastives.append(contrastive_disorder)
+            self.contrastive_names.append('disordercontrastive')
 
         if 'randomcontrastive' in string_config:
             self.contrastives.append(contrastive_random)
+            self.contrastive_names.append('randomcontrastive')
 
         # in batch contrastive is equivalent to inaxis with axis=0
         # variation of the idea from https://arxiv.org/pdf/2004.13637.pdf
@@ -146,6 +131,7 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
             for ax in axis:
                 c = partial(axis_shuffle, axis=ax)
                 self.contrastives.append(c)
+                self.contrastive_names.append(f'inaxiscontrastive{ax}')
 
         # variation of the idea from https://arxiv.org/pdf/2004.13637.pdf
         if 'selfcontrastive' in string_config:
@@ -154,19 +140,29 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
             for ax in axis:
                 c = partial(self_shuffle, axis=ax)
                 self.contrastives.append(c)
+                self.contrastive_names.append(f'selfcontrastive{ax}')
 
         if 'contrastivecommon' in string_config:
             c = lambda s, t, p: contrastive_common(s, p)
             self.contrastives.append(c)
+            self.contrastive_names.append('contrastivecommon')
 
         if 'negcontrastive' in string_config:
             self.contrastives.append(negcontrastive)
+            self.contrastive_names.append('negcontrastive')
 
         if 'bigammacontrastive' in string_config:
             self.contrastives.append(bigamma_contrastive)
+            self.contrastive_names.append('bigammacontrastive')
 
         elif 'gammacontrastive' in string_config:
             self.contrastives.append(gamma_contrastive)
+            self.contrastive_names.append('gammacontrastive')
+
+        if 'notanh' in string_config:
+            self.postloss = lambda x: x
+        else:
+            self.postloss = lambda x: tf.tanh(x)
 
     def build(self, input_shape):
         self.coef = self.add_weight(name='contrastivecoef',
@@ -183,8 +179,10 @@ class ContrastiveLossLayer(tf.keras.layers.Layer):
         else:
             y_true, y_pred = inputs, inputs
 
-        for c in self.contrastives:
-            c(self, y_true, y_pred)
+        for c, n in zip(self.contrastives, self.contrastive_names):
+            loss = self.postloss(self.coef * c(self, y_true, y_pred))
+            self.add_loss(loss)
+            self.add_metric(loss, name=n, aggregation='mean')
 
         return y_pred
 
