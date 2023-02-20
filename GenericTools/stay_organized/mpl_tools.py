@@ -50,7 +50,7 @@ class Multiple:
 def load_plot_settings(mpl=None, pd=None, figsize=(10, 10)):
     output = ()
     if not mpl is None:
-        mpl.rcParams['font.family'] = 'Times New Roman'
+        # mpl.rcParams['font.family'] = 'Times New Roman'
         # mpl.rcParams['font.serif'] = 'Helvetica'
         # mpl.rcParams['font.family'] = 'sans-serif'
         # mpl.rcParams['font.sans-serif'] = ['Tahoma']
