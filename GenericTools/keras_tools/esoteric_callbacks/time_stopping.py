@@ -44,11 +44,12 @@ class TimeStopping(Callback):
         self.epochs = 0
 
     def on_train_begin(self, logs=None):
+        self.starting_time = time.time()
         self.stopping_time = time.time() + self.seconds
 
     def on_epoch_end(self, epoch, logs={}):
         self.epochs += 1
-        extra_epoch_time = (time.time() - self.stopping_time) / self.epochs
+        extra_epoch_time = (time.time() - self.starting_time) / self.epochs
         if time.time() + extra_epoch_time >= self.stopping_time:
             self.model.stop_training = True
             self.stopped_epoch = epoch
