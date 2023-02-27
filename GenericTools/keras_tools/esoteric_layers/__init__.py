@@ -11,4 +11,5 @@ from GenericTools.keras_tools.esoteric_layers.convenience_layers import *
 from GenericTools.keras_tools.esoteric_layers.resizing_1d import Resizing1D
 from GenericTools.keras_tools.esoteric_layers.stochastic_depth import StochasticDepth
 from GenericTools.keras_tools.esoteric_layers.surrogated_step import SurrogatedStep
+from GenericTools.keras_tools.esoteric_layers.projection_layer import *
 

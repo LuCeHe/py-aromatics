@@ -2,6 +2,7 @@ from GenericTools.keras_tools.esoteric_callbacks.annealing_callback import Annea
 from GenericTools.keras_tools.esoteric_callbacks.earlystop_byvalue import EarlyStoppingByLossVal
 from GenericTools.keras_tools.esoteric_callbacks.gradient_tensorboard import IndividualWeightsTensorBoard
 from GenericTools.keras_tools.esoteric_callbacks.loggers import *
+from GenericTools.keras_tools.esoteric_callbacks.clear_memory import *
 from GenericTools.keras_tools.esoteric_callbacks.lr_finder import LRFinder
 from GenericTools.keras_tools.esoteric_callbacks.time_stopping import TimeStopping
 
