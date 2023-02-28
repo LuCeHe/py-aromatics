@@ -35,18 +35,23 @@ class TimeStopping(Callback):
     """
 
     @typechecked
-    def __init__(self, seconds: int = 86400, verbose: int = 0):
+    def __init__(self, seconds: int = 86400, verbose: int = 0, stop_within_epoch=False):
         super().__init__()
 
         self.seconds = seconds
         self.verbose = verbose
         self.stopped_epoch = None
         self.epochs = 0
+        self.stop_within_epoch = stop_within_epoch
 
     def on_train_begin(self, logs=None):
         self.starting_time = time.time()
-        self.stopping_time = time.time() + self.seconds
+        self.stopping_time = self.starting_time + self.seconds
 
+    def on_train_batch_end(self, batch, logs=None):
+        if self.stop_within_epoch and time.time() >= self.stopping_time:
+            self.model.stop_training = True
+            self.stopped_epoch = self.epochs
     def on_epoch_end(self, epoch, logs={}):
         self.epochs += 1
         extra_epoch_time = (time.time() - self.starting_time) / self.epochs
