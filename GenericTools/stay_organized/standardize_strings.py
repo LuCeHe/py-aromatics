@@ -16,5 +16,10 @@ def shorten_losses(name):
     shorter_name = shorter_name.replace('attention_head_count', 'mh')
     shorter_name = shorter_name.replace('_preprocessinput', '')
     shorter_name = shorter_name.replace('deslice', 'dsl')
+    shorter_name = shorter_name.replace('task_name', 'task')
+    shorter_name = shorter_name.replace('net_name', 'net')
+    shorter_name = shorter_name.replace('_mode_', '_^')
+    shorter_name = shorter_name.replace('LSC_norms', 'LSC')
+    shorter_name = shorter_name.replace('mean', 'a')
 
     return shorter_name
