@@ -49,20 +49,6 @@ def make_directories(time_string=None):
     return experiment_folder
 
 
-def plot_softmax_evolution(softmaxes_list, name='softmaxes'):
-    import matplotlib.pylab as plt
-
-    f = plt.figure()
-    index = range(len(softmaxes_list[0]))
-    for softmax in softmaxes_list:
-        plt.bar(index, softmax)
-
-    plt.xlabel('Token')
-    plt.ylabel('Probability')
-    plt.title('softmax evoluti\on during training')
-    plt.show()
-    f.savefig(name + ".pdf", bbox_inches='tight')
-
 
 def checkDuringTraining(generator_class, indices_sentences, encoder_model, decoder_model, batch_size, lat_dim):
     # original sentences
@@ -461,6 +447,16 @@ def summarize_logs(
                 d = error_d[idx]
                 f.write(f'\n            e.g. {d}')
             f.write(f'\n')
+
+
+def save_results(other_dir, results):
+    results_filename = os.path.join(other_dir, 'results.json')
+
+    string_result = json.dumps(results, indent=4, cls=NumpyEncoder)
+    # print(string_result)
+    with open(results_filename, "w") as f:
+        f.write(string_result)
+
 
 
 if __name__ == '__main__':
