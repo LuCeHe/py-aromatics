@@ -5,7 +5,6 @@ import tensorflow as tf
 from tensorflow import keras as k
 
 
-
 class ClearMemory(tf.keras.callbacks.Callback):
     def __init__(self, end_of_epoch=True, end_of_batch=True, batch_frequency=1000, verbose=1):
         super().__init__()
@@ -37,7 +36,6 @@ class ClearMemory(tf.keras.callbacks.Callback):
             aramp = psutil.virtual_memory().percent
             aram = f"{psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB"
 
-
             print('\nafter')
             print('GPU utilization')
             GPUtil.showUtilization(all=True)
@@ -45,7 +43,6 @@ class ClearMemory(tf.keras.callbacks.Callback):
             print(f'CPU usage %:  {bcpup}% -> {acpup}%')
             print(f'RAM memory %: {bramp}% -> {aramp}%')
             print(f'RAM used:     {bram} -> {aram}')
-
 
             print('-' * 30)
             print(f'\n\n')
@@ -57,3 +54,10 @@ class ClearMemory(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         if self.end_of_epoch:
             self.clear_memory()
+
+    def on_train_begin(self, logs=None):
+        self.clear_memory()
+
+    def on_train_end(self, logs=None):
+
+        self.clear_memory()

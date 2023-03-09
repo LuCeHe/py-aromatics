@@ -140,6 +140,7 @@ class SymbolAndPositionEmbedding(tf.keras.layers.Layer):
 
             return tf.reshape(logits, [batch_size, seq_len, self.vocab_size])
 
+    @tf.function
     def call(self, inputs, mode='embedding'):
 
         if mode == 'embedding':
