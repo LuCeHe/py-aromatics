@@ -451,9 +451,9 @@ def summarize_logs(
 
 def save_results(other_dir, results):
     results_filename = os.path.join(other_dir, 'results.json')
-
+    print(results)
     string_result = json.dumps(results, indent=4, cls=NumpyEncoder)
-    # print(string_result)
+    print(string_result)
     with open(results_filename, "w") as f:
         f.write(string_result)
 

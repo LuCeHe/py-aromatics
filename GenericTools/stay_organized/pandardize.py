@@ -67,14 +67,31 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                         else:
                             res = {}
 
-                        aux_results.update(
+
+                        # flatten dictionaries inside res
+                        res2 = {}
+                        for k, v in res.items():
+                            if isinstance(v, dict):
+                                for k2, v2 in v.items():
+                                    res2[f'{k}_{k2}'] = v2
+                                # del res[k]
+                            else:
+                                res2[k] = v
+
+                        # print(res2.keys())
+                        res2 = {k: v for k, v in res2.items()
+                               if not any([e in k for e in exclude_columns]) or
+                               any([e in k for e in force_keep_column])}
+                        # print(res2.keys())
+
+                        results.update(
                             h
-                            for k, v in res.items()
+                            for k, v in res2.items()
                             for h in history_pick(k, v)
                         )
-                        results.update({k: v for k, v in aux_results.items()
-                                        if (not any([e in k for e in exclude_columns])
-                                            or k in force_keep_column)})
+                        # results.update({k: v for k, v in aux_results.items()
+                        #                 if (not any([e in k for e in exclude_columns])
+                        #                     or k in force_keep_column)})
                 # except Exception as e:
                 #     print('\n')
                 #     print(fp)

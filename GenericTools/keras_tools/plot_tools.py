@@ -20,22 +20,14 @@ def history_pick(k, v, min_epochs=0):
                 v = '[Nones]'
 
     if isinstance(v, list):
-
         if not len(v) == 0 and not np.isnan(v).all():
-            if True:
-                # try:
-                o = [(k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'), (k + ' initial', v[0]),
-                     (k + ' final', v[-1]),
-                     (k + ' mean', np.nanmean(v)), (k + ' min', np.nanmin(v)), (k + ' max', np.nanmax(v)),
-                     (k + ' list', v), (k + ' len', len(v)),
-                     (k + ' argmin', np.nanargmin(v)), (k + ' argmax', np.nanargmax(v)),
-                     ]
-                # if 'loss' == k:
-                #     o += [('convergence', convergence_estimation(v))]
-                o = tuple(o)
-            # except Exception as e:
-            #     print(e)
-            #     o = str(v)
+            o = [(k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'), (k + ' initial', v[0]),
+                 (k + ' final', v[-1]),
+                 (k + ' mean', np.nanmean(v)), (k + ' min', np.nanmin(v)), (k + ' max', np.nanmax(v)),
+                 (k + ' list', v), (k + ' len', len(v)),
+                 (k + ' argmin', np.nanargmin(v)), (k + ' argmax', np.nanargmax(v)),
+                 ]
+            o = tuple(o)
         elif np.isnan(v).all():
             v = ['nans']
         else:
