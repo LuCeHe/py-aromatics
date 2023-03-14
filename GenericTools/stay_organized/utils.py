@@ -309,6 +309,10 @@ def summarize_logs(
         error_similarity_threshold=.8,
         comments=''
 ):
+    # remove existing summary files
+    os.system(f"cd {containing_folder}; rm -f *summary*")
+
+
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
     isolate_word = str2val(comments, 'isolate', str, default=None)
 
@@ -373,13 +377,13 @@ def summarize_logs(
                 error_found = any([error_key in line for error_key in error_keys])
                 not_error = any([error_key in line for error_key in exclude_as_errors])
                 if error_found and not not_error:
-                    errors.append(line)
+                    errors.append(line[-600:])
                     error_d.append(d)
                     failed = 1
                 else:
                     completed = any([completion_key in line for completion_key in completion_keys] + [completed])
         if not completed and not failed:
-            errors.append(line)
+            errors.append(line[-600:])
             error_d.append(d)
             failed = 1
 
