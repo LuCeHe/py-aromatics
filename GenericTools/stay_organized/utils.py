@@ -457,10 +457,14 @@ def summarize_logs(
 def save_results(other_dir, results):
     results_filename = os.path.join(other_dir, 'results.json')
     print(results)
-    string_result = json.dumps(results, indent=4, cls=NumpyEncoder)
-    print(string_result)
-    with open(results_filename, "w") as f:
-        f.write(string_result)
+    try:
+        string_result = json.dumps(results, indent=4, cls=NumpyEncoder)
+        print(string_result)
+        with open(results_filename, "w") as f:
+            f.write(string_result)
+    except Exception as e:
+        print(e)
+        print('Could not save results to file')
 
 
 
