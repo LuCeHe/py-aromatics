@@ -1,3 +1,4 @@
+import re
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 # import string
@@ -10,9 +11,17 @@ from GenericTools.keras_tools.convergence_metric import convergence_estimation
 def history_pick(k, v, min_epochs=0):
 
     o = None
-    # if isinstance(v,list):
-    # v = np.array(v)
     if isinstance(v, str):
+        if 'array' in v:
+            v = ''.join(v.splitlines())
+            v = v.replace('array', '')
+            v = v.replace('dtype=float32', '')
+            v = re.sub(' +', ' ', v)
+            v = v.replace('(', '').replace(')', '').replace('),', '')
+            v = v.replace('[', '').replace(']', '')
+            v = v.replace(' ,', ',').replace(',,', ',')
+            v = f'[{v}]'.replace(', ]', ']')
+
         if v.startswith('[') and v.endswith(']'):
             if not 'None' in v and not len(v) == 2:
                 v = [float(n) for n in v[1:-1].split(', ')]
