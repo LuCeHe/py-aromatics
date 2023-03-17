@@ -29,18 +29,25 @@ def history_pick(k, v, min_epochs=0):
                 v = '[Nones]'
 
     if isinstance(v, list):
-        if not len(v) == 0 and not np.isnan(v).all():
-            o = [(k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'), (k + ' initial', v[0]),
-                 (k + ' final', v[-1]),
-                 (k + ' mean', np.nanmean(v)), (k + ' min', np.nanmin(v)), (k + ' max', np.nanmax(v)),
-                 (k + ' list', v), (k + ' len', len(v)),
-                 (k + ' argmin', np.nanargmin(v)), (k + ' argmax', np.nanargmax(v)),
-                 ]
-            o = tuple(o)
-        elif np.isnan(v).all():
-            v = ['nans']
-        else:
-            v = str(v)
+        if not len(v) == 0 and not isinstance(v[0], str):
+            if isinstance(v[-1], list):
+                if len(v[-1]) == 0:
+                    v[-1] = np.nan
+                else:
+                    v[-1] = v[-1][-1]
+
+            if not np.isnan(v).all():
+                o = [(k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'), (k + ' initial', v[0]),
+                     (k + ' final', v[-1]),
+                     (k + ' mean', np.nanmean(v)), (k + ' min', np.nanmin(v)), (k + ' max', np.nanmax(v)),
+                     (k + ' list', v), (k + ' len', len(v)),
+                     (k + ' argmin', np.nanargmin(v)), (k + ' argmax', np.nanargmax(v)),
+                     ]
+                o = tuple(o)
+            elif np.isnan(v).all():
+                v = ['nans']
+            else:
+                v = str(v)
 
     if o is None:
         o = (k, v),
