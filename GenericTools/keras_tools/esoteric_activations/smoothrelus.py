@@ -91,5 +91,5 @@ smooth_heavisides = {
 softmaxes = {
     'softmax': tf.nn.softmax,
     'mishsoftmax': mish_softmax,
-    'sigmoid': lambda x: tf.nn.sigmoid(x, axis=-1),
+    'sigmoid': tf.nn.sigmoid,
 }
