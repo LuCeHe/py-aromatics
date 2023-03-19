@@ -1,35 +1,51 @@
 import math
-
 import tensorflow as tf
 
 
 def Guderman_T(T=1.):
-    def guderT(x):
+    def activation(x):
         return x * (1 / 2 + 2 / math.pi * tf.math.atan(tf.tanh(x / T)))
 
-    return guderT
+    return activation
 
 
 def GeLUnew_T(T=1.):
-    def gelunT(x):
+    def activation(x):
         return 0.5 * x * (1.0 + tf.math.tanh(math.sqrt(2.0 / math.pi) * (x / T + 0.044715 * tf.math.pow(x / T, 3.0))))
 
-    return gelunT
+    return activation
 
 
 def Swish_T(T=1.):
-    def swishT(x):
+    def activation(x):
         return x * tf.math.sigmoid(x / T)
 
-    return swishT
+    return activation
+
+
+def mish_sigmoid(x):
+    return tf.tanh(tf.math.log(1 + tf.exp(x)))
+
+def MISH(T=1.):
+    def activation(x):
+        return x * mish_sigmoid(x / T)
+
+    return activation
+
+
+def mish_softmax(x):
+    x = MISH(1.)(x)
+    sum = tf.reduce_sum(x, axis=-1, keepdims=True)
+    return x / sum
+
 
 
 activations_with_temperature = {
     'cguderman1': Guderman_T(),
     'cguderman.1': Guderman_T(.1),
     'cguderman.01': Guderman_T(.01),
-    'cswish1': Swish_T(),
-    'cswish.1': Swish_T(.1),
+    'swish1': Swish_T(),
+    'swish.1': Swish_T(.1),
     'cswish.01': Swish_T(.01),
     'relu': tf.nn.relu,
     'gelu_new': GeLUnew_T()
@@ -55,4 +71,25 @@ critical_cbs = {
     'cswish.01': 0.555 * .01 ** 2,
     'gelu_new': 0.173,
     'relu': 0.
+}
+
+smooth_relus = {
+    'gudermanlu': Guderman_T(),
+    'gudermanlu.1': Guderman_T(.1),
+    'swish.1': Swish_T(.1),
+    'swish': Swish_T(1.),
+    'mish': MISH(1.),
+    'mish.1': MISH(.1),
+    **activations_with_temperature
+}
+
+smooth_heavisides = {
+    'sigmoid': tf.nn.sigmoid,
+    'mish': mish_sigmoid,
+}
+
+softmaxes = {
+    'softmax': tf.nn.softmax,
+    'mishsoftmax': mish_softmax,
+    'sigmoid': tf.sigmoid,
 }
