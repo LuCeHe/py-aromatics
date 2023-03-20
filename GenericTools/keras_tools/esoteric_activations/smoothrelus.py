@@ -40,6 +40,17 @@ def mish_softmax(x):
 
 
 
+def relu_softmax(x):
+    x = tf.nn.relu(x)
+    sum = tf.reduce_sum(x, axis=-1, keepdims=True)
+    return x / sum
+
+def euclidean_softmax(x):
+    x = tf.math.exp(x)
+    sum = tf.reduce_sum(x**2, axis=-1, keepdims=True)
+    return x / tf.sqrt(sum)
+
+
 activations_with_temperature = {
     'cguderman1': Guderman_T(),
     'cguderman.1': Guderman_T(.1),
@@ -92,4 +103,6 @@ softmaxes = {
     'softmax': tf.nn.softmax,
     'mishsoftmax': mish_softmax,
     'sigmoid': tf.nn.sigmoid,
+    'relusoftmax': relu_softmax,
+    'euclideansoftmax': euclidean_softmax
 }
