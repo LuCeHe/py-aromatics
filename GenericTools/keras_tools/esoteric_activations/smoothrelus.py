@@ -26,9 +26,17 @@ def Swish_T(T=1.):
 def mish_sigmoid(x):
     return tf.tanh(tf.math.log(1 + tf.exp(x)))
 
+
 def MISH(T=1.):
     def activation(x):
         return x * mish_sigmoid(x / T)
+
+    return activation
+
+
+def GumbelLU(T=1.):
+    def activation(x):
+        return x * tf.exp(-tf.exp(x / T))
 
     return activation
 
@@ -39,15 +47,15 @@ def mish_softmax(x):
     return x / sum
 
 
-
 def relu_softmax(x):
     x = tf.nn.relu(x)
     sum = tf.reduce_sum(x, axis=-1, keepdims=True)
     return x / sum
 
+
 def euclidean_softmax(x):
     x = tf.math.exp(x)
-    sum = tf.reduce_sum(x**2, axis=-1, keepdims=True)
+    sum = tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
     return x / tf.sqrt(sum)
 
 
@@ -91,6 +99,8 @@ smooth_relus = {
     'swish': Swish_T(1.),
     'mish': MISH(1.),
     'mish.1': MISH(.1),
+    'gumbellu': GumbelLU(1.),
+    'gumbellu.1': GumbelLU(.1),
     **activations_with_temperature
 }
 
