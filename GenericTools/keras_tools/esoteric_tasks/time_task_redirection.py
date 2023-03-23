@@ -1,6 +1,5 @@
 import os
 
-
 # from sg_design_lif.generate_data.bit_generator import OneBitTimeDependentGenerator
 # from sg_design_lif.generate_data.grammar_generators import CFG_AutoEncoding_Generator, MergeSearch
 from GenericTools.keras_tools.esoteric_tasks.heidelberg_generator import SpokenHeidelbergDigits
@@ -175,7 +174,7 @@ def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time
             tvt=train_val_test,
             steps_per_epoch=steps_per_epoch,
             repetitions=timerepeat,
-        string_config = comments
+            string_config=comments
         )
 
 
@@ -224,6 +223,7 @@ def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time
 
     if not hasattr(gen, 'in_len'): gen.in_len = maxlen
     if not hasattr(gen, 'out_len'): gen.out_len = maxlen
+    if not hasattr(gen, 'vocab_size'): gen.vocab_size = gen.out_dim
     if not hasattr(gen, 'name'): gen.name = name
     if not hasattr(gen, 'timerepeat'): gen.timerepeat = timerepeat
     if not hasattr(gen, 'n_regularizations'): gen.n_regularizations = 0
