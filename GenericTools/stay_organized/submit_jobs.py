@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 
 def run_experiments(
-        experiments=None, subset = [0, None], init_command='python language_main.py with ',
+        experiments=None, subset=[0, None], init_command='python language_main.py with ',
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
         duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': -1},
         env_name='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4
@@ -34,7 +34,7 @@ def run_experiments(
     ods = ds
     ds = ds[subset[0]:subset[1]]
 
-    if len(ds)>0:
+    if len(ds) > 0:
         print(f'Number jobs: {len(ds)}/{len(ods)}')
         for i, d in enumerate(ds):
             if not experiments is None:
@@ -49,6 +49,9 @@ def run_experiments(
             print('{}/{}'.format(i + 1, len(ds)), command)
             os.system(command)
         print(f'Number jobs: {len(ds)}/{len(ods)}')
+
+    print(subset)
+    print(socket.gethostname())
 
 
 def dict2iter(experiments):
