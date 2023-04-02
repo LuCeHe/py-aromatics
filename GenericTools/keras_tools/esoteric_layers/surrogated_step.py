@@ -30,6 +30,9 @@ def ExpSpikeFunction(v_scaled, dampening, sharpness):
 @tf.custom_gradient
 def FastSigmoidSpikeFunction(v_scaled, dampening, sharpness):
     z_ = tf.cast(tf.greater(v_scaled, 0.), dtype=tf.float32)
+    print('inside!')
+    print(dampening)
+    print(sharpness)
 
     def grad(dy):
         xabs = tf.abs(2. * v_scaled * sharpness)
@@ -390,23 +393,35 @@ class SurrogatedStep(tf.keras.layers.Layer):
         self.init_args = dict(config=config)
         self.__dict__.update(self.init_args)
 
-        sharpness = str2val(config, 'sharpn', float, default=sharpness)
-        dampening = str2val(config, 'dampf', float, default=dampening)
-        self.soft_spike = lambda x: \
-            dampening * tf.nn.sigmoid(sharpness * x) if 'annealing' in config else 0
-
-        if 'tanhspike' in config:
-            self.hard_spike = lambda x: -1 + 2 * ChoosePseudoHeaviside(x, config=config, sharpness=sharpness,
-                                                                       dampening=dampening)
-        else:
-            self.hard_spike = lambda x: ChoosePseudoHeaviside(x, config=config, sharpness=sharpness,
-                                                              dampening=dampening)
+        self.sharpness = str2val(config, 'sharpn', float, default=sharpness)
+        self.dampening = str2val(config, 'dampf', float, default=dampening)
+        self.config = config
 
     def call(self, inputs, *args, **kwargs):
-        v_sc = inputs
-        z = self.hard_spike(v_sc)
-        z.set_shape(v_sc.get_shape())
+        z = self.hard_spike(inputs)
+        z.set_shape(inputs.get_shape())
         return z
+
+    def build(self, input_shape):
+
+        n_in = input_shape[-1]
+
+        if 'learnsharp' in self.config:
+            s = self.add_weight(shape=(n_in,), initializer=tf.keras.initializers.Constant(self.sharpness), name='input_weights')
+        else:
+            s = self.sharpness
+
+        if 'learndamp' in self.config:
+            d = self.add_weight(shape=(n_in,), initializer=tf.keras.initializers.Constant(self.dampening), name='input_weights')
+        else:
+            d = self.dampening
+
+        if 'tanhspike' in self.config:
+            self.hard_spike = lambda x: -1 + 2 * ChoosePseudoHeaviside(x, config=self.config, sharpness=s, dampening=d)
+        else:
+            self.hard_spike = lambda x: ChoosePseudoHeaviside(x, config=self.config, sharpness=s, dampening=d)
+
+        self.built = True
 
 
 possible_pseudod = [
@@ -511,7 +526,7 @@ def draw_pseudods():
     exponents = [round(e, 2) for e in 10 ** np.linspace(-2, 1.2, n_exps) + 1][::-1]
 
     ax.set_yticks(loc)
-    ax.set_yticklabels(exponents, fontsize=label_fotsize*.85)
+    ax.set_yticklabels(exponents, fontsize=label_fotsize * .85)
 
     ax.yaxis.tick_right()
     ax.yaxis.set_label_position("right")
@@ -532,7 +547,7 @@ def draw_pseudods():
         for pos in ['right', 'left', 'bottom', 'top']:
             ax.spines[pos].set_visible(False)
 
-        ax.tick_params(axis='both', which='major', labelsize=label_fotsize*.75)
+        ax.tick_params(axis='both', which='major', labelsize=label_fotsize * .75)
 
     axs[0].set_xticks([0, 1])
     axs[1].set_xticks([0, 1])

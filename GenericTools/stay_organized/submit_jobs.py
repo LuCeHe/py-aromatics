@@ -6,7 +6,7 @@ def run_experiments(
         experiments=None, subset=[0, None], init_command='python language_main.py with ',
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
         duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': -1},
-        env_name='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4
+        env_name='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4, mock_send=False
 ):
     delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
 
@@ -47,7 +47,8 @@ def run_experiments(
             command = "{} '{}'".format(run_string, command + stop_training)
             command = command.replace('  ', ' ')
             print('{}/{}'.format(i + 1, len(ds)), command)
-            os.system(command)
+            if not mock_send:
+                os.system(command)
         print(f'Number jobs: {len(ds)}/{len(ods)}')
 
     print(subset)
