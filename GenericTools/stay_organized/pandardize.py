@@ -172,7 +172,7 @@ def complete_missing_exps(sdf, exps, coi):
 
     print(experiments)
     print('left, done, all: ', df.shape, sdf.shape, all_exps.shape)
-    return experiments
+    return df, experiments
 
 
 
