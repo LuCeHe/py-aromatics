@@ -142,13 +142,16 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
 
 
 def complete_missing_exps(sdf, exps, coi):
-    data = {k: [] for k in coi}
-    for d in exps:
-        for k in data.keys():
-            insertion = d[k]
-            data[k].append(insertion)
+    if not isinstance(exps, pd.DataFrame):
+        data = {k: [] for k in coi}
+        for d in exps:
+            for k in data.keys():
+                insertion = d[k]
+                data[k].append(insertion)
 
-    all_exps = pd.DataFrame.from_dict(data)
+        all_exps = pd.DataFrame.from_dict(data)
+    else:
+        all_exps = exps
     # print(all_exps.to_string())
 
     # remove the experiments that were run successfully
