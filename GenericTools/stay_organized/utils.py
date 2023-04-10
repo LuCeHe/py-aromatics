@@ -321,7 +321,7 @@ def summarize_logs(
     error_d = []
     extra_short = 0
     n_lines = 60
-    n_error_examples = 4
+    n_error_examples = 6
     n_completed = 0
     n_failed = 0
     for d in tqdm(ds):
