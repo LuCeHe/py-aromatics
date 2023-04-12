@@ -165,16 +165,16 @@ def complete_missing_exps(sdf, exps, coi):
 
     sdf = sdf.drop_duplicates()
 
-    print('left')
-    print(df.to_string())
+    # print('left')
+    # print(df.to_string())
 
     experiments = []
     for index, row in df.iterrows():
         experiment = {k: [row[k]] for k in df.columns}
         experiments.append(experiment)
 
-    print(experiments)
-    print('left, done, all: ', df.shape, sdf.shape, all_exps.shape)
+    # print(experiments)
+    # print('left, done, all: ', df.shape, sdf.shape, all_exps.shape)
     return df, experiments
 
 
