@@ -62,5 +62,4 @@ class ClearMemory(tf.keras.callbacks.Callback):
         self.clear_memory()
 
     def on_train_end(self, logs=None):
-
         self.clear_memory()
