@@ -85,6 +85,7 @@ def SpikeFunctionMultiGaussian(v_scaled, dampening, sharpness, h, sl, sr, hl, hr
 
     def grad(dy):  # best m found 25
         x = v_scaled * sharpness
+
         # h = .15
         # s = 2
         A = (1 + h - 2 * h * tf.exp(-1 / (sl + sr ** 2))) ** (-1)  # 1
@@ -245,7 +246,7 @@ def ChoosePseudoHeaviside(v_sc, config='', sharpness=1, dampening=1):
 
     elif 'mgausspseudod' in config:
         # tail = str2val(config, 'tailvalue', float, default=1.1)
-        z = SpikeFunctionMultiGaussian(v_sc, dampening, sharpness, .15, 2, 2, .15, .15, 1, 1)
+        z = SpikeFunctionMultiGaussian(v_sc, dampening, sharpness, .15, 2., 2., .15, .15, 1., 1.)
 
     elif 'reluspike' in config:
         z = dampening * tf.nn.relu(sharpness * v_sc)
