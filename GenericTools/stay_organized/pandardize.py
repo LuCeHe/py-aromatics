@@ -113,7 +113,6 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
                         experiments_identifier=experiments_identifier, exclude_files=exclude_files,
                         exclude_columns=exclude_columns, force_keep_column=force_keep_column)
 
-    print(df.head().to_string())
     if check_for_new:
         new = []
         old = [os.path.split(p)[1] for p in df['path'].values]
@@ -163,7 +162,7 @@ def complete_missing_exps(sdf, exps, coi):
     i2 = df.set_index(keys).index
     df = df[i2.isin(i1)]
 
-    sdf = sdf.drop_duplicates()
+    # sdf = sdf.drop_duplicates()
 
     # print('left')
     # print(df.to_string())
