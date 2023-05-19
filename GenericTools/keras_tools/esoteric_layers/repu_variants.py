@@ -8,9 +8,9 @@ from tensorflow.python.keras.engine.base_layer import Layer
 from tensorflow.python.keras.engine.input_spec import InputSpec
 from tensorflow.python.keras.utils import tf_utils
 
-from tensorflow.keras.layers import PReLU
-from tensorflow.python.ops.nn_impl import swish
 import math
+
+from keras_tools.esoteric_activations.smoothrelus import smooth_relus
 
 
 def guderman(features):
@@ -45,12 +45,9 @@ class RePU(Layer):
         self.base_activation = base_activation
         self.slope = slope
         self.slope_initializer = initializers.get(slope_initializer)
-        if base_activation == 'relu':
-            self.activation = backend.relu
-        elif base_activation == 'swish':
-            self.activation = swish
-        elif base_activation == 'guderman':
-            self.activation = guderman
+
+        print('base_activation:', base_activation)
+        self.activation = smooth_relus[base_activation]
 
         self.trainable_p = trainable_p
         self.trainable_slope = trainable_slope
@@ -61,6 +58,9 @@ class RePU(Layer):
         if self.shared_axes is not None:
             for i in self.shared_axes:
                 param_shape[i - 1] = 1
+
+        # add the axis for the batch samples
+        param_shape = [1] + param_shape
 
         self.p = self.add_weight(
             shape=param_shape,
@@ -86,7 +86,7 @@ class RePU(Layer):
                 trainable=self.trainable_slope
             )
         else:
-            self.s = 1
+            self.s = 1.
 
         self.built = True
 
@@ -106,3 +106,15 @@ class RePU(Layer):
         }
         base_config = super().get_config()
         return dict(list(base_config.items()) + list(config.items()))
+
+
+
+if __name__ == '__main__':
+    t = tf.random.normal((2,3,4))
+    # make a sequential model only with repu
+    model = tf.keras.models.Sequential(
+        [RePU()]
+    )
+    y = model(t)
+    model.summary()
+

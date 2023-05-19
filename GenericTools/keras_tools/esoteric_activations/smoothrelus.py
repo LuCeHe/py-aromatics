@@ -101,6 +101,7 @@ smooth_relus = {
     'mish.1': MISH(.1),
     'gumbellu': GumbelLU(1.),
     'gumbellu.1': GumbelLU(.1),
+    'id': lambda x: x,
     **activations_with_temperature
 }
 
