@@ -10,7 +10,7 @@ from tensorflow.python.keras.utils import tf_utils
 
 import math
 
-from keras_tools.esoteric_activations.smoothrelus import smooth_relus
+from GenericTools.keras_tools.esoteric_activations.smoothrelus import smooth_relus
 
 
 def guderman(features):
@@ -46,7 +46,6 @@ class RePU(Layer):
         self.slope = slope
         self.slope_initializer = initializers.get(slope_initializer)
 
-        print('base_activation:', base_activation)
         self.activation = smooth_relus[base_activation]
 
         self.trainable_p = trainable_p
