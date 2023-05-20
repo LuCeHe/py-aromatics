@@ -152,17 +152,29 @@ def complete_missing_exps(sdf, exps, coi):
     else:
         all_exps = exps
     # print(all_exps.to_string())
+    all_exps = all_exps.drop_duplicates()
+    sdf = sdf.drop_duplicates()
 
     # remove the experiments that were run successfully
-    df = pd.concat([sdf, all_exps])
-    df = df.drop_duplicates(keep=False)
+    # df = pd.concat([sdf, all_exps])
+    # df = df.drop_duplicates(keep=False)
+    #
+    # keys = list(all_exps.columns.values)
+    # i1 = all_exps.set_index(keys).index
+    # i2 = df.set_index(keys).index
+    # df = df[~i2.isin(i1)]
+
+
 
     keys = list(all_exps.columns.values)
     i1 = all_exps.set_index(keys).index
-    i2 = df.set_index(keys).index
-    df = df[i2.isin(i1)]
+    i2 = sdf.set_index(keys).index
+    sdf = sdf[i2.isin(i1)]
 
-    # sdf = sdf.drop_duplicates()
+    df = pd.merge(all_exps, sdf, indicator=True, how='left').query("_merge == 'left_only'")
+    df.drop(columns='_merge', inplace=True)
+
+    # df = df.drop_duplicates()
 
     # print('left')
     # print(df.to_string())
@@ -173,7 +185,7 @@ def complete_missing_exps(sdf, exps, coi):
         experiments.append(experiment)
 
     # print(experiments)
-    # print('left, done, all: ', df.shape, sdf.shape, all_exps.shape)
+    print('left, done, all: ', df.shape, sdf.shape, all_exps.shape)
     return df, experiments
 
 
