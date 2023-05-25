@@ -2,22 +2,22 @@ import os
 
 # from sg_design_lif.generate_data.bit_generator import OneBitTimeDependentGenerator
 # from sg_design_lif.generate_data.grammar_generators import CFG_AutoEncoding_Generator, MergeSearch
-from GenericTools.keras_tools.esoteric_tasks.heidelberg_generator import SpokenHeidelbergDigits
+from pyaromatics.keras_tools.esoteric_tasks.heidelberg_generator import SpokenHeidelbergDigits
 # from sg_design_lif.generate_data.huggingface_generator import HuggingfaceGenerator
 # from sg_design_lif.generate_data.lca_generator import LCAGenerator
-from GenericTools.keras_tools.esoteric_tasks.mnist_generators import SeqMNIST
+from pyaromatics.keras_tools.esoteric_tasks.mnist_generators import SeqMNIST
 # from sg_design_lif.generate_data.monkey_generator import MonkeyGenerator
-from GenericTools.keras_tools.esoteric_tasks.ptb_generator import PTBGenerator
+from pyaromatics.keras_tools.esoteric_tasks.ptb_generator import PTBGenerator
 
 # from sg_design_lif.generate_data.random_generator import RandomGenerator
 # from sg_design_lif.generate_data.xor import XorGenerator
-from GenericTools.keras_tools.esoteric_tasks.random_generator import RandomGenerator
+from pyaromatics.keras_tools.esoteric_tasks.random_generator import RandomGenerator
 
-# from GenericTools.keras_tools.esoteric_tasks.grammar_generators import CFG_AutoEncoding_Generator
+# from pyaromatics.keras_tools.esoteric_tasks.grammar_generators import CFG_AutoEncoding_Generator
 
 FILENAME = os.path.realpath(__file__)
 CDIR = os.path.dirname(FILENAME)
-DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', '..', '..', 'data'))
+DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', '..', 'data'))
 os.makedirs(DATADIR, exist_ok=True)
 STATSPATH = os.path.join(DATADIR, 'task_stats.csv')
 
@@ -265,6 +265,7 @@ def checkTaskMeanVariance(task_name):
         full_mean /= spe
         full_var /= spe
         new_row = {'task_name': task_name, 'mean': full_mean, 'var': full_var}
+
         df = df.append(new_row, ignore_index=True)
         df.to_csv(STATSPATH)
     else:

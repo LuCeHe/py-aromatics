@@ -1,5 +1,5 @@
-from GenericTools.torch_tools.esoteric_tasks.csv import CsvTask
-from GenericTools.torch_tools.esoteric_tasks.ptb import PennTreeBankTask
+from pyaromatics.torch_tools.esoteric_tasks.csv import CsvTask
+from pyaromatics.torch_tools.esoteric_tasks.ptb import PennTreeBankTask
 
 
 def TorchTask(task_name, batch_size, epochs, steps_per_epoch, maxlen, data_split, datadir=None, string_config='', **kwargs):

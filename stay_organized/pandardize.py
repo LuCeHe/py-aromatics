@@ -1,9 +1,9 @@
 import json, os, glob
 import pandas as pd
-from GenericTools.keras_tools.plot_tools import history_pick
+from pyaromatics.keras_tools.plot_tools import history_pick
 from tqdm import tqdm
 
-from GenericTools.stay_organized.unzip import unzip_good_exps
+from pyaromatics.stay_organized.unzip import unzip_good_exps
 from scipy.stats import pearsonr
 
 

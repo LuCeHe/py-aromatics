@@ -1,7 +1,7 @@
 import ebdataset, os
 import numpy as np
 import tensorflow as tf
-from GenericTools.stay_organized.download_utils import download_url
+from pyaromatics.stay_organized.download_utils import download_url
 from ebdataset.vision import IBMGesture, H5IBMGesture
 from quantities import ms
 

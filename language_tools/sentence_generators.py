@@ -12,7 +12,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.utils import to_categorical
 
 # grammar cannot have recursion!
-from GenericTools.LeanguageTreatmentTools.nlp import Vocabulary, NltkGrammarSampler, tokenize, postprocessSentence
+from pyaromatics.LeanguageTreatmentTools.nlp import Vocabulary, NltkGrammarSampler, tokenize, postprocessSentence
 
 grammar = CFG.fromstring("""
                          S -> NP VP | NP V

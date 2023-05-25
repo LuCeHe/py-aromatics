@@ -279,7 +279,7 @@ orthogonalcolor = '#1E8DE1'
 
 def test_2():
     import matplotlib as mpl
-    from GenericTools.stay_organized.mpl_tools import load_plot_settings
+    from pyaromatics.stay_organized.mpl_tools import load_plot_settings
     mpl = load_plot_settings(mpl=mpl)
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
@@ -358,7 +358,7 @@ def draw_legend():
     from matplotlib.lines import Line2D
     import matplotlib.pyplot as plt
     import matplotlib as mpl
-    from GenericTools.stay_organized.mpl_tools import load_plot_settings
+    from pyaromatics.stay_organized.mpl_tools import load_plot_settings
     from matplotlib.lines import Line2D
 
     mpl = load_plot_settings(mpl=mpl)

@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.metrics import sparse_categorical_accuracy
 
-from GenericTools.stay_organized.utils import rename
+from pyaromatics.stay_organized.utils import rename
 
 
 def sparse_categorical_accuracy_last(y_true, y_pred):

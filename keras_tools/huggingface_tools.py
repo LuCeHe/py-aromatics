@@ -1,8 +1,8 @@
 import tensorflow as tf
 from transformers.generation_tf_utils import TFGenerationMixin
 
-from GenericTools.keras_tools.esoteric_models.wizard_of_wikipedia import EndToEndModel
-from GenericTools.language_tools.random_language import random_indices
+from pyaromatics.keras_tools.esoteric_models.wizard_of_wikipedia import EndToEndModel
+from pyaromatics.language_tools.random_language import random_indices
 
 
 class HF_outputs:

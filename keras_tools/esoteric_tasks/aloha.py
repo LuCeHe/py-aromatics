@@ -1,7 +1,7 @@
 import os
 
 data_links = ['https://cs.uwaterloo.ca/~jhoey/research/aloha/parlai_training_data_cleaned(experimental).zip']
-from GenericTools.stay_organized.download_utils import download_and_unzip
+from pyaromatics.stay_organized.download_utils import download_and_unzip
 
 
 

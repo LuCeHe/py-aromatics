@@ -175,7 +175,7 @@ def text_to_language_modeling_tokenization(datapath, dataset, data_split, max_se
 
 if __name__ == '__main__':
     dataset = 'squad'
-    DATAPATH = os.path.abspath(os.path.join(CDIR, '../GenericTools', 'data'))
+    DATAPATH = os.path.abspath(os.path.join(CDIR, '../pyaromatics', 'data'))
 
     parser = argparse.ArgumentParser()
     parser.add_argument(

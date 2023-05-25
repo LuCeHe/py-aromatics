@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-from GenericTools.stay_organized.utils import str2val
+from pyaromatics.stay_organized.utils import str2val
 
 split_names = ['valid_random_split', 'valid_topic_split', 'test_random_split', 'test_topic_split', 'train']
 

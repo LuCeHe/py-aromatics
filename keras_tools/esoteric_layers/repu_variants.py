@@ -10,7 +10,7 @@ from tensorflow.python.keras.utils import tf_utils
 
 import math
 
-from GenericTools.keras_tools.esoteric_activations.smoothrelus import smooth_relus
+from pyaromatics.keras_tools.esoteric_activations.smoothrelus import smooth_relus
 
 
 def guderman(features):

@@ -3,7 +3,7 @@ import tensorflow as tf
 import nltk
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
-from GenericTools.LeanguageTreatmentTools.nlp import Vocabulary
+from pyaromatics.LeanguageTreatmentTools.nlp import Vocabulary
 from sg_design_lif.generate_data.utils import unpackbits
 
 nltk.download('gutenberg')

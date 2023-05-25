@@ -1,6 +1,6 @@
 from tensorflow.keras.losses import mean_absolute_error
 
-from GenericTools.stay_organized.utils import rename
+from pyaromatics.stay_organized.utils import rename
 
 
 def maechannel(channel):

@@ -6,7 +6,7 @@ import numpy as np
 import string
 import random
 
-from GenericTools.keras_tools.esoteric_tasks.nlp import Vocabulary
+from pyaromatics.keras_tools.esoteric_tasks.nlp import Vocabulary
 
 """
   - set increasing difficulty (each of them 3 times: RELAX/REBAR/REINFORCE), (words:w, loops:l, states:w, ors:o)

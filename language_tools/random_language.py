@@ -1,6 +1,6 @@
 import numpy as np
 
-from GenericTools.language_tools.unpadding import pad_sequences
+from pyaromatics.language_tools.unpadding import pad_sequences
 
 
 def random_indices(vocab_size, batch_size=4, maxlen=7, padded=True, pad_idx=0, padding='pre'):

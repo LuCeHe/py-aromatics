@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from GenericTools.keras_tools.esoteric_losses import well_loss
-from GenericTools.stay_organized.utils import str2val
+from pyaromatics.keras_tools.esoteric_losses import well_loss
+from pyaromatics.stay_organized.utils import str2val
 
 
 class RateVoltageRegularization(tf.keras.layers.Layer):

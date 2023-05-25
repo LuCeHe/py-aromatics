@@ -1,6 +1,6 @@
 import sys
 import tensorflow as tf
-from GenericTools.stay_organized.utils import flaggedtry
+from pyaromatics.stay_organized.utils import flaggedtry
 
 sys.setrecursionlimit(1000)
 

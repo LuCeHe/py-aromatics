@@ -10,13 +10,13 @@
 from tensorflow.keras.layers import *
 import tensorflow as tf
 
-from GenericTools.keras_tools.esoteric_layers import ContrastiveLossLayer, AddLossLayer, AddMetricsLayer
-from GenericTools.keras_tools.esoteric_losses import smape_loss
-from GenericTools.keras_tools.esoteric_losses.advanced_losses import *
-from GenericTools.keras_tools.esoteric_layers.random_switch import RandomSwitch
-from GenericTools.keras_tools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder, GPT
-from GenericTools.keras_tools.esoteric_models.transformer import TransformerDecoder as tf_TransformerDecoder
-from GenericTools.keras_tools.esoteric_models.transformer import create_padding_mask, create_look_ahead_mask
+from pyaromatics.keras_tools.esoteric_layers import ContrastiveLossLayer, AddLossLayer, AddMetricsLayer
+from pyaromatics.keras_tools.esoteric_losses import smape_loss
+from pyaromatics.keras_tools.esoteric_losses.advanced_losses import *
+from pyaromatics.keras_tools.esoteric_layers.random_switch import RandomSwitch
+from pyaromatics.keras_tools.esoteric_models.transformer import TransformerEncoder as tf_TransformerEncoder, GPT
+from pyaromatics.keras_tools.esoteric_models.transformer import TransformerDecoder as tf_TransformerDecoder
+from pyaromatics.keras_tools.esoteric_models.transformer import create_padding_mask, create_look_ahead_mask
 
 
 def metrics_wow(num_classes, mask_value):
@@ -352,9 +352,9 @@ def quick_test():
 
 
 def long_test():
-    from GenericTools.LeanguageTreatmentTools.random_language import random_indices
-    from GenericTools.keras_tools.esoteric_optimizers.optimizer_selection import get_optimizer
-    from GenericTools.keras_tools.esoteric_tasks.wizard_of_wikipedia import WikipediaWizardGenerator
+    from pyaromatics.LeanguageTreatmentTools.random_language import random_indices
+    from pyaromatics.keras_tools.esoteric_optimizers.optimizer_selection import get_optimizer
+    from pyaromatics.keras_tools.esoteric_tasks.wizard_of_wikipedia import WikipediaWizardGenerator
 
     max_knowledge = 32
     batch_size = 8

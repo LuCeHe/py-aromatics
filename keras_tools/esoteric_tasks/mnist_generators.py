@@ -5,8 +5,8 @@ import numpy.random as rd
 import tensorflow as tf
 from tensorflow.keras.datasets import mnist
 
-from GenericTools.keras_tools.esoteric_tasks.mnist import getMNIST
-from GenericTools.keras_tools.esoteric_tasks.base_generator import BaseGenerator
+from pyaromatics.keras_tools.esoteric_tasks.mnist import getMNIST
+from pyaromatics.keras_tools.esoteric_tasks.base_generator import BaseGenerator
 
 # CDIR = os.path.dirname(os.path.realpath(__file__))
 # DATAPATH = os.path.abspath(os.path.join(CDIR, '..', 'data', 'mnist'))

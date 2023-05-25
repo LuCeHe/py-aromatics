@@ -4,9 +4,9 @@ import numpy as np
 import tensorflow as tf
 
 # positional encoding
-from GenericTools.keras_tools.esoteric_layers import SurrogatedStep
-from GenericTools.keras_tools.esoteric_layers.layer_scaling import LayerScaling
-from GenericTools.keras_tools.esoteric_layers.repu_variants import RePU
+from pyaromatics.keras_tools.esoteric_layers import SurrogatedStep
+from pyaromatics.keras_tools.esoteric_layers.layer_scaling import LayerScaling
+from pyaromatics.keras_tools.esoteric_layers.repu_variants import RePU
 
 
 def layer_normalization(config):
@@ -527,7 +527,7 @@ class Transformer(tf.keras.Model):
 
 
 def test_gpt():
-    from GenericTools.LeanguageTreatmentTools.random_language import random_indices
+    from pyaromatics.LeanguageTreatmentTools.random_language import random_indices
     vocab_size = 20
     pad_idx = 3
     src_tokens = random_indices(vocab_size, pad_idx=pad_idx)

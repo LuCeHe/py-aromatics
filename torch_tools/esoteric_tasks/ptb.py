@@ -3,7 +3,7 @@
 
 import os, torch, pickle
 from torchtext import datasets
-from GenericTools.torch_tools.esoteric_tasks.base_generator import BaseGenerator
+from pyaromatics.torch_tools.esoteric_tasks.base_generator import BaseGenerator
 
 
 def download_ptb(datadir):

@@ -4,7 +4,7 @@ import os, itertools, json
 import numpy as np
 import tensorflow as tf
 
-from GenericTools.stay_organized.download_utils import download_and_unzip
+from pyaromatics.stay_organized.download_utils import download_and_unzip
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
 DATAPATH = os.path.abspath(os.path.join(CDIR, '..', 'data', 'wiki103'))

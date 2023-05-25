@@ -2,10 +2,10 @@ import os, json
 import numpy as np
 import tensorflow as tf
 
-from GenericTools.stay_organized.download_utils import download_and_unzip
-from GenericTools.keras_tools.esoteric_tasks import ptb_reader
-from GenericTools.keras_tools.esoteric_tasks.base_generator import BaseGenerator
-from GenericTools.keras_tools.esoteric_tasks.tensorlayer_ptb import ptb_iterator
+from pyaromatics.stay_organized.download_utils import download_and_unzip
+from pyaromatics.keras_tools.esoteric_tasks import ptb_reader
+from pyaromatics.keras_tools.esoteric_tasks.base_generator import BaseGenerator
+from pyaromatics.keras_tools.esoteric_tasks.tensorlayer_ptb import ptb_iterator
 
 # CDIR = os.path.dirname(os.path.realpath(__file__))
 # DATAPATH = os.path.abspath(os.path.join(CDIR, '..', 'data', 'ptb'))

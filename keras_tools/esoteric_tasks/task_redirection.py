@@ -1,11 +1,11 @@
 import os
 
-from GenericTools.keras_tools.esoteric_tasks.light_generator import LightGenerator
-from GenericTools.keras_tools.esoteric_tasks.mnist import getMNIST
-from GenericTools.keras_tools.esoteric_tasks.numpy_generator import NumpyClassificationGenerator
-from GenericTools.keras_tools.esoteric_tasks.random_task import RandomTask
-from GenericTools.keras_tools.esoteric_tasks.wizard_of_wikipedia import WikipediaWizardGenerator
-from GenericTools.stay_organized.utils import str2val
+from pyaromatics.keras_tools.esoteric_tasks.light_generator import LightGenerator
+from pyaromatics.keras_tools.esoteric_tasks.mnist import getMNIST
+from pyaromatics.keras_tools.esoteric_tasks.numpy_generator import NumpyClassificationGenerator
+from pyaromatics.keras_tools.esoteric_tasks.random_task import RandomTask
+from pyaromatics.keras_tools.esoteric_tasks.wizard_of_wikipedia import WikipediaWizardGenerator
+from pyaromatics.stay_organized.utils import str2val
 
 
 #

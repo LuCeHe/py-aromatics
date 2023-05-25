@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import backend as K
 
-from GenericTools.stay_organized.utils import rename
+from pyaromatics.stay_organized.utils import rename
 
 
 def mase(y_true, y_pred):

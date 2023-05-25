@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Input, Embedding, \
     LSTM, Lambda, Dense, Layer
 from tensorflow.keras.models import Model
 
-from GenericTools.keras_tools.convenience_operations import slice_from_to, clip_layer, replace_column
+from pyaromatics.keras_tools.convenience_operations import slice_from_to, clip_layer, replace_column
 
 
 class Identity(tf.keras.layers.Layer):

@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 import tensorflow as tf
-from GenericTools.keras_tools.esoteric_tasks.numpy_generator import NumpyClassificationGenerator
+from pyaromatics.keras_tools.esoteric_tasks.numpy_generator import NumpyClassificationGenerator
 from sg_design_lif.generate_data.lca_utils import norm_spikegram
 
 CDIR = os.path.dirname(os.path.realpath(__file__))

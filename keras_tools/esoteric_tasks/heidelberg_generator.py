@@ -3,9 +3,9 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
 
-from GenericTools.stay_organized.download_utils import download_and_unzip
-from GenericTools.keras_tools.esoteric_tasks.base_generator import BaseGenerator
-from GenericTools.keras_tools.esoteric_tasks.heidelberg_preprocess import generate_dataset
+from pyaromatics.stay_organized.download_utils import download_and_unzip
+from pyaromatics.keras_tools.esoteric_tasks.base_generator import BaseGenerator
+from pyaromatics.keras_tools.esoteric_tasks.heidelberg_preprocess import generate_dataset
 
 FILENAME = os.path.realpath(__file__)
 CDIR = os.path.dirname(FILENAME)

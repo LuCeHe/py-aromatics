@@ -6,7 +6,7 @@ import numpy as np
 # FILENAME = os.path.realpath(__file__)
 # CDIR = os.path.dirname(FILENAME)
 # DATADIR = os.path.abspath(os.path.join(CDIR, '..', 'data'))
-from GenericTools.torch_tools.esoteric_tasks.base_generator import BaseGenerator
+from pyaromatics.torch_tools.esoteric_tasks.base_generator import BaseGenerator
 
 
 class CsvTask(BaseGenerator):

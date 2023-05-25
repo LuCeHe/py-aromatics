@@ -1,6 +1,6 @@
 import os, argparse
 
-from GenericTools.keras_tools.lm_preprocessing import text_to_language_modeling_tokenization
+from pyaromatics.keras_tools.lm_preprocessing import text_to_language_modeling_tokenization
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
 DATAPATH = os.path.abspath(os.path.join(CDIR, '..', 'data'))

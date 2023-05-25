@@ -8,7 +8,7 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
 
-from GenericTools.stay_organized.utils import setReproducible, timeStructured
+from pyaromatics.stay_organized.utils import setReproducible, timeStructured
 from typing import Optional
 from sacred.utils import PathType
 

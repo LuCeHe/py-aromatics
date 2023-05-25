@@ -11,10 +11,10 @@ from nltk.grammar import Nonterminal, CFG
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 # grammar cannot have recursion!
-from GenericTools.keras_tools.esoteric_tasks.base_generator import BaseGenerator
-from GenericTools.keras_tools.esoteric_tasks.nlp import Vocabulary, postprocessSentence
-from GenericTools.keras_tools.esoteric_tasks.random_context_free import RandomGrammar
-from GenericTools.keras_tools.esoteric_tasks.utils import unpackbits
+from pyaromatics.keras_tools.esoteric_tasks.base_generator import BaseGenerator
+from pyaromatics.keras_tools.esoteric_tasks.nlp import Vocabulary, postprocessSentence
+from pyaromatics.keras_tools.esoteric_tasks.random_context_free import RandomGrammar
+from pyaromatics.keras_tools.esoteric_tasks.utils import unpackbits
 
 np.set_printoptions(threshold=sys.maxsize)
 

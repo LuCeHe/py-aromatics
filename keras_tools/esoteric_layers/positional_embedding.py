@@ -3,8 +3,8 @@ from tensorflow.python.ops import embedding_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.distribute import sharded_variable
 
-from GenericTools.keras_tools.esoteric_layers.convenience_layers import OneHot
-from GenericTools.keras_tools.esoteric_regularizers.isotropic_regularizer import Isotropic
+from pyaromatics.keras_tools.esoteric_layers.convenience_layers import OneHot
+from pyaromatics.keras_tools.esoteric_regularizers.isotropic_regularizer import Isotropic
 
 """
 sources:

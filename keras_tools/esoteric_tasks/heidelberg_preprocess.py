@@ -16,7 +16,7 @@ import gzip, shutil
 # from keras.utils import get_file
 import matplotlib.pyplot as plt
 
-from GenericTools.stay_organized.download_utils import download_and_unzip
+from pyaromatics.stay_organized.download_utils import download_and_unzip
 
 """
 The dataset is 48kHZ with 24bits precision

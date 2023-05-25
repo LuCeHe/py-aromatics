@@ -14,9 +14,9 @@ setup(
     description='Testing installation of Package',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='https://github.com/lucehe/GenericTools',
+    url='https://github.com/lucehe/pyaromatics',
     project_urls = {
-        "Bug Tracker": "https://github.com/lucehe/GenericTools/issues"
+        "Bug Tracker": "https://github.com/lucehe/pyaromatics/issues"
     },
     license='MIT',
     python_requires=">=3.6",

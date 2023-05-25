@@ -1,8 +1,8 @@
 import tensorflow as tf
 import math
 
-from GenericTools.keras_tools.test_sg_shapes import get_asg_shape
-from GenericTools.stay_organized.utils import str2val
+from pyaromatics.keras_tools.test_sg_shapes import get_asg_shape
+from pyaromatics.stay_organized.utils import str2val
 
 
 @tf.custom_gradient
@@ -463,7 +463,7 @@ def pseudod_color(pseudod_name):
 def draw_pseudods():
     import numpy as np
     import matplotlib as mpl
-    from GenericTools.stay_organized.mpl_tools import load_plot_settings
+    from pyaromatics.stay_organized.mpl_tools import load_plot_settings
 
     # mpl.rcParams['font.family'] = 'serif'
     label_fotsize = 18
@@ -570,7 +570,7 @@ def draw_legend():
     from matplotlib.lines import Line2D
     import matplotlib.pyplot as plt
     import matplotlib as mpl
-    from GenericTools.stay_organized.mpl_tools import load_plot_settings
+    from pyaromatics.stay_organized.mpl_tools import load_plot_settings
     mpl = load_plot_settings(mpl=mpl)
 
     ncol = 3
@@ -614,7 +614,7 @@ def draw_legend_mini():
     from matplotlib.lines import Line2D
     import matplotlib.pyplot as plt
     import matplotlib as mpl
-    from GenericTools.stay_organized.mpl_tools import load_plot_settings
+    from pyaromatics.stay_organized.mpl_tools import load_plot_settings
     mpl = load_plot_settings(mpl=mpl)
 
     legend_elements = [

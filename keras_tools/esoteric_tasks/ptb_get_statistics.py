@@ -1,5 +1,5 @@
 import os
-from GenericTools.keras_tools.esoteric_tasks import ptb_reader
+from pyaromatics.keras_tools.esoteric_tasks import ptb_reader
 import numpy as np
 import tensorflow as tf
 

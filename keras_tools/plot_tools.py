@@ -4,7 +4,7 @@ from matplotlib.ticker import MaxNLocator
 # import string
 import numpy as np
 
-from GenericTools.keras_tools.convergence_metric import convergence_estimation
+from pyaromatics.keras_tools.convergence_metric import convergence_estimation
 
 # alphabet = list(string.ascii_lowercase)
 # reduce_prod

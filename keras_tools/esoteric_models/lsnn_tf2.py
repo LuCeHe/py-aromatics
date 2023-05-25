@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from GenericTools.keras_tools.esoteric_layers import SurrogatedStep
-from GenericTools.keras_tools.esoteric_layers.rate_voltage_reg import RateVoltageRegularization
+from pyaromatics.keras_tools.esoteric_layers import SurrogatedStep
+from pyaromatics.keras_tools.esoteric_layers.rate_voltage_reg import RateVoltageRegularization
 
 
 @tf.custom_gradient
