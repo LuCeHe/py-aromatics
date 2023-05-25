@@ -6,4 +6,4 @@ is referenced close to the function or at the beginning of the script. If I forg
 
 It can be installed by 
 
-```pip install -U git+https://github.com/LuCeHe/pyaromatics```
+```pip install pyaromatics```
