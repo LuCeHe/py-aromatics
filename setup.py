@@ -8,7 +8,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     
 setup(
     name='pyaromatics',
-    version='0.0.1',
+    version='0.0.2',
     author='Luca Herrtti',
     author_email='luca.herrtti@gmail.com',
     description='Testing installation of Package',
