@@ -55,11 +55,11 @@ def run_experiments(
     print(socket.gethostname())
 
 
-def dict2iter(experiments):
+def dict2iter(experiments, to_list=False):
     full_ds = []
     for experiment in experiments:
         c = list(itertools.product(*experiment.values()))
-        ds = [{k: v for k, v in zip(experiment.keys(), i)} for i in c]
+        ds = [{k: v if not to_list else [v] for k, v in zip(experiment.keys(), i)} for i in c]
         full_ds.extend(ds)
     return full_ds
 
