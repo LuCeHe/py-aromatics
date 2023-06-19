@@ -51,7 +51,6 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
             for fp in filepaths:
                 file_stats = os.stat(fp)
                 if not file_stats.st_size == 0:
-                    # try:
                     if os.path.exists(fp):
                         if fp.endswith('checkpoint') or fp.endswith('.csv'):
                             history_df = pd.read_csv(fp)
@@ -77,7 +76,6 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                             else:
                                 res2[k] = v
 
-                        # print(res2.keys())
                         res2 = {k: v for k, v in res2.items()
                                if not any([e in k for e in exclude_columns]) or
                                any([e in k for e in force_keep_column])}
@@ -88,18 +86,10 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                             for k, v in res2.items()
                             for h in history_pick(k, v)
                         )
-                        # results.update({k: v for k, v in aux_results.items()
-                        #                 if (not any([e in k for e in exclude_columns])
-                        #                     or k in force_keep_column)})
-                # except Exception as e:
-                #     print('\n')
-                #     print(fp)
-                #     print('    ', e)
             results.update(path=d)
             list_results.append(results)
 
         df = pd.DataFrame.from_records(list_results)
-        # print(list(df.columns))
         df.to_hdf(h5path, key='df', mode='w')
     else:
         df = pd.read_hdf(h5path, 'df')
@@ -119,9 +109,11 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
 
         for gpath in zips_folder:
             new.extend([p.replace('.zip', '') for p in os.listdir(gpath) if 'zip' in p])
-        missing = [p for p in new if not p in old and experiments_identifier in p]
+        missing = [p for p in new if not p in old and any(e in p for e in experiments_identifier)]
 
         newh5path = h5path.replace('.h5', '_missing.h5')
+
+        print(missing)
 
         if len(missing) > 0:
             ndf = zips_to_pandas(
