@@ -113,8 +113,6 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
 
         newh5path = h5path.replace('.h5', '_missing.h5')
 
-        print(missing)
-
         if len(missing) > 0:
             ndf = zips_to_pandas(
                 h5path=newh5path, zips_folder=zips_folder, unzips_folder=unzips_folder, experiments_identifier=missing,
