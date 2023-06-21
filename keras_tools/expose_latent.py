@@ -47,15 +47,12 @@ def split_model(model, pairs):
     DL_input = tf.keras.layers.Input(input_shape)
     DL_model = DL_input
     layers = {}
-    inp_name = model.layers[pairs[0]].name
-    out_name = ''
-    for layer in model.layers[pairs[0] + 1:pairs[1] + 1]:
+    # inp_name = model.layers[pairs[0]].name
+    # out_name = ''
+    for layer in model.layers[pairs[0] + 1:pairs[1] + 2]:
         layers[layer.name] = layer
 
         if isinstance(layer.input, list):
-            # print('letssee')
-            # print([l.name for l in layer.input])
-            # print(layers.keys())
             break
         DL_model = layer(DL_model)
 
