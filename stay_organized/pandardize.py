@@ -49,6 +49,7 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                 filepaths = [fp for fp in filepaths if not e in fp]
 
             for fp in filepaths:
+                print(fp)
                 file_stats = os.stat(fp)
                 if not file_stats.st_size == 0:
                     if os.path.exists(fp):
