@@ -103,7 +103,7 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
                         experiments_identifier=experiments_identifier, exclude_files=exclude_files,
                         exclude_columns=exclude_columns, force_keep_column=force_keep_column)
 
-    if check_for_new:
+    if check_for_new and not df.empty:
         new = []
         old = [os.path.split(p)[1] for p in df['path'].values]
 
@@ -154,15 +154,17 @@ def complete_missing_exps(sdf, exps, coi):
     # i2 = df.set_index(keys).index
     # df = df[~i2.isin(i1)]
 
+    if not sdf.empty:
 
+        keys = list(all_exps.columns.values)
+        i1 = all_exps.set_index(keys).index
+        i2 = sdf.set_index(keys).index
+        sdf = sdf[i2.isin(i1)]
 
-    keys = list(all_exps.columns.values)
-    i1 = all_exps.set_index(keys).index
-    i2 = sdf.set_index(keys).index
-    sdf = sdf[i2.isin(i1)]
-
-    df = pd.merge(all_exps, sdf, indicator=True, how='left').query("_merge == 'left_only'")
-    df.drop(columns='_merge', inplace=True)
+        df = pd.merge(all_exps, sdf, indicator=True, how='left').query("_merge == 'left_only'")
+        df.drop(columns='_merge', inplace=True)
+    else:
+        df = all_exps
 
     # df = df.drop_duplicates()
 
