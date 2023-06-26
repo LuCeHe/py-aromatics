@@ -1,5 +1,6 @@
-import json, os, glob
+import json, os, glob, pickle
 import pandas as pd
+import tensorflow as tf
 from pyaromatics.keras_tools.plot_tools import history_pick
 from tqdm import tqdm
 
@@ -22,7 +23,7 @@ def simplify_col_names(df):
     return df
 
 
-def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv'],
+def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv', '.pkl'],
                    experiments_identifier=[], exclude_files=[''], exclude_columns=[],
                    force_keep_column=[]):
     if isinstance(experiments_identifier, str):
@@ -62,9 +63,18 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                         elif fp.endswith('.json') or fp.endswith('.txt'):
                             with open(fp) as f:
                                 res = json.load(f)
+                        elif fp.endswith('.pkl'):
+                            with open(fp, 'rb') as f:
+                                preres = pickle.load(f)
+
+                            res = {}
+                            for k, v in preres.items():
+                                if tf.is_tensor(v):
+                                    res[k] = v.numpy()
+                                else:
+                                    res[k] = v
                         else:
                             res = {}
-
 
                         # flatten dictionaries inside res
                         res2 = {}
@@ -72,14 +82,12 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                             if isinstance(v, dict):
                                 for k2, v2 in v.items():
                                     res2[f'{k}_{k2}'] = v2
-                                # del res[k]
                             else:
                                 res2[k] = v
 
                         res2 = {k: v for k, v in res2.items()
-                               if not any([e in k for e in exclude_columns]) or
-                               any([e in k for e in force_keep_column])}
-                        # print(res2.keys())
+                                if not any([e in k for e in exclude_columns]) or
+                                any([e in k for e in force_keep_column])}
 
                         results.update(
                             h
@@ -96,7 +104,7 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
     return df
 
 
-def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv'],
+def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv', '.pkl'],
                           experiments_identifier=[], exclude_files=[''], exclude_columns=[],
                           force_keep_column=[], check_for_new=False):
     df = zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=extension_of_interest,
@@ -179,8 +187,6 @@ def complete_missing_exps(sdf, exps, coi):
     # print(experiments)
     # print('left, done, all: ', df.shape, sdf.shape, all_exps.shape)
     return df, experiments
-
-
 
 
 def calculate_pvalues(df, wrt=None):

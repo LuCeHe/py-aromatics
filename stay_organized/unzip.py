@@ -60,7 +60,6 @@ def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_fo
         try:
             # Create a ZipFile Object and load sample.zip in it
             with ZipFile(d, 'r') as zipObj:
-                # tail = 'good_' + ''.join([str(i) for i in np.random.choice(9, 5).tolist()])
                 tail = d.split('\\')[-1].replace('.zip', '')
                 destination = os.path.join(*[exp_destination, tail])
                 destinations.append(destination)
@@ -68,7 +67,6 @@ def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_fo
                     os.mkdir(destination)
 
                     # Extract all the contents of zip file in different directory
-                    # zipObj.extractall(destination)
                     for z in zipObj.infolist():
                         do_unzip = not np.any([e in z.filename for e in except_files])
                         if do_unzip:
@@ -77,6 +75,7 @@ def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_fo
                                     zipObj.extract(z, destination)
                                 elif 'config' in z.filename:
                                     zipObj.extract(z, destination)
+
                                 if not unzip_what is None:
                                     if isinstance(unzip_what, list):
                                         for string in unzip_what:
