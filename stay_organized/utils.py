@@ -7,9 +7,6 @@ from itertools import groupby
 import numpy as np
 from difflib import SequenceMatcher
 
-# import tensorflow as tf
-# from tqdm import tqdm
-
 logger = logging.getLogger('mylogger')
 
 
