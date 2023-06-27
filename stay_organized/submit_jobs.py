@@ -75,7 +75,7 @@ def create_sbatch_sh(duration, sh_location, py_location, account, env_name, n_gp
 def sh_base(time, account, py_location, env_name, n_gpus, mem='32G', cpus_per_task=4):
     env_location = f'~/scratch/{env_name}/bin/activate'
     if 'cedar' in socket.gethostname():
-        env_location = f'~/project/lucacehe/{env_name}/bin/activate'
+        env_location = f'~/scratch/{env_name}/bin/activate'
     if 'gra' == socket.gethostname()[:3]:
         env_location = f'~/projects/def-jrouat/lucacehe/{env_name}/bin/activate'
     gpus_line = '' if n_gpus == 0 else f'#SBATCH --gres=gpu:{n_gpus}'
