@@ -1,6 +1,5 @@
 import json, os, glob, pickle
 import pandas as pd
-import tensorflow as tf
 from pyaromatics.keras_tools.plot_tools import history_pick
 from tqdm import tqdm
 
@@ -65,14 +64,7 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
                                 res = json.load(f)
                         elif fp.endswith('.pkl'):
                             with open(fp, 'rb') as f:
-                                preres = pickle.load(f)
-
-                            res = {}
-                            for k, v in preres.items():
-                                if tf.is_tensor(v):
-                                    res[k] = v.numpy()
-                                else:
-                                    res[k] = v
+                                res = pickle.load(f)
                         else:
                             res = {}
 
