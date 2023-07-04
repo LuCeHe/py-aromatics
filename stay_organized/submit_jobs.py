@@ -70,7 +70,7 @@ def create_sbatch_sh(duration, sh_location, py_location, account, env_location, 
     time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
 
-    sh_name = time_string + random_string + f'--{id}.sh'
+    sh_name = f'{id}--'+  time_string + random_string + '.sh'
     sh_path = os.path.join(sh_location, sh_name)
     with open(sh_path, 'w') as f:
         f.write(sh_base(duration, account, py_location, env_location, n_gpus, mem, cpus_per_task=cpus_per_task))
