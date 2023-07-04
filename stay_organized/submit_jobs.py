@@ -65,7 +65,12 @@ def dict2iter(experiments, to_list=False):
 
 
 def create_sbatch_sh(duration, sh_location, py_location, account, env_location, n_gpus, id, mem='32G', cpus_per_task=4):
-    sh_name = '{0:010x}'.format(int(time.time() * 256))[-7:] + f'-{id}.sh'
+    import numpy as np
+    named_tuple = time.localtime()  # get struct_time
+    time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
+    random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
+
+    sh_name = time_string + random_string + f'--{id}.sh'
     sh_path = os.path.join(sh_location, sh_name)
     with open(sh_path, 'w') as f:
         f.write(sh_base(duration, account, py_location, env_location, n_gpus, mem, cpus_per_task=cpus_per_task))
