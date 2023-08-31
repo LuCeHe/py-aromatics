@@ -99,6 +99,9 @@ def zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.
 def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=['.txt', '.json', '.csv', '.pkl'],
                           experiments_identifier=[], exclude_files=[''], exclude_columns=[],
                           force_keep_column=[], check_for_new=False):
+    zips_folder = zips_folder if isinstance(zips_folder, list) else [zips_folder]
+    experiments_identifier = experiments_identifier if isinstance(experiments_identifier, list) else [
+        experiments_identifier]
     df = zips_to_pandas(h5path, zips_folder, unzips_folder, extension_of_interest=extension_of_interest,
                         experiments_identifier=experiments_identifier, exclude_files=exclude_files,
                         exclude_columns=exclude_columns, force_keep_column=force_keep_column)
