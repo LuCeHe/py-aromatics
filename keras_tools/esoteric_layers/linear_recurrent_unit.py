@@ -50,12 +50,13 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
         self.state_size = (num_neurons,)
 
     def build(self, input_shape):
+
         n_in = input_shape[-1]
         n_rec = self.num_neurons
 
         self.C = self.add_weight(shape=(n_rec, n_rec), initializer=ComplexGlorotNormal(), name='C', dtype=self.dtype_)
         self.B = self.add_weight(shape=(n_rec, n_in), initializer=ComplexGlorotNormal(), name='B', dtype=self.dtype_)
-        self.D = self.add_weight(shape=(n_in,), initializer=tf.keras.initializers.GlorotNormal(), name='D')
+        self.D = self.add_weight(shape=(n_in,), initializer=tf.keras.initializers.RandomNormal(stddev=1), name='D')
 
         numax = tf.math.log(-tf.math.log(self.rmin))
         numin = tf.math.log(-tf.math.log(self.rmax))
@@ -80,14 +81,16 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
 
         self.built = True
 
-    def call(self, inputs, states, training=None):
-        if not training is None:
-            tf.keras.backend.set_learning_phase(training)
+    def call(self, inputs, states, **kwargs):
+        if not kwargs['training'] is None:
+            tf.keras.backend.set_learning_phase(kwargs['training'])
+        print('rnn')
 
         u = inputs
         x = states[0]
 
         lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
+
         Lambda = tf.linalg.diag(lambda_)
 
         # turning floats to complex
@@ -148,7 +151,6 @@ class ResLRUCell(tf.keras.layers.Layer):
 # FFN version of LinearRecurrentUnitCell
 class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
 
-
     def get_config(self):
         base_config = super().get_config()
         return dict(list(base_config.items()) + list(self.init_args.items()))
@@ -170,7 +172,7 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
 
         self.C = self.add_weight(shape=(n_rec, n_rec), initializer=ComplexGlorotNormal(), name='C', dtype=self.dtype_)
         self.B = self.add_weight(shape=(n_rec, n_in), initializer=ComplexGlorotNormal(), name='B', dtype=self.dtype_)
-        self.D = self.add_weight(shape=(n_in,), initializer=tf.keras.initializers.GlorotNormal(), name='D')
+        self.D = self.add_weight(shape=(n_in,), initializer=tf.keras.initializers.RandomNormal(stddev=1), name='D')
 
         numax = tf.math.log(-tf.math.log(self.rmin))
         numin = tf.math.log(-tf.math.log(self.rmax))
@@ -196,40 +198,84 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
         self.built = True
 
     def call(self, inputs, training=None):
+        print('ffn')
         if not training is None:
             tf.keras.backend.set_learning_phase(training)
 
         u = inputs
-        x = tf.zeros((tf.shape(u)[0], tf.shape(u)[1], self.num_neurons), dtype=tf.float32)
 
         lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
         Lambda = tf.linalg.diag(lambda_)
 
+        # repeat on axis 0
+        Lambda = tf.repeat(tf.expand_dims(Lambda, axis=0), tf.shape(u)[1], axis=0)
+        time = tf.range(tf.shape(u)[1], dtype=tf.float32)
+        time = tf.expand_dims(tf.expand_dims(time, axis=-1), axis=-1)
+        # time = tf.repeat(tf.repeat(time, self.num_neurons, axis=1), axis=2)
+        time = tf.cast(time, self.dtype_)
+
+        # exponentiate by time
+        Lambda_pow = tf.pow(Lambda, time)
+
         # turning floats to complex
         u_ = tf.cast(u, self.dtype_)
-        x_ = tf.cast(x, self.dtype_)
         gamma_ = tf.cast(self.gamma, self.dtype_)
 
+        new_u = gamma_ * u_ @ self.B
         # rnn operations
-        x = x_ @ Lambda + gamma_ * u_ @ self.B
+        # new_u.shape = (batch_size, time_steps, num_neurons), Lambda_pow.shape = (time_steps, num_neurons, num_neurons)
+        # x_.shape = (batch_size, time_steps, num_neurons)
+
+        x_ = tf.einsum('bti,tij->btj', new_u, Lambda_pow)
         y = tf.math.real(x_ @ self.C) + self.D * u
 
         output = y
         return output
 
 
-
 if __name__ == '__main__':
+    import time
+
     num_neurons = 2
-    batch_size = 3
+    time_steps = 10
+    batch_size = 1
+
     input_tensor = tf.random.normal((batch_size, num_neurons))
     init_state = tf.random.normal((batch_size, num_neurons))
     lru = LinearRecurrentUnitCell(num_neurons=num_neurons)
-    lru.build((None, num_neurons))
     out = lru(input_tensor, (init_state,))
     print(out[0].shape)
 
     reslru = ResLRUCell(num_neurons=num_neurons)
-    reslru.build((None, num_neurons))
     out = reslru(input_tensor, (init_state,))
     print(out[0].shape)
+
+    input_tensor = tf.random.normal((batch_size, time_steps, num_neurons))
+    lruffn = LinearRecurrentUnitFFN(num_neurons=num_neurons)
+    out = lruffn(input_tensor)
+    print(out.shape)
+
+    lru = LinearRecurrentUnitCell(num_neurons=num_neurons)
+    lrurnn = tf.keras.layers.RNN(lru, return_sequences=True)
+    out = lrurnn(input_tensor)
+    print(out.shape)
+
+    # move parameters from lruffn to lrurnn
+    print('-' * 100)
+    print('hey!')
+
+    lrurnn.set_weights(lruffn.get_weights())
+    start_time = time.time()
+    outrnn = lrurnn(input_tensor)
+    rnn_time = time.time() - start_time
+    print(outrnn)
+
+    start_time = time.time()
+    outffn = lruffn(input_tensor)
+    ffn_time = time.time() - start_time
+    print(outffn)
+
+    print('rnn time: ', rnn_time)
+    print('ffn time: ', ffn_time)
+
+    print(tf.reduce_sum(tf.abs(outffn - outrnn)))
