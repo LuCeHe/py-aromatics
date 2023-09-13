@@ -96,7 +96,7 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
         gamma_ = tf.cast(self.gamma, self.dtype_)
 
         # rnn operations
-        x = x_ @ Lambda + gamma_ * u_ @ self.B
+        x_ = x_ @ Lambda + gamma_ * u_ @ self.B
         y = tf.math.real(x_ @ self.C) + self.D * u
 
         output = y
@@ -143,6 +143,80 @@ class ResLRUCell(tf.keras.layers.Layer):
         output = y + u
         new_state = (x,)
         return output, new_state
+
+
+# FFN version of LinearRecurrentUnitCell
+class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
+
+
+    def get_config(self):
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(self.init_args.items()))
+
+    def __init__(self, num_neurons=None, kernel_initializer='orthogonal',
+                 rmax=.99, rmin=.4, reduced_phase=True, locked_gamma=False, **kwargs):
+        super().__init__(**kwargs)
+
+        self.dtype_ = tf.complex64
+        self.init_args = dict(num_neurons=num_neurons, kernel_initializer=kernel_initializer, rmax=rmax, rmin=rmin,
+                              locked_gamma=locked_gamma, reduced_phase=reduced_phase)
+        self.__dict__.update(self.init_args)
+
+        self.state_size = (num_neurons,)
+
+    def build(self, input_shape):
+        n_in = input_shape[-1]
+        n_rec = self.num_neurons
+
+        self.C = self.add_weight(shape=(n_rec, n_rec), initializer=ComplexGlorotNormal(), name='C', dtype=self.dtype_)
+        self.B = self.add_weight(shape=(n_rec, n_in), initializer=ComplexGlorotNormal(), name='B', dtype=self.dtype_)
+        self.D = self.add_weight(shape=(n_in,), initializer=tf.keras.initializers.GlorotNormal(), name='D')
+
+        numax = tf.math.log(-tf.math.log(self.rmin))
+        numin = tf.math.log(-tf.math.log(self.rmax))
+        nuinit = tf.keras.initializers.RandomUniform(minval=numin, maxval=numax, seed=None)
+        self.nu = self.add_weight(shape=(n_rec,), initializer=nuinit, name='nu')
+
+        if self.reduced_phase:
+            theta_initializer = tf.keras.initializers.RandomUniform(minval=0, maxval=3.14 / 10, seed=None)
+        else:
+            theta_initializer = tf.keras.initializers.RandomUniform(minval=0, maxval=2 * 3.14, seed=None)
+
+        self.theta = self.add_weight(shape=(n_rec,), initializer=theta_initializer, name='theta')
+
+        # Normalization
+        lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
+        gamma = tf.sqrt(1 - tf.abs(lambda_) ** 2)
+        if self.locked_gamma:
+            self.gamma = gamma
+        else:
+            gamma_initializer = InitFromTensor(gamma)
+            self.gamma = self.add_weight(shape=(n_rec,), initializer=gamma_initializer, name='gamma')
+
+        self.built = True
+
+    def call(self, inputs, training=None):
+        if not training is None:
+            tf.keras.backend.set_learning_phase(training)
+
+        u = inputs
+        x = tf.zeros((tf.shape(u)[0], tf.shape(u)[1], self.num_neurons), dtype=tf.float32)
+
+        lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
+        Lambda = tf.linalg.diag(lambda_)
+
+        # turning floats to complex
+        u_ = tf.cast(u, self.dtype_)
+        x_ = tf.cast(x, self.dtype_)
+        gamma_ = tf.cast(self.gamma, self.dtype_)
+
+        # rnn operations
+        x = x_ @ Lambda + gamma_ * u_ @ self.B
+        y = tf.math.real(x_ @ self.C) + self.D * u
+
+        output = y
+        return output
+
 
 
 if __name__ == '__main__':
