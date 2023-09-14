@@ -3,8 +3,6 @@
 
 import tensorflow as tf
 
-tf.random.set_seed(0)
-
 from pyaromatics.keras_tools.esoteric_layers.geglu import GEGLU
 
 
@@ -41,7 +39,7 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
     def __init__(self, num_neurons=None, kernel_initializer='orthogonal',
-                 rmax=.99, rmin=.4, reduced_phase=True, locked_gamma=False, **kwargs):
+                 rmax=.95, rmin=.4, reduced_phase=True, locked_gamma=False, **kwargs):
         super().__init__(**kwargs)
 
         self.dtype_ = tf.complex64
@@ -53,11 +51,12 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
 
     def build(self, input_shape):
 
+        print('input_shape', input_shape)
         n_in = input_shape[-1]
         n_rec = self.num_neurons
 
         self.C = self.add_weight(shape=(n_rec, n_rec), initializer=ComplexGlorotNormal(), name='C', dtype=self.dtype_)
-        self.B = self.add_weight(shape=(n_rec, n_in), initializer=ComplexGlorotNormal(), name='B', dtype=self.dtype_)
+        self.B = self.add_weight(shape=(n_in, n_rec), initializer=ComplexGlorotNormal(), name='B', dtype=self.dtype_)
         self.D = self.add_weight(shape=(n_in,), initializer=tf.keras.initializers.RandomNormal(stddev=1), name='D')
 
         numax = tf.math.log(-tf.math.log(self.rmin))
@@ -86,7 +85,6 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
     def call(self, inputs, states, **kwargs):
         if not kwargs['training'] is None:
             tf.keras.backend.set_learning_phase(kwargs['training'])
-        print('\nrnn' + '-' * 100)
 
         u = inputs
         x = states[0]
@@ -100,10 +98,12 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
         gamma_ = tf.cast(self.gamma, self.dtype_)
 
         # rnn operations
+        print('u_', u_.shape)
+        print('B', self.B.shape)
         new_u = gamma_ * u_ @ self.B
         new_x_ = tf.einsum('bi,ij->bj', x_, Lambda)
-        x_ = new_x_ + new_u
 
+        x_ = new_x_ + new_u
 
         y = tf.math.real(x_ @ self.C) + self.D * u
         output = y
@@ -118,7 +118,7 @@ class ResLRUCell(tf.keras.layers.Layer):
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
     def __init__(self, num_neurons=None, kernel_initializer='orthogonal',
-                 rmax=.99, rmin=.4, reduced_phase=True, dop=.1, locked_gamma=False, **kwargs):
+                 rmax=.95, rmin=.4, reduced_phase=True, dop=.1, locked_gamma=False, **kwargs):
         super().__init__(**kwargs)
 
         self.init_args = dict(num_neurons=num_neurons, kernel_initializer=kernel_initializer, rmax=rmax, rmin=rmin,
@@ -131,57 +131,46 @@ class ResLRUCell(tf.keras.layers.Layer):
             num_neurons=num_neurons, kernel_initializer=kernel_initializer,
             rmax=rmax, rmin=rmin, reduced_phase=reduced_phase, locked_gamma=locked_gamma
         )
+        # self.lrurnn = tf.keras.layers.RNN(self.lru, return_sequences=True, return_state=True)
         self.norm = tf.keras.layers.LayerNormalization()
         self.glu = GEGLU(num_neurons, num_neurons, activation='sigmoid', comments='onlyglu')
-        self.dropout = tf.keras.layers.Dropout(dop)
+        self.gelu = tf.keras.layers.Activation('gelu')
+        self.dropout_1 = tf.keras.layers.Dropout(dop)
+        self.dropout_2 = tf.keras.layers.Dropout(dop)
+        # self.adapter = lamdba x: x
 
-    def call(self, inputs, states, training=None):
-        if not training is None:
-            tf.keras.backend.set_learning_phase(training)
+    def build(self, input_shape):
 
-        u = inputs
+        new_input_shape = input_shape[:-1] + (self.num_neurons,)
+        self.lru.build(new_input_shape)
+        self.norm.build(new_input_shape)
+        self.glu.build(new_input_shape)
+
+        if input_shape[-1] != self.num_neurons:
+            self.adapter = tf.keras.layers.Dense(self.num_neurons, activation='linear')
+            self.adapter.build(input_shape)
+        else:
+            self.adapter = lambda x: x
+
+        self.built = True
+
+    def call(self, inputs, states, **kwargs):
+        if not kwargs['training'] is None:
+            tf.keras.backend.set_learning_phase(kwargs['training'])
         x = states[0]
 
-        y, x = self.lru(u, (x,))
-        y = self.norm(y)
+        adapted = self.adapter(inputs)
+        u = self.norm(adapted)
+        y, x = self.lru.call(u, (x,), **kwargs)
+        y = self.gelu(y)
+        y = self.dropout_1(y)
         y = self.glu(y)
-        y = self.dropout(y)
+        y = self.dropout_2(y)
 
-        output = y + u
-        new_state = (x,)
+        output = y + adapted
+        new_state = x
         return output, new_state
 
-
-def sum_ajukminusj_ref(A, u):
-    k = tf.shape(u)[1]
-    # Calculate powers of A up to k and stack them along a new axis
-    A_powers = [tf.pow(A, j) for j in range(k + 1)]
-    A_powers_stacked = tf.stack(A_powers, axis=-1)  # Shape: (num_neurons, num_neurons, k+1)
-
-    # Expand dimensions of u for element-wise multiplication
-    u_expanded = tf.expand_dims(u, axis=3)  # Shape: (batch_size, time_steps, num_neurons, 1)
-
-    # Perform element-wise multiplication between A^j and u_{k-j}
-    A_j_u = A_powers_stacked * u_expanded  # Shape: (batch_size, time_steps, num_neurons, k+1)
-
-    # Sum along the axis corresponding to powers of A (axis -1)
-    x_k = tf.reduce_sum(A_j_u, axis=-1)  # Shape: (batch_size, time_steps, num_neurons)
-    return x_k
-
-def sum_ajukminusj(Apow, u):
-    # k = tf.shape(u)[1]
-    # Calculate powers of A up to k and stack them along a new axis
-    A_powers_stacked = Apow  # Shape: (num_neurons, num_neurons, k+1)
-
-    # Expand dimensions of u for element-wise multiplication
-    u_expanded = tf.expand_dims(u, axis=3)  # Shape: (batch_size, time_steps, num_neurons, 1)
-
-    # Perform element-wise multiplication between A^j and u_{k-j}
-    A_j_u = A_powers_stacked * u_expanded  # Shape: (batch_size, time_steps, num_neurons, k+1)
-
-    # Sum along the axis corresponding to powers of A (axis -1)
-    x_k = tf.reduce_sum(A_j_u, axis=-1)  # Shape: (batch_size, time_steps, num_neurons)
-    return x_k
 
 # FFN version of LinearRecurrentUnitCell
 class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
@@ -191,7 +180,7 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
     def __init__(self, num_neurons=None, kernel_initializer='orthogonal',
-                 rmax=.99, rmin=.4, reduced_phase=True, locked_gamma=False, **kwargs):
+                 rmax=.95, rmin=.4, reduced_phase=True, locked_gamma=False, **kwargs):
         super().__init__(**kwargs)
 
         self.dtype_ = tf.complex64
@@ -234,8 +223,6 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
 
     def call(self, inputs, training=None):
 
-        print('\nffn' + '-' * 100)
-
         if not training is None:
             tf.keras.backend.set_learning_phase(training)
 
@@ -252,7 +239,10 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
         lambda_pow = lambda_ * time
         lambda_pow = tf.exp(lambda_pow)
         Lambda_pow = tf.linalg.diag(lambda_pow)
-        print('Lambda_pow.shape', Lambda_pow.shape)
+
+        lambda_minpow = -lambda_ * time
+        lambda_minpow = tf.exp(lambda_minpow)
+        Lambda_minpow = tf.linalg.diag(lambda_minpow)
 
         # turning floats to complex
         u_ = tf.cast(u, self.dtype_)
@@ -260,12 +250,15 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
 
         # rnn operations
         new_u = gamma_ * u_ @ self.B
-        x_ = tf.einsum('bti,tij->btj', new_u, Lambda_pow)
-        x_ = tf.cumsum(x_, axis=1, )
 
+        x_ = tf.einsum('bti,tij->btj', new_u, Lambda_minpow)
+        x_ = tf.cumsum(x_, axis=1)
+        print('inside', x_)
+        x_ = tf.einsum('bti,tij->btj', x_, Lambda_pow)
 
         y = tf.math.real(x_ @ self.C) + self.D * u
         output = y
+        print('\n\noutside')
         return output
 
 
@@ -273,13 +266,14 @@ def test_1():
     import time
     # set all seeds
 
-
-
-    num_neurons = 2
-    time_steps = 3
-    batch_size = 1
+    num_neurons = 210
+    time_steps = 100
+    batch_size = 100
 
     test_forward_pass = False
+    test_rnn_is_ffn = False
+    test_long_time = False
+    test_reslru = True
 
     if test_forward_pass:
         input_tensor = tf.random.normal((batch_size, num_neurons))
@@ -302,34 +296,56 @@ def test_1():
         out = lrurnn(input_tensor)
         print(out.shape)
 
-    # move parameters from lruffn to lrurnn
-    print('=-.-=' * 100)
-    print('hey!')
-    input_tensor = tf.random.normal((batch_size, time_steps, num_neurons)) / .1
+    if test_rnn_is_ffn:
+        # move parameters from lruffn to lrurnn
+        print('=-.-=' * 100)
+        print('hey!')
+        input_tensor = tf.random.normal((batch_size, time_steps, num_neurons)) / 1
 
-    lruffn = LinearRecurrentUnitFFN(num_neurons=num_neurons)
-    lrucell = LinearRecurrentUnitCell(num_neurons=num_neurons)
-    lrurnn = tf.keras.layers.RNN(lrucell, return_sequences=True)
+        lruffn = LinearRecurrentUnitFFN(num_neurons=num_neurons)
+        lrucell = LinearRecurrentUnitCell(num_neurons=num_neurons)
+        lrurnn = tf.keras.layers.RNN(lrucell, return_sequences=True)
 
-    _ = lruffn(input_tensor)
-    _ = lrurnn(input_tensor)
-    print('-' * 100)
+        _ = lruffn(input_tensor)
+        _ = lrurnn(input_tensor)
+        print('-' * 100)
 
-    lrurnn.set_weights(lruffn.get_weights())
-    start_time = time.time()
-    outrnn = lrurnn(input_tensor)
-    rnn_time = time.time() - start_time
-    # print(outrnn)
+        lrurnn.set_weights(lruffn.get_weights())
+        start_time = time.time()
+        outrnn = lrurnn(input_tensor)
+        rnn_time = time.time() - start_time
+        print(outrnn)
 
-    start_time = time.time()
-    outffn = lruffn(input_tensor)
-    ffn_time = time.time() - start_time
-    # print(outffn)
+        start_time = time.time()
+        outffn = lruffn(input_tensor)
+        ffn_time = time.time() - start_time
+        print(outffn)
 
-    print('rnn time: ', rnn_time)
-    print('ffn time: ', ffn_time)
+        print('rnn time: ', rnn_time)
+        print('ffn time: ', ffn_time)
 
-    print(tf.reduce_sum(tf.abs(outffn - outrnn)))
+        print(tf.reduce_sum(tf.square(outffn - outrnn) / tf.square(outffn)))
+
+    if test_long_time:
+        # move parameters from lruffn to lrurnn
+        print('=-.-=' * 100)
+        print('hey!')
+        input_tensor = tf.random.normal((batch_size, time_steps, num_neurons)) / .1
+
+        lruffn = LinearRecurrentUnitFFN(num_neurons=num_neurons)
+
+        outffn = lruffn(input_tensor)
+        print(outffn)
+
+    if test_reslru:
+        input_tensor = tf.random.normal((batch_size, time_steps, num_neurons))
+        reslru = ResLRUCell(num_neurons=num_neurons)
+        # lru = LinearRecurrentUnitCell(num_neurons=num_neurons)
+        lrurnn = tf.keras.layers.RNN(reslru, return_sequences=True)
+        out = lrurnn(input_tensor)
+        print(out.shape)
+
+    # ResLRUCell
 
 
 if __name__ == '__main__':
