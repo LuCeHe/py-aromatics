@@ -3,6 +3,8 @@
 
 import tensorflow as tf
 
+tf.random.set_seed(0)
+
 from pyaromatics.keras_tools.esoteric_layers.geglu import GEGLU
 
 
@@ -88,10 +90,8 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
 
         u = inputs
         x = states[0]
-        print(x)
 
         lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
-
         Lambda = tf.linalg.diag(lambda_)
 
         # turning floats to complex
@@ -102,17 +102,10 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
         # rnn operations
         new_u = gamma_ * u_ @ self.B
         new_x_ = tf.einsum('bi,ij->bj', x_, Lambda)
-        print('new_x_', new_x_)
-        print('new_u', new_u)
-        print('Lambda_pow', Lambda)
-        # print(new_u)
-        # print(gamma_)
-        # print(self.B)
-
         x_ = new_x_ + new_u
-        print('x_', x_)
-        y = tf.math.real(x_ @ self.C) + self.D * u
 
+
+        y = tf.math.real(x_ @ self.C) + self.D * u
         output = y
         new_state = (x_,)
         return output, new_state
@@ -158,6 +151,37 @@ class ResLRUCell(tf.keras.layers.Layer):
         new_state = (x,)
         return output, new_state
 
+
+def sum_ajukminusj_ref(A, u):
+    k = tf.shape(u)[1]
+    # Calculate powers of A up to k and stack them along a new axis
+    A_powers = [tf.pow(A, j) for j in range(k + 1)]
+    A_powers_stacked = tf.stack(A_powers, axis=-1)  # Shape: (num_neurons, num_neurons, k+1)
+
+    # Expand dimensions of u for element-wise multiplication
+    u_expanded = tf.expand_dims(u, axis=3)  # Shape: (batch_size, time_steps, num_neurons, 1)
+
+    # Perform element-wise multiplication between A^j and u_{k-j}
+    A_j_u = A_powers_stacked * u_expanded  # Shape: (batch_size, time_steps, num_neurons, k+1)
+
+    # Sum along the axis corresponding to powers of A (axis -1)
+    x_k = tf.reduce_sum(A_j_u, axis=-1)  # Shape: (batch_size, time_steps, num_neurons)
+    return x_k
+
+def sum_ajukminusj(Apow, u):
+    # k = tf.shape(u)[1]
+    # Calculate powers of A up to k and stack them along a new axis
+    A_powers_stacked = Apow  # Shape: (num_neurons, num_neurons, k+1)
+
+    # Expand dimensions of u for element-wise multiplication
+    u_expanded = tf.expand_dims(u, axis=3)  # Shape: (batch_size, time_steps, num_neurons, 1)
+
+    # Perform element-wise multiplication between A^j and u_{k-j}
+    A_j_u = A_powers_stacked * u_expanded  # Shape: (batch_size, time_steps, num_neurons, k+1)
+
+    # Sum along the axis corresponding to powers of A (axis -1)
+    x_k = tf.reduce_sum(A_j_u, axis=-1)  # Shape: (batch_size, time_steps, num_neurons)
+    return x_k
 
 # FFN version of LinearRecurrentUnitCell
 class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
@@ -228,6 +252,7 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
         lambda_pow = lambda_ * time
         lambda_pow = tf.exp(lambda_pow)
         Lambda_pow = tf.linalg.diag(lambda_pow)
+        print('Lambda_pow.shape', Lambda_pow.shape)
 
         # turning floats to complex
         u_ = tf.cast(u, self.dtype_)
@@ -235,13 +260,10 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
 
         # rnn operations
         new_u = gamma_ * u_ @ self.B
-        print('new_u', new_u)
-        print('Lambda_pow', Lambda_pow)
-
         x_ = tf.einsum('bti,tij->btj', new_u, Lambda_pow)
-        print('x_', x_)
         x_ = tf.cumsum(x_, axis=1, )
-        print('x_cumsum', x_)
+
+
         y = tf.math.real(x_ @ self.C) + self.D * u
         output = y
         return output
@@ -249,11 +271,12 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
 
 def test_1():
     import time
-    # set tf seed
-    tf.random.set_seed(0)
+    # set all seeds
+
+
 
     num_neurons = 2
-    time_steps = 2
+    time_steps = 3
     batch_size = 1
 
     test_forward_pass = False
@@ -291,11 +314,6 @@ def test_1():
     _ = lruffn(input_tensor)
     _ = lrurnn(input_tensor)
     print('-' * 100)
-
-    names_ffn = [weight.name for weight in lruffn.weights]
-    names_rnn = [weight.name for weight in lrurnn.weights]
-    print(names_ffn)
-    print(names_rnn)
 
     lrurnn.set_weights(lruffn.get_weights())
     start_time = time.time()
