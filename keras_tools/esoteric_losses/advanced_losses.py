@@ -68,19 +68,25 @@ def sparse_mode_accuracy(y_true, y_pred):
     acc = tf.reduce_mean(equal)
     return acc
 
-
 def second_half(tensor):
     time_steps = tf.shape(tensor)[1]
     half_time = tf.cast(time_steps / 2, tf.int32)
     splits = tf.split(tensor, [half_time, time_steps - half_time], axis=1)
     return splits[1]
 
-
 def second_half_mode_accuracy(y_true, y_pred):
     y_true = second_half(y_true)
     y_pred = second_half(y_pred)
     true = tf.cast(tf.argmax(tf.reduce_sum(y_true, axis=1), axis=1), tf.float32)
     pred = tf.cast(tf.argmax(tf.reduce_sum(y_pred, axis=1), axis=1), tf.float32)
+    equal = tf.cast(tf.math.equal(pred, true), tf.float32)
+    acc = tf.reduce_mean(equal)
+    return acc
+
+
+def sparse_last_time_accuracy(y_true, y_pred):
+    true = tf.cast(y_true[:, -1], tf.float32)
+    pred = tf.cast(tf.argmax(y_pred[:, -1, :], axis=1), tf.float32)
     equal = tf.cast(tf.math.equal(pred, true), tf.float32)
     acc = tf.reduce_mean(equal)
     return acc

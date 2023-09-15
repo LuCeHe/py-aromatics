@@ -29,7 +29,7 @@ DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', '..', '..', 'data', 'lr
 os.makedirs(DATADIR, exist_ok=True)
 
 flags.DEFINE_string(
-    'task', default='basic',
+    'task', default='listops',
     help='Name of task to create.')
 flags.DEFINE_integer(
     'num_train_samples', default=96000,

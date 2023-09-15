@@ -13,6 +13,7 @@
 # limitations under the License.
 """Input pipeline for the listops dataset."""
 
+import os
 import numpy as np
 
 import tensorflow.compat.v1 as tf
@@ -20,6 +21,11 @@ import tensorflow_datasets as tfds
 import tensorflow_text as text
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
+
+FILENAME = os.path.realpath(__file__)
+CDIR = os.path.dirname(FILENAME)
+DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', '..', '..', 'data', 'lra', 'listops'))
+os.makedirs(DATADIR, exist_ok=True)
 
 
 def rename_close_brackets(x):
@@ -61,13 +67,17 @@ def get_datasets(n_devices,
         raise ValueError("Batch size %d isn't divided evenly by n_devices %d" %
                          (batch_size, n_devices))
 
-    train_path = data_dir + task_name + '_train.tsv'
-    val_path = data_dir + task_name + '_val.tsv'
-    test_path = data_dir + task_name + '_test.tsv'
+    train_path = os.path.join(DATADIR, 'listops_train.tsv')
+    val_path = os.path.join(DATADIR, 'listops_val.tsv')
+    test_path = os.path.join(DATADIR, 'listops_test.tsv')
 
     train_dataset = preprocess_dataset(train_path, batch_size)
     val_dataset = preprocess_dataset(val_path, batch_size)
     test_dataset = preprocess_dataset(test_path, batch_size)
+
+    n_train_samples = len(list(train_dataset))
+    n_val_samples = len(list(val_dataset))
+    n_test_samples = len(list(test_dataset))
 
     tf.logging.info('Finished preprocessing')
     tf.logging.info('Building vocab')
@@ -89,8 +99,7 @@ def get_datasets(n_devices,
     vocab_set = list(set(vocab_set))
     tf.logging.info('Finished processing vocab size={}'.format(len(vocab_set)))
 
-    encoder = tfds.deprecated.text.TokenTextEncoder(
-        vocab_set)
+    encoder = tfds.deprecated.text.TokenTextEncoder(vocab_set)
 
     def tf_encode(x):
         result = tf.py_function(lambda s: tf.constant(encoder.encode(s.numpy())),
@@ -118,15 +127,34 @@ def get_datasets(n_devices,
     val_dataset = val_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     test_dataset = test_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
-    return train_dataset, val_dataset, test_dataset, encoder
+    return {
+        'train': train_dataset,
+        'val': val_dataset,
+        'test': test_dataset,
+        'n_train_samples': n_train_samples,
+        'n_val_samples': n_val_samples,
+        'n_test_samples': n_test_samples,
+        'vocab_size': encoder.vocab_size
+    }
 
 
 def test():
+    import time
     """Test."""
-    train_ds, val_ds, test_ds, encoder = get_datasets(
-        8, 'listops', data_dir='/tmp/listops/', batch_size=256)
+    start_time = time.time()
+    train_ds, val_ds, test_ds, n_train_samples, vocab_size = get_datasets(8, 'listops', batch_size=256)
+    print('time taken', time.time() - start_time)
 
-    vocab_size = encoder.vocab_size
+    # batch_size = 256 -> steps_per_epoch = 96000
+
+    # iter_train = iter(train_ds)
+    # print(len(iter_train))
+    # print(len(list(train_ds)))
+    # print(len(list(iter_train)) )
     batch = next(iter(train_ds))
     print('vocab_size', vocab_size)
     print('batch', batch)
+
+
+if __name__ == '__main__':
+    test()
