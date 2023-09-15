@@ -2,9 +2,21 @@
 
 
 import tensorflow as tf
+from keras.initializers.initializers_v2 import VarianceScaling
 
 from pyaromatics.keras_tools.esoteric_layers.geglu import GEGLU
 
+
+
+
+class HalfGlorotNormal(VarianceScaling):
+    def __init__(self, seed=None):
+        super().__init__(
+            scale=1/2, mode="fan_avg", distribution="uniform", seed=seed
+        )
+
+    def get_config(self):
+        return {"seed": self.seed}
 
 class ComplexGlorotNormal(tf.keras.initializers.Initializer):
 
@@ -51,25 +63,26 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
 
     def build(self, input_shape):
 
-        print('input_shape', input_shape)
         n_in = input_shape[-1]
         n_rec = self.num_neurons
 
-        self.C = self.add_weight(shape=(n_rec, n_rec), initializer=ComplexGlorotNormal(), name='C', dtype=self.dtype_)
-        self.B = self.add_weight(shape=(n_in, n_rec), initializer=ComplexGlorotNormal(), name='B', dtype=self.dtype_)
+        self.C_re = self.add_weight(shape=(n_rec, n_rec), initializer=HalfGlorotNormal(), name='C_re')
+        self.B_re = self.add_weight(shape=(n_in, n_rec), initializer=HalfGlorotNormal(), name='B_re')
+        self.C_im = self.add_weight(shape=(n_rec, n_rec), initializer=HalfGlorotNormal(), name='C_im')
+        self.B_im = self.add_weight(shape=(n_in, n_rec), initializer=HalfGlorotNormal(), name='B_im')
         self.D = self.add_weight(shape=(n_in,), initializer=tf.keras.initializers.RandomNormal(stddev=1), name='D')
 
         numax = tf.math.log(-tf.math.log(self.rmin))
         numin = tf.math.log(-tf.math.log(self.rmax))
         nuinit = tf.keras.initializers.RandomUniform(minval=numin, maxval=numax, seed=None)
-        self.nu = self.add_weight(shape=(n_rec,), initializer=nuinit, name='nu')
+        self.nu = self.add_weight(shape=(n_rec,), initializer=nuinit, name='lambda_nu')
 
         if self.reduced_phase:
             theta_initializer = tf.keras.initializers.RandomUniform(minval=0, maxval=3.14 / 10, seed=None)
         else:
             theta_initializer = tf.keras.initializers.RandomUniform(minval=0, maxval=2 * 3.14, seed=None)
 
-        self.theta = self.add_weight(shape=(n_rec,), initializer=theta_initializer, name='theta')
+        self.theta = self.add_weight(shape=(n_rec,), initializer=theta_initializer, name='lambda_theta')
 
         # Normalization
         lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
@@ -96,16 +109,16 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
         u_ = tf.cast(u, self.dtype_)
         x_ = tf.cast(x, self.dtype_)
         gamma_ = tf.cast(self.gamma, self.dtype_)
+        B = tf.dtypes.complex(self.B_re, self.B_im)
+        C = tf.dtypes.complex(self.C_re, self.C_im)
 
         # rnn operations
-        print('u_', u_.shape)
-        print('B', self.B.shape)
-        new_u = gamma_ * u_ @ self.B
+        new_u = gamma_ * u_ @ B
         new_x_ = tf.einsum('bi,ij->bj', x_, Lambda)
 
         x_ = new_x_ + new_u
 
-        y = tf.math.real(x_ @ self.C) + self.D * u
+        y = tf.math.real(x_ @ C) + self.D * u
         output = y
         new_state = (x_,)
         return output, new_state
@@ -253,12 +266,10 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
 
         x_ = tf.einsum('bti,tij->btj', new_u, Lambda_minpow)
         x_ = tf.cumsum(x_, axis=1)
-        print('inside', x_)
         x_ = tf.einsum('bti,tij->btj', x_, Lambda_pow)
 
         y = tf.math.real(x_ @ self.C) + self.D * u
         output = y
-        print('\n\noutside')
         return output
 
 
