@@ -102,6 +102,7 @@ def get_datasets(n_devices,
     encoder = tfds.deprecated.text.TokenTextEncoder(vocab_set)
 
     def tf_encode(x):
+        print(x)
         result = tf.py_function(lambda s: tf.constant(encoder.encode(s.numpy())),
                                 [x, ],
                                 tf.int32)
@@ -142,7 +143,9 @@ def test():
     import time
     """Test."""
     start_time = time.time()
-    train_ds, val_ds, test_ds, n_train_samples, vocab_size = get_datasets(8, 'listops', batch_size=256)
+    datasets = get_datasets(8, 'listops', batch_size=6)
+    train_ds = datasets['train']
+    vocab_size = datasets['vocab_size']
     print('time taken', time.time() - start_time)
 
     # batch_size = 256 -> steps_per_epoch = 96000
@@ -154,6 +157,7 @@ def test():
     batch = next(iter(train_ds))
     print('vocab_size', vocab_size)
     print('batch', batch)
+    print('batch', batch['inputs'])
 
 
 if __name__ == '__main__':

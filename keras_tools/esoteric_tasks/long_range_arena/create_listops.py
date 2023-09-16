@@ -197,6 +197,9 @@ def main(argv):
     # write_to_file(test, FLAGS.output_dir + '/{}_test'.format(FLAGS.task))
     tf.logging.info('Finished writing all to file')
 
+def listops_creation():
+    tf.logging.set_verbosity(tf.logging.INFO)
+    app.run(main)
 
 if __name__ == '__main__':
-    app.run(main)
+    listops_creation()
