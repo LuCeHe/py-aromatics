@@ -47,8 +47,11 @@ class LRAGenerator(BaseGenerator):
         if len(os.listdir(RTDIR)) == 0 and task_name == 'retrieval':
             url = 'https://storage.googleapis.com/long-range-arena/lra_release.gz'
             download_and_unzip([url], RTDIR, unzip_what='new_aan_pairs')
-            for d in os.listdir(RTDIR_tmp):
-                os.rename(os.path.join(RTDIR_tmp, d), os.path.join(RTDIR, d))
+
+            if os.path.exists(RTDIR_tmp):
+                for d in os.listdir(RTDIR_tmp):
+                    os.rename(os.path.join(RTDIR_tmp, d), os.path.join(RTDIR, d))
+            shutil.rmtree(EXTRA)
 
         if task_name == 'listops':
             length = 2000
@@ -90,10 +93,6 @@ class LRAGenerator(BaseGenerator):
             )
 
         elif task_name == 'retrieval':
-            if os.path.exists(RTDIR_tmp):
-                for d in os.listdir(RTDIR_tmp):
-                    os.rename(os.path.join(RTDIR_tmp, d), os.path.join(RTDIR, d))
-            shutil.rmtree(EXTRA)
             length = 8000
             classes = 2
             self.get_datasets = lambda batch_size: get_matching_datasets(
