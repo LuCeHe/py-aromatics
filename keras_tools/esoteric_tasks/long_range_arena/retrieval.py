@@ -95,6 +95,10 @@ def get_matching_datasets(
     n_val_samples = len(list(val_dataset))
     n_test_samples = len(list(test_dataset))
 
+    print('n_train_samples', n_train_samples)
+    print('n_val_samples', n_val_samples)
+    print('n_test_samples', n_test_samples)
+
     tf.logging.info('Finished getting dataset.')
 
     if tokenizer == 'char':
