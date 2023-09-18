@@ -57,16 +57,7 @@ def preprocess_dataset(file_path, batch_size):
     return ds
 
 
-def get_datasets(n_devices,
-                 task_name,
-                 data_dir=None,
-                 batch_size=256,
-                 max_length=2000):
-    """Get algorithmic datasets."""
-    if batch_size % n_devices:
-        raise ValueError("Batch size %d isn't divided evenly by n_devices %d" %
-                         (batch_size, n_devices))
-
+def get_listops_datasets(batch_size=256, max_length=2000):
     train_path = os.path.join(DATADIR, 'listops_train.tsv')
     val_path = os.path.join(DATADIR, 'listops_val.tsv')
     test_path = os.path.join(DATADIR, 'listops_test.tsv')
@@ -102,7 +93,6 @@ def get_datasets(n_devices,
     encoder = tfds.deprecated.text.TokenTextEncoder(vocab_set)
 
     def tf_encode(x):
-        print(x)
         result = tf.py_function(lambda s: tf.constant(encoder.encode(s.numpy())),
                                 [x, ],
                                 tf.int32)

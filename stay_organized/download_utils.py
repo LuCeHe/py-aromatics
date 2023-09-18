@@ -3,9 +3,15 @@ from tqdm import tqdm
 import urllib.request
 import os, sys, io
 import numpy as np
-import os
+from urllib.parse import urlparse
 import tarfile
 from zipfile import ZipFile
+from google.cloud import storage
+
+# this file path
+FILENAME = os.path.realpath(__file__)
+CDIR = os.path.dirname(FILENAME)
+DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', 'data', ))
 
 
 class DownloadProgressBar(tqdm):
@@ -16,9 +22,35 @@ class DownloadProgressBar(tqdm):
 
 
 def download_url(url, output_path):
-    with DownloadProgressBar(unit='B', unit_scale=True,
-                             miniters=1, desc=url.split('/')[-1]) as t:
-        urllib.request.urlretrieve(url, filename=output_path, reporthook=t.update_to)
+
+    if 'storage.cloud.google' in url:
+        # split output_path
+        datadir = os.path.split(output_path)[0]
+        download_blob(url, datadir)
+
+    else:
+        with DownloadProgressBar(unit='B', unit_scale=True,
+                                 miniters=1, desc=url.split('/')[-1]) as t:
+            urllib.request.urlretrieve(url, filename=output_path, reporthook=t.update_to)
+
+
+def decode_gcs_url(url):
+    p = urlparse(url)
+    path = p.path[1:].split('/', 1)
+    bucket, file_path = path[0], path[1]
+    return bucket, file_path
+
+
+def download_blob(url, folderpath=DATADIR):
+    storage_client = storage.Client.create_anonymous_client()
+    bucket, filename = decode_gcs_url(url)
+    bucket = storage_client.bucket(bucket)
+    blob = bucket.blob(filename)
+    file_path = os.path.join(folderpath, filename)
+
+    with open(file_path, 'wb') as f:
+        with tqdm.wrapattr(f, "write", total=blob.size) as file_obj:
+            storage_client.download_blob_to_file(blob, file_obj)
 
 
 class ProgressFileObject(io.FileIO):
@@ -35,7 +67,9 @@ class ProgressFileObject(io.FileIO):
         return io.FileIO.read(self, size)
 
 
-def download_and_unzip(data_links, destination_dir):
+def download_and_unzip(data_links, destination_dir, unzip_what=None):
+    if not isinstance(unzip_what, list):
+        unzip_what = [unzip_what]
     if not isinstance(data_links, list):
         data_links = [data_links]
 
@@ -51,11 +85,27 @@ def download_and_unzip(data_links, destination_dir):
             if not os.path.isfile(destination): download_url(origin, destination)
 
             # Create a ZipFile Object and load sample.zip in it
+            if not unzip_what[0] == None:
+                for tag in unzip_what:
+                    with tarfile.open(destination) as tar:
+                        # subdir_and_files = [x for x in tar.getmembers() if tag in x.name]
+                        # print(subdir_and_files)
+                        # tar.extractall(members=subdir_and_files)
 
-            if destination.endswith("tar.gz"):
+                        for member in tar.getmembers():
+                            if tag in member.name:
+                                tar.extract(member, destination_dir)
+
+            elif destination.endswith("tar.gz"):
                 tar = tarfile.open(destination, "r:gz")
                 tar.extractall(destination_dir)
                 tar.close()
+
+            elif destination.endswith(".gz"):
+                tar = tarfile.open(destination, "r:gz")
+                tar.extractall(destination_dir)
+                tar.close()
+
             elif destination.endswith("tgz"):
                 tar = tarfile.open(destination, "r:gz")
                 tar.extractall(destination_dir)
@@ -64,14 +114,16 @@ def download_and_unzip(data_links, destination_dir):
                 tar = tarfile.open(destination, "r:")
                 tar.extractall(destination_dir)
                 tar.close()
+
             elif destination.endswith("zip"):
                 with ZipFile(destination, 'r') as zipObj:
                     # Extract all the contents of zip file in different directory
                     zipObj.extractall(destination_dir)
 
-        if any([f in destination for f in ['.zip', '.tar', '.tgz']] ):
+        if any([f in destination for f in ['.zip', '.tar', '.tgz', '.gz']]):
             try:
-                os.remove(destination)
+                pass
+                # os.remove(destination)
             except Exception as e:
                 print(e)
 
@@ -94,3 +146,4 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
     download_url(args.url, args.path)
+

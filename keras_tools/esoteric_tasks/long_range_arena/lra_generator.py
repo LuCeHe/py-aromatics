@@ -3,13 +3,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pyaromatics.keras_tools.esoteric_tasks.long_range_arena.create_listops import listops_creation
-from pyaromatics.keras_tools.esoteric_tasks.long_range_arena.listops import get_datasets
+from pyaromatics.keras_tools.esoteric_tasks.long_range_arena.images import get_cifar10_datasets, \
+    get_pathfinder_orig_datasets, get_pathfinder_base_datasets
+from pyaromatics.keras_tools.esoteric_tasks.long_range_arena.listops import get_listops_datasets
 from pyaromatics.keras_tools.esoteric_tasks.base_generator import BaseGenerator
+from pyaromatics.keras_tools.esoteric_tasks.long_range_arena.retrieval import get_matching_datasets
+from pyaromatics.keras_tools.esoteric_tasks.long_range_arena.text_classification import get_tc_datasets
+from pyaromatics.stay_organized.download_utils import download_and_unzip
 
 FILENAME = os.path.realpath(__file__)
 CDIR = os.path.dirname(FILENAME)
-DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', '..', '..', 'data', 'lra', 'listops'))
-os.makedirs(DATADIR, exist_ok=True)
+DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', '..', '..', 'data', 'lra'))
+LODIR = os.path.join(DATADIR, 'listops')
+PFDIR = os.path.join(DATADIR, 'pathfinder')
+RTDIR = os.path.join(DATADIR, 'retrieval')
+for d in [DATADIR, LODIR, RTDIR]:
+    os.makedirs(d, exist_ok=True)
 
 
 class LRAGenerator(BaseGenerator):
@@ -24,14 +33,69 @@ class LRAGenerator(BaseGenerator):
             steps_per_epoch=None,
             string_config='',
     ):
-        assert task_name in ['listops']
+        assert task_name in ['listops', 'scifar', 'pathfinder', 'pathx', 'text', 'retrieval']
 
-        if len(os.listdir(DATADIR)) == 0 and task_name == 'listops':
+        if len(os.listdir(LODIR)) == 0 and task_name == 'listops':
             listops_creation()
+
+        if len(os.listdir(PFDIR)) == 0 and (task_name == 'pathfinder' or task_name == 'pathx'):
+            url = 'https://storage.cloud.google.com/long-range-arena/pathfinder_tfds.gz'
+            download_and_unzip([url], PFDIR)
+
+        # if len(os.listdir(RTDIR)) == 0 and task_name == 'retrieval':
+        if True:
+            url = 'https://storage.googleapis.com/long-range-arena/lra_release.gz'
+            download_and_unzip([url], RTDIR, unzip_what='new_aan_pairs')
 
         if task_name == 'listops':
             length = 2000
             classes = 10
+            self.get_datasets = get_listops_datasets
+
+        elif task_name == 'scifar':
+            length = 32 * 32
+            classes = 10
+            self.get_datasets = get_cifar10_datasets
+
+        elif task_name == 'pathfinder':
+            length = 32 * 32
+            classes = 2
+            self.get_datasets = lambda batch_size: get_pathfinder_base_datasets(
+                batch_size=batch_size,
+                resolution=32,
+                split='hard'
+            )
+
+        elif task_name == 'pathx':
+            length = 128 * 128
+            classes = 2
+            self.get_datasets = lambda batch_size: get_pathfinder_base_datasets(
+                batch_size=batch_size,
+                resolution=128,
+                split='hard'
+            )
+
+        elif task_name == 'text':
+            length = 4000
+            classes = 2
+            self.get_datasets = lambda batch_size: get_tc_datasets(
+                'imdb_reviews',
+                batch_size=batch_size,
+                fixed_vocab=None,
+                max_length=length,
+                tokenizer='char'
+            )
+
+        elif task_name == 'retrieval':
+            length = 8000
+            classes = 2
+            self.get_datasets = lambda batch_size: get_matching_datasets(
+                batch_size=batch_size,
+                data_dir=DATADIR,
+                fixed_vocab=None,
+                max_length=length//2,
+                tokenizer='char'
+            )
 
         self.__dict__.update(batch_size=batch_size, tvt=tvt,
                              steps_per_epoch=steps_per_epoch, repetitions=repetitions)
@@ -48,8 +112,10 @@ class LRAGenerator(BaseGenerator):
         self.steps_per_epoch = int(self.n_samples / self.batch_size) \
             if steps_per_epoch == None else steps_per_epoch
 
+        print('vocab size', self.vocab_size)
+
     def on_epoch_end(self):
-        datasets = get_datasets(8, 'listops', batch_size=self.batch_size)
+        datasets = self.get_datasets(batch_size=self.batch_size)
 
         self.vocab_size = datasets['vocab_size']
         if self.tvt == 'test':
@@ -80,10 +146,10 @@ class LRAGenerator(BaseGenerator):
 
 def test_generator():
     gen = LRAGenerator(
-        task_name='listops',
+        task_name='retrieval',
         epochs=1,
         tvt='train',
-        batch_size=32,
+        batch_size=3,
         steps_per_epoch=1,
     )
     print(gen.steps_per_epoch)
@@ -91,12 +157,13 @@ def test_generator():
         batch = gen.__getitem__()
         print(i, [b.shape for b in batch[0]])
 
-    image = batch[0][0]
-    print(image.shape)
-    fig, ax = plt.subplots(1, 1, figsize=(6, 15), gridspec_kw={'hspace': 0})
-    im = ax.pcolormesh(image[0])
-    plt.show()
+    images = batch[0][0]
+    classes = batch[0][1]
+    print(images[0].tolist())
+    print(classes[0])
 
 
 if __name__ == '__main__':
     test_generator()
+
+    url = 'https://storage.cloud.google.com/long-range-arena/lra_release/lra_release/tsv_data.gz'
