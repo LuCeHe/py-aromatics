@@ -156,9 +156,14 @@ def get_matching_datasets(
     def tokenize(d):
         print(d['Source1'])
         print(d['Target'])
+        print(tf.size(d['Source1']))
+        print(tf.size(d['Target']))
+
+        # if d['Source1'] tensor is not empty
+
+
+
         return {
-            # 'inputs1': tf_encode(d['Source1'])[:max_length],
-            # 'inputs2': tf_encode(d['Source2'])[:max_length],
             'inputs': tf.concat([tf_encode(d['Source1'])[:max_length], tf_encode(d['Source2'])[:max_length]]),
             'targets': tf.cast(d['Target'], tf.int32)
         }
