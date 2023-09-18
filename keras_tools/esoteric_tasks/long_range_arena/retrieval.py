@@ -74,14 +74,13 @@ def get_dataset(batch_size, data_path):
 
 
 def get_matching_datasets(
-                          task_name=None,
-                          data_dir=None,
-                          batch_size=256,
-                          fixed_vocab=None,
-                          max_length=512,
-                          tokenizer='subword',
-                          vocab_file_path=None):
-
+        task_name=None,
+        data_dir=None,
+        batch_size=256,
+        fixed_vocab=None,
+        max_length=512,
+        tokenizer='subword',
+        vocab_file_path=None):
     del task_name  # not used but may be used in the future.
 
     if data_dir is None:
@@ -156,12 +155,10 @@ def get_matching_datasets(
     def tokenize(d):
         print(d['Source1'])
         print(d['Target'])
-        print(tf.size(d['Source1']))
-        print(tf.size(d['Target']))
+        print(tf.size(d['Source1'])>0)
+        print(tf.size(d['Target'])>0)
 
         # if d['Source1'] tensor is not empty
-
-
 
         return {
             'inputs': tf.concat([tf_encode(d['Source1'])[:max_length], tf_encode(d['Source2'])[:max_length]]),
@@ -173,7 +170,7 @@ def get_matching_datasets(
     test_dataset = test_dataset.map(tokenize, num_parallel_calls=AUTOTUNE)
 
     # max_shape = {'inputs1': [max_length], 'inputs2': [max_length], 'targets': []}
-    max_shape = {'inputs': [2*max_length], 'targets': []}
+    max_shape = {'inputs': [2 * max_length], 'targets': []}
     train_dataset = train_dataset.shuffle(
         buffer_size=SHUFFLE_BUFFER_SIZE,
         reshuffle_each_iteration=True).padded_batch(
