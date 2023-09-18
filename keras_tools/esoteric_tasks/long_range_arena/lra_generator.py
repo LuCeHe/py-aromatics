@@ -145,8 +145,19 @@ class LRAGenerator(BaseGenerator):
 
 
 def test_generator():
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--task_name",
+        default='retrieval',
+        type=str,
+        help="url from where to download",
+    )
+    args = parser.parse_args()
+
     gen = LRAGenerator(
-        task_name='retrieval',
+        task_name=args.task_name,
         epochs=1,
         tvt='train',
         batch_size=3,
