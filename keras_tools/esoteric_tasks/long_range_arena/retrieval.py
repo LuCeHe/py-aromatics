@@ -150,6 +150,8 @@ def get_matching_datasets(
         return result
 
     def tokenize(d):
+        print(d['Source1'])
+        print(d['Target'])
         return {
             # 'inputs1': tf_encode(d['Source1'])[:max_length],
             # 'inputs2': tf_encode(d['Source2'])[:max_length],
