@@ -157,6 +157,8 @@ def get_matching_datasets(
         print(d['Target'])
         print(tf.size(d['Source1'])>0)
         print(tf.size(d['Target'])>0)
+        is_empty = tf.equal(tf.size(d['Target']), 0)
+        print(is_empty)
 
         # if d['Source1'] tensor is not empty
 
