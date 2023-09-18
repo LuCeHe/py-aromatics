@@ -88,9 +88,6 @@ def download_and_unzip(data_links, destination_dir, unzip_what=None):
             if not unzip_what[0] == None:
                 for tag in unzip_what:
                     with tarfile.open(destination) as tar:
-                        # subdir_and_files = [x for x in tar.getmembers() if tag in x.name]
-                        # print(subdir_and_files)
-                        # tar.extractall(members=subdir_and_files)
 
                         for member in tar.getmembers():
                             if tag in member.name:
@@ -122,8 +119,7 @@ def download_and_unzip(data_links, destination_dir, unzip_what=None):
 
         if any([f in destination for f in ['.zip', '.tar', '.tgz', '.gz']]):
             try:
-                pass
-                # os.remove(destination)
+                os.remove(destination)
             except Exception as e:
                 print(e)
 

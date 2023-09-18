@@ -1,4 +1,4 @@
-import os
+import os, shutil
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -17,6 +17,8 @@ DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', '..', '..', 'data', 'lr
 LODIR = os.path.join(DATADIR, 'listops')
 PFDIR = os.path.join(DATADIR, 'pathfinder')
 RTDIR = os.path.join(DATADIR, 'retrieval')
+EXTRA = os.path.join(DATADIR, 'lra_release')
+RTDIR_tmp = os.path.join(EXTRA, r'lra_release\tsv_data')
 for d in [DATADIR, LODIR, RTDIR]:
     os.makedirs(d, exist_ok=True)
 
@@ -42,10 +44,11 @@ class LRAGenerator(BaseGenerator):
             url = 'https://storage.cloud.google.com/long-range-arena/pathfinder_tfds.gz'
             download_and_unzip([url], PFDIR)
 
-        # if len(os.listdir(RTDIR)) == 0 and task_name == 'retrieval':
-        if True:
+        if len(os.listdir(RTDIR)) == 0 and task_name == 'retrieval':
             url = 'https://storage.googleapis.com/long-range-arena/lra_release.gz'
             download_and_unzip([url], RTDIR, unzip_what='new_aan_pairs')
+            for d in os.listdir(RTDIR_tmp):
+                os.rename(os.path.join(RTDIR_tmp, d), os.path.join(RTDIR, d))
 
         if task_name == 'listops':
             length = 2000
@@ -87,11 +90,14 @@ class LRAGenerator(BaseGenerator):
             )
 
         elif task_name == 'retrieval':
+            for d in os.listdir(RTDIR_tmp):
+                os.rename(os.path.join(RTDIR_tmp, d), os.path.join(RTDIR, d))
+            shutil.rmtree(EXTRA)
             length = 8000
             classes = 2
             self.get_datasets = lambda batch_size: get_matching_datasets(
                 batch_size=batch_size,
-                data_dir=DATADIR,
+                data_dir=RTDIR,
                 fixed_vocab=None,
                 max_length=length//2,
                 tokenizer='char'
