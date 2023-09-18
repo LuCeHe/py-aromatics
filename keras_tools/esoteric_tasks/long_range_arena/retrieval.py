@@ -153,7 +153,7 @@ def get_matching_datasets(
         return {
             # 'inputs1': tf_encode(d['Source1'])[:max_length],
             # 'inputs2': tf_encode(d['Source2'])[:max_length],
-            'inputs': tf.concatenate(tf_encode(d['Source1'])[:max_length], tf_encode(d['Source2'])[:max_length]),
+            'inputs': tf.concat([tf_encode(d['Source1'])[:max_length], tf_encode(d['Source2'])[:max_length]]),
             'targets': tf.cast(d['Target'], tf.int32)
         }
 

@@ -17,8 +17,8 @@ DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', '..', '..', 'data', 'lr
 LODIR = os.path.join(DATADIR, 'listops')
 PFDIR = os.path.join(DATADIR, 'pathfinder')
 RTDIR = os.path.join(DATADIR, 'retrieval')
-EXTRA = os.path.join(DATADIR, 'lra_release')
-RTDIR_tmp = os.path.join(EXTRA, r'lra_release\tsv_data')
+EXTRA = os.path.join(RTDIR, 'lra_release')
+RTDIR_tmp = os.path.join(EXTRA, 'lra_release', 'tsv_data')
 for d in [DATADIR, LODIR, RTDIR]:
     os.makedirs(d, exist_ok=True)
 
@@ -90,8 +90,9 @@ class LRAGenerator(BaseGenerator):
             )
 
         elif task_name == 'retrieval':
-            for d in os.listdir(RTDIR_tmp):
-                os.rename(os.path.join(RTDIR_tmp, d), os.path.join(RTDIR, d))
+            if os.path.exists(RTDIR_tmp):
+                for d in os.listdir(RTDIR_tmp):
+                    os.rename(os.path.join(RTDIR_tmp, d), os.path.join(RTDIR, d))
             shutil.rmtree(EXTRA)
             length = 8000
             classes = 2
@@ -99,7 +100,7 @@ class LRAGenerator(BaseGenerator):
                 batch_size=batch_size,
                 data_dir=RTDIR,
                 fixed_vocab=None,
-                max_length=length//2,
+                max_length=length // 2,
                 tokenizer='char'
             )
 
