@@ -101,7 +101,7 @@ def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time
             category_coding='onehot',
             char_or_word='word')
 
-    elif 'lra_' in name:
+    elif name.startswith('lra_'):
         task_name = name.replace('lra_', '')
         gen = LRAGenerator(
             task_name,

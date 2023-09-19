@@ -344,13 +344,13 @@ def test_1():
     # set all seeds
 
     num_neurons = 210
-    time_steps = 100
-    batch_size = 100
+    time_steps = 10000
+    batch_size = 32
 
     test_forward_pass = False
-    test_rnn_is_ffn = False
+    test_rnn_is_ffn = True
     test_long_time = False
-    test_reslru = True
+    test_reslru = False
 
     if test_forward_pass:
         input_tensor = tf.random.normal((batch_size, num_neurons))
@@ -387,7 +387,7 @@ def test_1():
         _ = lrurnn(input_tensor)
         print('-' * 100)
 
-        lrurnn.set_weights(lruffn.get_weights())
+        # lrurnn.set_weights(lruffn.get_weights())
         start_time = time.time()
         outrnn = lrurnn(input_tensor)
         rnn_time = time.time() - start_time
@@ -492,13 +492,13 @@ def test_2():
     print(hs)
 
 
-def test_3():
+def test_speeds_scan():
     import operator, time
 
     # compare tfp.math.scan_associative() with cumsum
     # https://www.tensorflow.org/probability/api_docs/python/tfp/math/scan_associative
     # time
-    random_tensor = tf.random.normal((100, 100))
+    random_tensor = tf.random.normal((200, 1000))
     start_time = time.time()
     a = tfp.math.scan_associative(operator.add, random_tensor)
     # print(a)
@@ -549,4 +549,4 @@ def test_4():
 
 
 if __name__ == '__main__':
-    test_4()
+    test_1()

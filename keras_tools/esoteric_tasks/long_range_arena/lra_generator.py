@@ -118,8 +118,6 @@ class LRAGenerator(BaseGenerator):
         self.steps_per_epoch = int(self.n_samples / self.batch_size) \
             if steps_per_epoch == None else steps_per_epoch
 
-        print('vocab size', self.vocab_size)
-
     def on_epoch_end(self):
         datasets = self.get_datasets(batch_size=self.batch_size)
 
