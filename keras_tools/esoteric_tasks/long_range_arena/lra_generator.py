@@ -22,7 +22,7 @@ RTDIR_tmp = os.path.join(EXTRA, 'lra_release', 'tsv_data')
 for d in [DATADIR, LODIR, RTDIR]:
     os.makedirs(d, exist_ok=True)
 
-
+lra_tasks = ['listops', 'scifar', 'pathfinder', 'pathx', 'text', 'retrieval']
 class LRAGenerator(BaseGenerator):
 
     def __init__(

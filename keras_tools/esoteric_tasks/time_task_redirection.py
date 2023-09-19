@@ -100,9 +100,10 @@ def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time
             category_coding='onehot',
             char_or_word='word')
 
-    elif 'lralistops' == name:
+    elif 'lra:' in name:
+        task_name = name.replace('lra:', '')
         gen = LRAGenerator(
-            'listops',
+            task_name,
             epochs=epochs,
             tvt=train_val_test,
             batch_size=batch_size,
