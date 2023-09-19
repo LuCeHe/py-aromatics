@@ -3,7 +3,7 @@ import os
 # from sg_design_lif.generate_data.bit_generator import OneBitTimeDependentGenerator
 # from sg_design_lif.generate_data.grammar_generators import CFG_AutoEncoding_Generator, MergeSearch
 from pyaromatics.keras_tools.esoteric_tasks.heidelberg_generator import SpokenHeidelbergDigits
-from pyaromatics.keras_tools.esoteric_tasks.long_range_arena.lra_generator import LRAGenerator
+from pyaromatics.keras_tools.esoteric_tasks.long_range_arena.lra_generator import LRAGenerator, lra_tasks
 # from sg_design_lif.generate_data.huggingface_generator import HuggingfaceGenerator
 # from sg_design_lif.generate_data.lca_generator import LCAGenerator
 from pyaromatics.keras_tools.esoteric_tasks.mnist_generators import SeqMNIST
@@ -22,7 +22,8 @@ DATADIR = os.path.abspath(os.path.join(CDIR, '..', '..', '..', 'data'))
 os.makedirs(DATADIR, exist_ok=True)
 STATSPATH = os.path.join(DATADIR, 'task_stats.csv')
 
-language_tasks = ['ptb', 'wiki103', 'wmt14', 'time_ae_merge', 'monkey', 'wordptb', 'wordptb1', 'lralistops']
+language_tasks = ['ptb', 'wiki103', 'wmt14', 'time_ae_merge', 'monkey', 'wordptb', 'wordptb1', ] + \
+                 ['lra_' + t for t in lra_tasks]
 
 
 def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time_ae', train_val_test='train',
@@ -100,8 +101,8 @@ def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time
             category_coding='onehot',
             char_or_word='word')
 
-    elif 'lra:' in name:
-        task_name = name.replace('lra:', '')
+    elif 'lra_' in name:
+        task_name = name.replace('lra_', '')
         gen = LRAGenerator(
             task_name,
             epochs=epochs,
@@ -110,7 +111,7 @@ def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time
             repetitions=timerepeat,
             steps_per_epoch=steps_per_epoch,
             string_config='',
-    )
+        )
 
     elif 'wiki103' == name:
         gen = Wiki103Generator(
