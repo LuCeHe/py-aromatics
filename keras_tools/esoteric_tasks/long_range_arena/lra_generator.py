@@ -146,7 +146,7 @@ class LRAGenerator(BaseGenerator):
         input = batch['inputs'][..., None]
         target = batch['targets']
         target = np.repeat(target[..., None], self.out_len, 1)
-        # print('inside generator:', input.shape, target.shape)
+        print('inside generator:', input.shape, target.shape)
         return {'input_spikes': input, 'target_output': target, 'mask': 1.}
 
 
