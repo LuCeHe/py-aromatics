@@ -428,7 +428,7 @@ def test_1():
     # set all seeds
 
     num_neurons = 210
-    time_steps = 100  # 10000
+    time_steps = 10000  # 10000
     batch_size = 32
 
     # num_neurons = 2
