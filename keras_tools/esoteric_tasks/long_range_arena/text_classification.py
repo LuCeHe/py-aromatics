@@ -126,8 +126,8 @@ def get_tc_datasets(
     n_val_samples = len(list(val_dataset))
     n_test_samples = len(list(test_dataset))
 
-    tf.logging.info('Finished preprocessing')
 
+    tf.logging.info('Finished preprocessing')
     tf.logging.info(val_dataset)
 
     if tokenizer == 'char':
