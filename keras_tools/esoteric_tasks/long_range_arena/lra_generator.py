@@ -142,7 +142,7 @@ class LRAGenerator(BaseGenerator):
     def data_generation(self):
         batch = next(self.iterds)
 
-        input = batch['inputs']
+        input = batch['inputs'][..., None]
         target = batch['targets']
         target = np.repeat(target[..., None], self.out_len, 1)
         print('inside generator:', input.shape, target.shape)
