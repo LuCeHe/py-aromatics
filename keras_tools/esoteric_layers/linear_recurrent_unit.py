@@ -19,6 +19,7 @@ def binary_operator_diag(q_i, q_j):
     return A_j * A_i, A_j * b_i + b_j
 
 
+
 class HalfGlorotNormal(VarianceScaling):
     def __init__(self, seed=None):
         super().__init__(
