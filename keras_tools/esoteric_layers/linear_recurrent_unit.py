@@ -269,7 +269,7 @@ class ResLRUCell(tf.keras.layers.Layer):
 
 # FFN version of LinearRecurrentUnitCell
 class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
-    # 6.2x faster than the recurrent cell on a sequence of length 10K
+    # 6.2x faster than the recurrent cell on a sequence of length 10K on my laptop
 
     def get_config(self):
         base_config = super().get_config()
@@ -355,6 +355,7 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
 
 
 class ResLRUFFN(tf.keras.layers.Layer):
+    #  90.62/0.24x=377x faster than the recurrent cell on a sequence of length 10K on a GPU
 
     def get_config(self):
         base_config = super().get_config()
