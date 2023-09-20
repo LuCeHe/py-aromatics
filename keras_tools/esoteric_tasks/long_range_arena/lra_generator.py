@@ -117,6 +117,7 @@ class LRAGenerator(BaseGenerator):
 
         self.steps_per_epoch = int(self.n_samples / self.batch_size) \
             if steps_per_epoch == None else steps_per_epoch
+        print(tvt, self.n_samples, self.batch_size, self.steps_per_epoch)
 
     def on_epoch_end(self):
         datasets = self.get_datasets(batch_size=self.batch_size)
@@ -145,7 +146,7 @@ class LRAGenerator(BaseGenerator):
         input = batch['inputs'][..., None]
         target = batch['targets']
         target = np.repeat(target[..., None], self.out_len, 1)
-        print('inside generator:', input.shape, target.shape)
+        # print('inside generator:', input.shape, target.shape)
         return {'input_spikes': input, 'target_output': target, 'mask': 1.}
 
 
