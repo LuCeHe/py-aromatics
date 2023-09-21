@@ -23,6 +23,8 @@ for d in [DATADIR, LODIR, RTDIR]:
     os.makedirs(d, exist_ok=True)
 
 lra_tasks = ['listops', 'scifar', 'pathfinder', 'pathx', 'text', 'retrieval']
+
+
 class LRAGenerator(BaseGenerator):
 
     def __init__(
@@ -115,7 +117,7 @@ class LRAGenerator(BaseGenerator):
         self.out_len = length * repetitions
         self.epochs = 100 if epochs == None else epochs
 
-        self.steps_per_epoch = int(self.n_samples / self.batch_size) \
+        self.steps_per_epoch = int(self.n_samples / self.batch_size) - 1 \
             if steps_per_epoch == None else steps_per_epoch
         # print(tvt, self.n_samples, self.batch_size, self.steps_per_epoch)
 
