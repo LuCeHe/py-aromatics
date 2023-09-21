@@ -2,6 +2,7 @@ import os, shutil
 import matplotlib.pyplot as plt
 import numpy as np
 
+from pyaromatics.keras_tools.esoteric_tasks import lra_tasks
 from pyaromatics.keras_tools.esoteric_tasks.long_range_arena.create_listops import listops_creation
 from pyaromatics.keras_tools.esoteric_tasks.long_range_arena.images import get_cifar10_datasets, \
     get_pathfinder_orig_datasets, get_pathfinder_base_datasets
@@ -22,7 +23,6 @@ RTDIR_tmp = os.path.join(EXTRA, 'lra_release', 'tsv_data')
 for d in [DATADIR, LODIR, RTDIR]:
     os.makedirs(d, exist_ok=True)
 
-lra_tasks = ['listops', 'scifar', 'pathfinder', 'pathx', 'text', 'retrieval']
 
 
 class LRAGenerator(BaseGenerator):
@@ -37,7 +37,7 @@ class LRAGenerator(BaseGenerator):
             steps_per_epoch=None,
             string_config='',
     ):
-        assert task_name in ['listops', 'scifar', 'pathfinder', 'pathx', 'text', 'retrieval']
+        assert task_name in lra_tasks
 
         if len(os.listdir(LODIR)) == 0 and task_name == 'listops':
             listops_creation()
