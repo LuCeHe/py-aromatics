@@ -6,7 +6,7 @@ from tensorflow import keras as k
 
 
 class ClearMemory(tf.keras.callbacks.Callback):
-    def __init__(self, end_of_epoch=True, end_of_batch=True, batch_frequency=1000, verbose=1, show_gpu=True):
+    def __init__(self, end_of_epoch=True, end_of_batch=True, batch_frequency=500, verbose=1, show_gpu=True):
         super().__init__()
         self.end_of_epoch = end_of_epoch
         self.end_of_batch = end_of_batch
@@ -54,6 +54,10 @@ class ClearMemory(tf.keras.callbacks.Callback):
         if batch % self.batch_frequency == 0 and self.end_of_batch:
             self.clear_memory()
 
+    def on_epoch_begin(self, epoch, logs=None):
+        if self.end_of_epoch:
+            self.clear_memory()
+
     def on_epoch_end(self, epoch, logs=None):
         if self.end_of_epoch:
             self.clear_memory()
@@ -62,4 +66,7 @@ class ClearMemory(tf.keras.callbacks.Callback):
         self.clear_memory()
 
     def on_train_end(self, logs=None):
+        self.clear_memory()
+
+    def on_train_begin(self, logs=None):
         self.clear_memory()
