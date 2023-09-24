@@ -108,7 +108,7 @@ class LRAGenerator(BaseGenerator):
         self.__dict__.update(batch_size=batch_size, tvt=tvt,
                              steps_per_epoch=steps_per_epoch, repetitions=repetitions)
 
-        self.on_epoch_end()
+        self.on_epoch_begin()
 
         self.in_dim = 1
         self.out_dim = classes
@@ -121,7 +121,7 @@ class LRAGenerator(BaseGenerator):
             if steps_per_epoch == None else steps_per_epoch
         # print(tvt, self.n_samples, self.batch_size, self.steps_per_epoch)
 
-    def on_epoch_end(self):
+    def on_epoch_begin(self):
         datasets = self.get_datasets(batch_size=self.batch_size)
 
         self.vocab_size = datasets['vocab_size']
@@ -141,6 +141,8 @@ class LRAGenerator(BaseGenerator):
             raise NotImplementedError
 
         self.iterds = iter(ds)
+    def on_epoch_end(self):
+        del self.iterds
 
     def data_generation(self):
         batch = next(self.iterds)
