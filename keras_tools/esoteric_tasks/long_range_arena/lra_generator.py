@@ -1,4 +1,4 @@
-import os, shutil
+import os, shutil, json
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -22,6 +22,19 @@ EXTRA = os.path.join(RTDIR, 'lra_release')
 RTDIR_tmp = os.path.join(EXTRA, 'lra_release', 'tsv_data')
 for d in [DATADIR, LODIR, RTDIR]:
     os.makedirs(d, exist_ok=True)
+
+meta_data_path = os.path.join(DATADIR, 'meta_data.json')
+# if it doesn't exist, create empty meta_data with json
+if not os.path.exists(meta_data_path):
+    meta_data = {task: {'vocab_size': 0, 'n_train_samples': 0, 'n_val_samples': 0, 'n_test_samples': 0}
+                 for task in lra_tasks}
+    # save with json not with pandas
+    with open(meta_data_path, 'w') as f:
+        json.dump(meta_data, f)
+    del meta_data
+
+
+
 
 
 
@@ -108,8 +121,6 @@ class LRAGenerator(BaseGenerator):
         self.__dict__.update(batch_size=batch_size, tvt=tvt,
                              steps_per_epoch=steps_per_epoch, repetitions=repetitions)
 
-        self.on_epoch_begin()
-
         self.in_dim = 1
         self.out_dim = classes
 
@@ -117,9 +128,35 @@ class LRAGenerator(BaseGenerator):
         self.out_len = length * repetitions
         self.epochs = 100 if epochs == None else epochs
 
+        # load json meta_data
+        with open(meta_data_path, 'r') as f:
+            meta_data = json.load(f)
+
+        # get task column
+        task_col = meta_data[task_name]
+        # get number of samples
+        self.n_samples = task_col[f'n_{tvt}_samples']
+        # get vocab size
+        self.vocab_size = task_col['vocab_size']
+
+        if self.n_samples == 0:
+            self.on_epoch_begin()
+            self.n_samples = self.n_samples
+            self.vocab_size = self.vocab_size
+            self.on_epoch_end()
+            # save it in the csv
+            meta_data[task_name][f'n_{tvt}_samples'] = self.n_samples
+            meta_data[task_name]['vocab_size'] = self.vocab_size
+
+            # save with json not with pandas
+            with open(meta_data_path, 'w') as f:
+                json.dump(meta_data, f)
+
+        print(json.dumps(meta_data, indent=4))
+        del meta_data
+
         self.steps_per_epoch = int(self.n_samples / self.batch_size) - 1 \
             if steps_per_epoch == None else steps_per_epoch
-        # print(tvt, self.n_samples, self.batch_size, self.steps_per_epoch)
 
     def on_epoch_begin(self):
         datasets = self.get_datasets(batch_size=self.batch_size)
@@ -141,6 +178,7 @@ class LRAGenerator(BaseGenerator):
             raise NotImplementedError
 
         self.iterds = iter(ds)
+
     def on_epoch_end(self):
         del self.iterds
 
@@ -160,7 +198,7 @@ def test_generator():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--task_name",
-        default='retrieval',
+        default='scifar',
         type=str,
         help="url from where to download",
     )
@@ -173,7 +211,9 @@ def test_generator():
         batch_size=3,
         steps_per_epoch=1,
     )
+    print('samples:', gen.n_samples)
     print(gen.steps_per_epoch)
+    gen.on_epoch_begin()
     for i in range(gen.steps_per_epoch):
         batch = gen.__getitem__()
         print(i, [b.shape for b in batch[0]])
