@@ -183,6 +183,9 @@ class LRAGenerator(BaseGenerator):
         del self.iterds
 
     def data_generation(self):
+        if not hasattr(self, 'iterds'):
+            self.on_epoch_begin()
+
         batch = next(self.iterds)
 
         input = batch['inputs'][..., None]
