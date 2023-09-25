@@ -114,62 +114,6 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
 
         self.built = True
 
-    def call_simple_working(self, inputs, states, **kwargs):
-        if not kwargs['training'] is None:
-            tf.keras.backend.set_learning_phase(kwargs['training'])
-
-        u = self.adapter(inputs)
-        x = states
-        # x = tf.dtypes.complex(states[0], states[1])
-
-        # lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
-        Lambda = tf.linalg.diag(self.nu)
-
-        # turning floats to complex
-        # u_ = tf.cast(u, tf.complex64)
-        # x_ = tf.cast(x, tf.complex64)
-        gamma_ = self.gamma
-        # B = tf.dtypes.complex(self.B_re, self.B_im)
-        # C = tf.dtypes.complex(self.C_re, self.C_im)
-
-        # rnn operations
-        new_u = gamma_ * u @ self.B_im
-        new_x_ = tf.einsum('bi,ij->bj', x[0], Lambda)
-
-        x_ = new_x_ + new_u
-
-        y = x_ @ self.C_re + self.D * u
-        output = y
-        new_state = [x_, x_]
-        return output, new_state
-
-    def call_simpler(self, inputs, states, **kwargs):
-        if not kwargs['training'] is None:
-            tf.keras.backend.set_learning_phase(kwargs['training'])
-
-        u = self.adapter(inputs)
-        # x = states[0]
-        x = tf.dtypes.complex(states[0], states[1])
-
-        lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
-        Lambda = tf.linalg.diag(lambda_)
-
-        # turning floats to complex
-        u_ = tf.cast(u, tf.complex64)
-        gamma_ = tf.cast(self.gamma, tf.complex64)
-        B = tf.dtypes.complex(self.B_re, self.B_im)
-
-        # rnn operations
-        new_u = gamma_ * u_ @ B
-        new_x_ = tf.einsum('bi,ij->bj', x, Lambda)
-
-        x_ = tf.abs(new_x_ + new_u)
-
-        y = x_ @ self.C_re + self.D * u
-        output = y
-        new_state = [x_, x_]
-        return output, new_state
-
     def call(self, inputs, states, **kwargs):
         # self.call_simpler(inputs, states, **kwargs)
 
@@ -207,7 +151,7 @@ class ResLRUCell(tf.keras.layers.Layer):
         return dict(list(base_config.items()) + list(self.init_args.items()))
 
     def __init__(self, num_neurons=None, d_hidden=None,
-                 rmax=.99, rmin=.4, reduced_phase=True, dop=.1, locked_gamma=False, linear_input=True, **kwargs):
+                 rmax=.99, rmin=.4, reduced_phase=True, dop=.1, locked_gamma=False, linear_input=False, **kwargs):
         super().__init__(**kwargs)
 
         if d_hidden is None:
