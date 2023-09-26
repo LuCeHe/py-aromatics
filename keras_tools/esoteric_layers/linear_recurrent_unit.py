@@ -173,8 +173,8 @@ class ResLRUCell(tf.keras.layers.Layer):
         self.gelu = tf.keras.layers.Activation('gelu')
         self.dropout_1 = tf.keras.layers.Dropout(dop)
         self.dropout_2 = tf.keras.layers.Dropout(dop)
-        self.dropout_1 = lambda x: x
-        self.dropout_2 = lambda x: x
+        # self.dropout_1 = lambda x: x
+        # self.dropout_2 = lambda x: x
         if linear_input:
             self.adapter = tf.keras.layers.Dense(self.num_neurons, activation='linear')
 
@@ -329,8 +329,8 @@ class ResLRUFFN(tf.keras.layers.Layer):
         self.gelu = tf.keras.layers.Activation('gelu')
         self.dropout_1 = tf.keras.layers.Dropout(dop)
         self.dropout_2 = tf.keras.layers.Dropout(dop)
-        self.dropout_1 = lambda x: x
-        self.dropout_2 = lambda x: x
+        # self.dropout_1 = lambda x: x
+        # self.dropout_2 = lambda x: x
         if linear_input:
             self.adapter = tf.keras.layers.Dense(self.num_neurons, activation='linear')
 

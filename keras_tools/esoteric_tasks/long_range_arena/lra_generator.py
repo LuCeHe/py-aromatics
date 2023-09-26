@@ -152,7 +152,6 @@ class LRAGenerator(BaseGenerator):
             with open(meta_data_path, 'w') as f:
                 json.dump(meta_data, f)
 
-        print(json.dumps(meta_data, indent=4))
         del meta_data
 
         self.steps_per_epoch = int(self.n_samples / self.batch_size) - 1 \
