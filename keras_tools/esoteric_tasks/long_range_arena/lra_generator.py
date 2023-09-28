@@ -1,5 +1,5 @@
 import os, shutil, json
-import matplotlib.pyplot as plt
+
 import numpy as np
 
 from pyaromatics.keras_tools.esoteric_tasks import lra_tasks
@@ -200,7 +200,7 @@ def test_generator():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--task_name",
-        default='scifar',
+        default='retrieval',
         type=str,
         help="url from where to download",
     )
