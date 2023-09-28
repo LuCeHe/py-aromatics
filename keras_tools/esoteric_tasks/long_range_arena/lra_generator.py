@@ -200,7 +200,7 @@ def test_generator():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--task_name",
-        default='retrieval',
+        default='text',
         type=str,
         help="url from where to download",
     )
