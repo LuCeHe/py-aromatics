@@ -200,7 +200,7 @@ def test_generator():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--task_name",
-        default='text',
+        default='listops',
         type=str,
         help="url from where to download",
     )
@@ -213,6 +213,7 @@ def test_generator():
         batch_size=3,
         steps_per_epoch=1,
     )
+    print('vocab_size:', gen.vocab_size)
     print('samples:', gen.n_samples)
     print(gen.steps_per_epoch)
     gen.on_epoch_begin()
