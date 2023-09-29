@@ -99,12 +99,12 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
 
         # Normalization
         lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
-        gamma = tf.sqrt(1 - tf.abs(lambda_) ** 2)
+        gamma_log = tf.log(tf.sqrt(1 - tf.abs(lambda_) ** 2))
         if self.locked_gamma:
-            self.gamma = gamma
+            self.gamma_log = gamma_log
         else:
-            gamma_initializer = InitFromTensor(gamma)
-            self.gamma = self.add_weight(shape=(self.d_hidden,), initializer=gamma_initializer, name='gamma')
+            gamma_initializer = InitFromTensor(gamma_log)
+            self.gamma_log = self.add_weight(shape=(self.d_hidden,), initializer=gamma_initializer, name='gamma_log')
 
         if input_shape[-1] != self.num_neurons:
             self.adapter = tf.keras.layers.Dense(self.num_neurons, activation='linear')
@@ -128,7 +128,7 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
 
         # turning floats to complex
         u_ = tf.cast(u, tf.complex64)
-        gamma_ = tf.cast(self.gamma, tf.complex64)
+        gamma_ = tf.cast(tf.exp(self.gamma_log), tf.complex64)
         B = tf.dtypes.complex(self.B_re, self.B_im)
         C = tf.dtypes.complex(self.C_re, self.C_im)
 
@@ -256,12 +256,12 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
 
         # Normalization
         lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
-        gamma = tf.sqrt(1 - tf.abs(lambda_) ** 2)
+        gamma_log = tf.log(tf.sqrt(1 - tf.abs(lambda_) ** 2))
         if self.locked_gamma:
-            self.gamma = gamma
+            self.gamma_log = gamma_log
         else:
-            gamma_initializer = InitFromTensor(gamma)
-            self.gamma = self.add_weight(shape=(self.d_hidden,), initializer=gamma_initializer, name='gamma')
+            gamma_initializer = InitFromTensor(gamma_log)
+            self.gamma_log = self.add_weight(shape=(self.d_hidden,), initializer=gamma_initializer, name='gamma_log')
 
         if input_shape[-1] != self.num_neurons:
             self.adapter = tf.keras.layers.Dense(self.num_neurons, activation='linear')
@@ -283,7 +283,7 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
 
         # turning floats to complex
         u_ = tf.cast(u, tf.complex64)
-        gamma_ = tf.cast(self.gamma, tf.complex64)
+        gamma_ = tf.cast(tf.exp(self.gamma_log), tf.complex64)
         B = tf.dtypes.complex(self.B_re, self.B_im)
         C = tf.dtypes.complex(self.C_re, self.C_im)
 
