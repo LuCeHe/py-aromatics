@@ -119,7 +119,8 @@ def download_and_unzip(data_links, destination_dir, unzip_what=None):
 
         if any([f in destination for f in ['.zip', '.tar', '.tgz', '.gz']]):
             try:
-                os.remove(destination)
+                # os.remove(destination)
+                pass
             except Exception as e:
                 print(e)
 
