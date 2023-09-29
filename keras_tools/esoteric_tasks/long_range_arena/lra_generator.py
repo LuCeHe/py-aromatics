@@ -228,6 +228,8 @@ def test_generator():
 
 
 if __name__ == '__main__':
-    test_generator()
+    # test_generator()
 
-    url = 'https://storage.cloud.google.com/long-range-arena/lra_release/lra_release/tsv_data.gz'
+    # url = 'https://storage.cloud.google.com/long-range-arena/lra_release/lra_release/tsv_data.gz'
+    url = 'https://storage.googleapis.com/long-range-arena/lra_release.gz'
+    download_and_unzip([url], RTDIR, unzip_what='new_aan_pairs')
