@@ -77,7 +77,7 @@ def get_listops_datasets(batch_size=256, max_length=2000):
     tokenizer = text.WhitespaceTokenizer()
 
     lengths = []
-    for i, data in enumerate(val_dataset):
+    for i, data in enumerate(train_dataset):
         examples = data['Source']
         examples = tokenizer.tokenize(examples.numpy())
         examples = np.reshape(examples, (-1)).tolist()
@@ -85,8 +85,6 @@ def get_listops_datasets(batch_size=256, max_length=2000):
         vocab_set.update(examples)
         if i % 1000 == 0:
             tf.logging.info('Processed {}'.format(i))
-        if i > 1000:
-            break
     vocab_set = list(set(vocab_set))
     tf.logging.info('Finished processing vocab size={}'.format(len(vocab_set)))
 
