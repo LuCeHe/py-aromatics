@@ -1,4 +1,5 @@
 import os, shutil, json
+import argparse
 
 import numpy as np
 
@@ -195,7 +196,6 @@ class LRAGenerator(BaseGenerator):
 
 
 def test_generator():
-    import argparse
 
     parser = argparse.ArgumentParser()
     parser.add_argument(

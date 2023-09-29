@@ -99,7 +99,7 @@ class LinearRecurrentUnitCell(tf.keras.layers.Layer):
 
         # Normalization
         lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
-        gamma_log = tf.log(tf.sqrt(1 - tf.abs(lambda_) ** 2))
+        gamma_log = tf.math.log(tf.sqrt(1 - tf.abs(lambda_) ** 2))
         if self.locked_gamma:
             self.gamma_log = gamma_log
         else:
@@ -256,7 +256,7 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
 
         # Normalization
         lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
-        gamma_log = tf.log(tf.sqrt(1 - tf.abs(lambda_) ** 2))
+        gamma_log = tf.math.log(tf.sqrt(1 - tf.abs(lambda_) ** 2))
         if self.locked_gamma:
             self.gamma_log = gamma_log
         else:
