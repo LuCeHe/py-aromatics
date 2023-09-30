@@ -229,16 +229,3 @@ if __name__ == '__main__':
     url = 'https://storage.googleapis.com/long-range-arena/lra_release.gz'
     download_and_unzip([url], RTDIR, unzip_what='new_aan_pairs')
 
-import tarfile, os
-
-tag = 'pathfinder32'
-destination_dir = '/home/lucacehe/scratch/work/S5/raw_datasets'
-tail = 'lra_release.gz'
-destination = os.path.join(destination_dir, tail)
-print('hey!')
-
-print(os.listdir())
-with tarfile.open(destination) as tar:
-   for member in tar.getmembers():
-      print(member.name)
-      # if tag in member.name: tar.extract(member, destination_dir)
