@@ -87,7 +87,7 @@ def sh_base(time, account, py_location, env_location, n_gpus, mem='32G', cpus_pe
 #SBATCH --cpus-per-task {cpus_per_task}
 {gpus_line}
 
-    module load gcc/9.3.0 arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020 
+module load gcc/9.3.0 arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020 
 source {env_location}
 cd {py_location}
 $1
