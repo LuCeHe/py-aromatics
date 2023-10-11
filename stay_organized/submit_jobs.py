@@ -1,6 +1,8 @@
 import os, itertools, time, socket
 from datetime import datetime, timedelta
 
+from CCsubmit.helpers import get_subset
+
 
 def run_experiments(
         experiments=None, subset=[0, None], init_command='python language_main.py with ',
@@ -31,6 +33,9 @@ def run_experiments(
         ds = dict2iter(experiments)
     else:
         ds = ['']
+
+    if subset == True:
+        subset, _ = get_subset(experiments)
 
     ods = ds
     ds = ds[subset[0]:subset[1]]
