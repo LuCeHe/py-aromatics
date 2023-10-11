@@ -35,7 +35,7 @@ def run_experiments(
         ds = ['']
 
     if subset == True:
-        subset, _ = get_subset(experiments)
+        subset, _ = get_subset(ds)
 
     ods = ds
     ds = ds[subset[0]:subset[1]]
