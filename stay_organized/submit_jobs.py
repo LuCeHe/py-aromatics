@@ -1,6 +1,6 @@
 import os, itertools, time, socket
 from datetime import datetime, timedelta
-
+import numpy as np
 from CCsubmit.helpers import get_subset
 
 
@@ -24,7 +24,6 @@ def run_experiments(
                                    cpus_per_task=cpus_per_task)
         run_string = 'sbatch ' + sh_name
 
-    print()
     stop_training = '' if duration['prestop_training_hours'] < 0 else ' stop_time={} '.format(int(stop_training))
     if is_argparse:
         stop_training = stop_training.replace('stop_time', '--stop_time')
@@ -36,6 +35,21 @@ def run_experiments(
 
     if subset == True:
         subset, _ = get_subset(ds)
+    elif isinstance(subset, dict):
+        servers = [k for k, v in subset.items()]
+        probs = [v for k, v in subset.items()]
+        cumprobs = np.cumsum(probs)
+        print(servers)
+        print(cumprobs)
+
+        amount = len(experiments)
+        for i, server in enumerate(servers):
+            if server in socket.gethostname():
+                cp = cumprobs[i]
+                cp_1 = cumprobs[i-1] if i > 0 else 0
+                # subset = [int(cp * amount), (i + 1) * amount]
+                subset = [int(cp_1 * amount), int(cp * amount)]
+                break
 
     ods = ds
     ds = ds[subset[0]:subset[1]]
