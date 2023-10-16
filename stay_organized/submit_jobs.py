@@ -49,8 +49,11 @@ def run_experiments(
                 cp_1 = cumprobs[i-1] if i > 0 else 0
                 # subset = [int(cp * amount), (i + 1) * amount]
                 subset = [int(cp_1 * amount), int(cp * amount)]
+                if cp == 1:
+                    subset = [int(cp_1 * amount), None]
                 break
 
+    print(subset)
     ods = ds
     ds = ds[subset[0]:subset[1]]
 
