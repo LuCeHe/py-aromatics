@@ -35,25 +35,22 @@ def run_experiments(
 
     if subset == True:
         subset, _ = get_subset(ds)
+
     elif isinstance(subset, dict):
         servers = [k for k, v in subset.items()]
         probs = [v for k, v in subset.items()]
         cumprobs = np.cumsum(probs)
-        print(servers)
-        print(cumprobs)
 
         amount = len(experiments)
         for i, server in enumerate(servers):
             if server in socket.gethostname():
                 cp = cumprobs[i]
                 cp_1 = cumprobs[i-1] if i > 0 else 0
-                # subset = [int(cp * amount), (i + 1) * amount]
                 subset = [int(cp_1 * amount), int(cp * amount)]
                 if cp == 1:
                     subset = [int(cp_1 * amount), None]
                 break
 
-    print(subset)
     ods = ds
     ds = ds[subset[0]:subset[1]]
 
