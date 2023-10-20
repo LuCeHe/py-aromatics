@@ -44,7 +44,7 @@ def run_experiments(
         print('probs:    ', probs)
         print('cumprobs: ', cumprobs)
 
-        amount = len(experiments)
+        amount = len(ds)
         server_found = False
         for i, server in enumerate(servers):
             if server in socket.gethostname():
