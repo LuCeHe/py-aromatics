@@ -48,12 +48,13 @@ def run_experiments(
         server_found = False
         for i, server in enumerate(servers):
             if server in socket.gethostname():
+                print('in!', server)
                 server_found = True
                 cp = cumprobs[i]
                 cp_1 = cumprobs[i-1] if i > 0 else 0
+                print('amonut, cp, cp_1')
+                print(amount, cp, cp_1)
                 subset = [int(cp_1 * amount), int(cp * amount)]
-                if cp == 1:
-                    subset = [int(cp_1 * amount), None]
                 break
 
         print('server_found', server_found)
