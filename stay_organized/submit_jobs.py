@@ -56,6 +56,7 @@ def run_experiments(
                     subset = [int(cp_1 * amount), None]
                 break
 
+        print('server_found', server_found)
         if not server_found:
             subset = [0, 0]
 
