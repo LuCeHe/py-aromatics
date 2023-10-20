@@ -42,14 +42,19 @@ def run_experiments(
         cumprobs = np.cumsum(probs)
 
         amount = len(experiments)
+        server_found = False
         for i, server in enumerate(servers):
             if server in socket.gethostname():
+                server_found = True
                 cp = cumprobs[i]
                 cp_1 = cumprobs[i-1] if i > 0 else 0
                 subset = [int(cp_1 * amount), int(cp * amount)]
                 if cp == 1:
                     subset = [int(cp_1 * amount), None]
                 break
+
+        if not server_found:
+            subset = [0, 0]
 
     ods = ds
     ds = ds[subset[0]:subset[1]]
