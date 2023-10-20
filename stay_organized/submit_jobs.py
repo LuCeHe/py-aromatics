@@ -40,6 +40,8 @@ def run_experiments(
         servers = [k for k, v in subset.items()]
         probs = [v for k, v in subset.items()]
         cumprobs = np.cumsum(probs)
+        print(servers)
+        print(probs)
 
         amount = len(experiments)
         server_found = False
