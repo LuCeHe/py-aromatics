@@ -93,7 +93,6 @@ class PTBGenerator(BaseGenerator):
         # remove silent phase symbol
         next_in_data = input_batch[..., None]
         new_mask = np.ones((self.batch_size, self.out_len, self.out_dim))
-        print(next_in_data.shape, output_batch.shape, new_mask.shape)
         return {'input_spikes': next_in_data, 'target_output': output_batch,
                 'mask': new_mask}
 

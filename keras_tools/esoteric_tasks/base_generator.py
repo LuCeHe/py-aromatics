@@ -12,7 +12,6 @@ class BaseGenerator(tf.keras.utils.Sequence):
 
     def on_epoch_end(self):
         self.epoch += 1
-        # print('eiio ', self.config, self.epochs, int(self.epochs/3))
         if self.epoch == int(self.epochs/3) and 'repetitionsschedule' in self.config:
             self.repetitions = int(self.repetitions-1)
 
