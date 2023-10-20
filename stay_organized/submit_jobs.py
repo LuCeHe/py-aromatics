@@ -48,7 +48,15 @@ def run_experiments(
                 server_found = True
                 cp = cumprobs[i]
                 cp_1 = cumprobs[i-1] if i > 0 else 0
-                subset = [int(cp_1 * amount), int(cp * amount)]
+                from_ = int(cp_1 * amount)
+                to_ = int(cp * amount)
+
+                if cp == 1:
+                    to_ = None
+
+                if cp_1 == 1:
+                    from_ = None
+                subset = [from_, to_]
                 break
 
         if not server_found:
