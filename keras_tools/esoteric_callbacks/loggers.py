@@ -43,6 +43,10 @@ class LearningRateLogger(tf.keras.callbacks.Callback):
         if logs is None or "learning_rate" in logs:
             return
 
+
+        # print(self.model.optimizer.learning_rate)
+        # print(self.model.optimizer._get_hyper("learning_rate", tf.float32))
+
         if isinstance(self.model.optimizer.lr, float):
             lr = self.model.optimizer.lr
 
