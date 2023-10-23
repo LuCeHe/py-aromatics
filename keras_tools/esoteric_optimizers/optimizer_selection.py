@@ -9,11 +9,16 @@ from pyaromatics.keras_tools.esoteric_optimizers.AdamW import AdamW
 def get_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_decay=False, clipnorm=False,
                   exclude_from_weight_decay=[], warmup_steps=None):
     learning_rate = lr
-    if 'cosine_no_restarts' in lr_schedule or 'cnr' in lr_schedule:
-        learning_rate = tf.keras.experimental.CosineDecay(lr, decay_steps=int(4 * total_steps / 5), alpha=.1)
+
+    if 'exp' in lr_schedule:
+        learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(lr, decay_steps=total_steps / 6,
+                                                                       decay_rate=0.96, staircase=True)
+    elif 'cosine_no_restarts' in lr_schedule or 'cnr' in lr_schedule:
+        learning_rate = tf.keras.optimizers.schedules.CosineDecay(lr, decay_steps=max(int(total_steps / 6.5),2), alpha=.1)
+
     elif 'cosine_restarts' in lr_schedule:
-        learning_rate = tf.keras.experimental.CosineDecayRestarts(lr, first_decay_steps=int(total_steps / 6.5),
-                                                                  alpha=.1)
+        learning_rate = tf.keras.optimizers.schedules.CosineDecayRestarts(
+            lr, max(int(total_steps / 20), 2), alpha=0.1)
     else:
         # learning_rate = DummyConstantSchedule(learning_rate)
         learning_rate = learning_rate
@@ -33,21 +38,10 @@ def get_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_d
     if optimizer_name == 'AdamW':
         optimizer = AdamW(learning_rate=learning_rate, weight_decay=weight_decay, clipnorm=clipnorm,
                           exclude_from_weight_decay=['embedding'] + exclude_from_weight_decay, remove_nans=['all'])
-    elif 'AdaBelief' in optimizer_name:
 
-        optimizer = tfa.optimizers.AdaBelief(lr=learning_rate, weight_decay=weight_decay)
-        # optimizer = tfa.optimizers.Lookahead(adabelief, sync_period=6, slow_step_size=0.5)
-        # optimizer = AdaBelief(learning_rate=learning_rate, weight_decay=weight_decay, clipnorm=clipnorm,
-        #                       exclude_from_weight_decay=['embedding'] + exclude_from_weight_decay, remove_nans=['all'])
-    elif optimizer_name == 'AdaBeliefM1':
-        optimizer = AdaBelief(learning_rate=learning_rate, weight_decay=weight_decay, clipnorm=clipnorm,
-                              exclude_from_weight_decay=['embedding'], remove_nans=['all'], remove_mean=1)
-    elif optimizer_name == 'AdaBeliefM0':
-        optimizer = AdaBelief(learning_rate=learning_rate, weight_decay=weight_decay, clipnorm=clipnorm,
-                              exclude_from_weight_decay=['embedding'], remove_nans=['all'], remove_mean=0)
-    elif optimizer_name == 'AdaBeliefNoise':
-        optimizer = AdaBelief(learning_rate=learning_rate, weight_decay=weight_decay, clipnorm=clipnorm,
-                              exclude_from_weight_decay=['embedding'], remove_nans=['all'], weight_noise=.075)
+    elif 'AdaBelief' in optimizer_name:
+        optimizer = tfa.optimizers.AdaBelief(learning_rate=learning_rate, weight_decay=weight_decay)
+
     elif optimizer_name == 'SGD':
         optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate, clipnorm=clipnorm, momentum=0.99)
 
