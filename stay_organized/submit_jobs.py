@@ -1,4 +1,4 @@
-import os, itertools, time, socket
+import os, itertools, time, socket, random
 from datetime import datetime, timedelta
 import numpy as np
 from CCsubmit.helpers import get_subset
@@ -36,6 +36,7 @@ def run_experiments(
     if subset == True:
         subset, _ = get_subset(ds)
 
+
     elif isinstance(subset, dict):
         servers = [k for k, v in subset.items()]
         probs = [v for k, v in subset.items()]
@@ -47,7 +48,7 @@ def run_experiments(
             if server in socket.gethostname():
                 server_found = True
                 cp = cumprobs[i]
-                cp_1 = cumprobs[i-1] if i > 0 else 0
+                cp_1 = cumprobs[i - 1] if i > 0 else 0
                 from_ = int(cp_1 * amount)
                 to_ = int(cp * amount)
 
@@ -61,6 +62,9 @@ def run_experiments(
 
         if not server_found:
             subset = [0, 0]
+
+    random.seed(0)
+    random.shuffle(ds)
 
     ods = ds
     ds = ds[subset[0]:subset[1]]
@@ -101,7 +105,7 @@ def create_sbatch_sh(duration, sh_location, py_location, account, env_location, 
     time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
 
-    sh_name = f'{id}--'+  time_string + random_string + '.sh'
+    sh_name = f'{id}--' + time_string + random_string + '.sh'
     sh_path = os.path.join(sh_location, sh_name)
     with open(sh_path, 'w') as f:
         f.write(sh_base(duration, account, py_location, env_location, n_gpus, mem, cpus_per_task=cpus_per_task))

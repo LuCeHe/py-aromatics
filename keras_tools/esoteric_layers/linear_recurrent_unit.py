@@ -245,14 +245,14 @@ class LinearRecurrentUnitFFN(tf.keras.layers.Layer):
         numax = tf.math.log(-tf.math.log(self.rmin))
         numin = tf.math.log(-tf.math.log(self.rmax))
         nuinit = tf.keras.initializers.RandomUniform(minval=numin, maxval=numax, seed=None)
-        self.nu = self.add_weight(shape=(self.d_hidden,), initializer=nuinit, name='nu')
+        self.nu = self.add_weight(shape=(self.d_hidden,), initializer=nuinit, name='lambda_nu')
 
         if self.reduced_phase:
             theta_initializer = tf.keras.initializers.RandomUniform(minval=0, maxval=3.14 / 10, seed=None)
         else:
             theta_initializer = tf.keras.initializers.RandomUniform(minval=0, maxval=2 * 3.14, seed=None)
 
-        self.theta = self.add_weight(shape=(self.d_hidden,), initializer=theta_initializer, name='theta')
+        self.theta = self.add_weight(shape=(self.d_hidden,), initializer=theta_initializer, name='lambda_theta')
 
         # Normalization
         lambda_ = tf.exp(tf.dtypes.complex(-tf.exp(self.nu), self.theta))
