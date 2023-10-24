@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
 
+from pyaromatics.stay_organized.utils import str2val
+
 
 class BaseGenerator(tf.keras.utils.Sequence):
     config = ''
@@ -21,10 +23,14 @@ class BaseGenerator(tf.keras.utils.Sequence):
         i, m, o = batch['input_spikes'], batch['mask'], batch['target_output']
         i = np.repeat(i, self.repetitions, axis=1)
         o = np.repeat(o, self.repetitions, axis=1)
-        if 'mlminputs' in self.config and self.epoch < 5:
-            mask = np.random.choice([0, 1], size=i.shape, p=[0.95, 0.05])
-            random_values = np.random.choice(self.vocab_size, size=i.shape)
-            i = i * (1 - mask) + random_values * mask
+        if 'mlminputs' in self.config:
+            mlmeps = str2val(self.config, 'mlmeps', int, default=5)
+
+            if self.epoch < mlmeps:
+
+                mask = np.random.choice([0, 1], size=i.shape, p=[0.95, 0.05])
+                random_values = np.random.choice(self.vocab_size, size=i.shape)
+                i = i * (1 - mask) + random_values * mask
 
         if self.output_type == '[im]o':
             return (i, m), o
