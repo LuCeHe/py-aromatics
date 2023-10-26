@@ -132,7 +132,7 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
     return df
 
 
-def complete_missing_exps(sdf, exps, coi):
+def complete_missing_exps(sdf, exps, coi, loop_method=False):
     if not isinstance(exps, pd.DataFrame):
         data = {k: [] for k in coi}
         for d in exps:
@@ -143,6 +143,7 @@ def complete_missing_exps(sdf, exps, coi):
         all_exps = pd.DataFrame.from_dict(data)
     else:
         all_exps = exps
+
     # print(all_exps.to_string())
     all_exps = all_exps.drop_duplicates()
     sdf = sdf.drop_duplicates()
@@ -156,7 +157,26 @@ def complete_missing_exps(sdf, exps, coi):
     # i2 = df.set_index(keys).index
     # df = df[~i2.isin(i1)]
 
-    if not sdf.empty:
+    # go through the cols and their types on df, and turn them into the same type on sdf
+    for c in sdf.columns:
+        if c in all_exps.columns:
+            all_exps[c] = all_exps[c].astype(sdf[c].dtype)
+
+    print(all_exps.dtypes)
+    print(all_exps.head().to_string())
+
+    if loop_method:
+        df = all_exps.copy()
+
+        for index, row in tqdm(sdf.iterrows()):
+            idf = df.copy()
+            for c in coi:
+                idf = idf[idf[c].eq(row[c])]
+
+            # remove that index
+            df = df.drop(idf.index)
+
+    elif not sdf.empty:
 
         keys = list(all_exps.columns.values)
         i1 = all_exps.set_index(keys).index
@@ -165,6 +185,7 @@ def complete_missing_exps(sdf, exps, coi):
 
         df = pd.merge(all_exps, sdf, indicator=True, how='left').query("_merge == 'left_only'")
         df.drop(columns='_merge', inplace=True)
+
     else:
         df = all_exps
 
