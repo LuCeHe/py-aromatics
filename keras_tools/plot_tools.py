@@ -30,7 +30,10 @@ def history_pick(k, v, min_epochs=0):
                 if len(v[-1]) == 0:
                     v[-1] = np.nan
                 else:
-                    v[-1] = v[-1][-1]
+                    if 'loss' in k:
+                        v = [np.min(e) for e in v]
+                    else:
+                        v = [np.max(e) for e in v]
 
             if not np.isnan(v).all():
                 o = [(k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'), (k + ' initial', v[0]),
