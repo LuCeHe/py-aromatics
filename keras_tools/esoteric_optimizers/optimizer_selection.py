@@ -35,14 +35,14 @@ def get_optimizer(optimizer_name, lr, lr_schedule='', total_steps=None, weight_d
     swa = lambda x: tfa.optimizers.SWA(x) if 'SWA' in optimizer_name else x
     optimizer_name = optimizer_name.replace('SWA', '')
 
-    if optimizer_name == 'AdamW':
+    if 'AdamW' in optimizer_name:
         optimizer = AdamW(learning_rate=learning_rate, weight_decay=weight_decay, clipnorm=clipnorm,
                           exclude_from_weight_decay=['embedding'] + exclude_from_weight_decay, remove_nans=['all'])
 
     elif 'AdaBelief' in optimizer_name:
         optimizer = tfa.optimizers.AdaBelief(learning_rate=learning_rate, weight_decay=weight_decay)
 
-    elif optimizer_name == 'SGD':
+    elif 'SGD' in optimizer_name:
         optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate, clipnorm=clipnorm, momentum=0.99)
 
     elif optimizer_name == 'Nadam':
