@@ -162,8 +162,8 @@ def complete_missing_exps(sdf, exps, coi, loop_method=False):
         if c in all_exps.columns:
             all_exps[c] = all_exps[c].astype(sdf[c].dtype)
 
-    print(all_exps.dtypes)
-    print(all_exps.head().to_string())
+    # print(all_exps.dtypes)
+    # print(all_exps.head().to_string())
 
     if loop_method:
         df = all_exps.copy()
