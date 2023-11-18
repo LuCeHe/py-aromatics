@@ -133,6 +133,8 @@ def experiments_to_pandas(h5path, zips_folder, unzips_folder, extension_of_inter
 
 
 def complete_missing_exps(sdf, exps, coi, loop_method=False):
+    if sdf.empty:
+        return exps, exps
     if not isinstance(exps, pd.DataFrame):
         data = {k: [] for k in coi}
         for d in exps:
