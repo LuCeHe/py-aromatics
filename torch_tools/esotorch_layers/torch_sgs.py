@@ -29,43 +29,43 @@ class SurrogateGradNormalizable(torch.autograd.Function):
 
 
 class ConditionedSG(torch.nn.Module):
-    def __init__(self, rule, curve_name='dfastsigmoid'):
+    def __init__(self, rule, curve_name='dfastsigmoid', continuous=False):
         super().__init__()
 
         self.act = SurrogateGradNormalizable.apply
 
         if rule == '0':
             input_normalizer = lambda input_, id: input_
+
         elif rule == 'IV':
             def input_normalizer(input_, id):
                 global sg_normalizer
-                if not id in sg_normalizer.keys():
+                if not id in sg_normalizer.keys() or continuous:
                     sg_normalizer[id] = torch.std(input_)
-                input_ = input_ / sg_normalizer[id]
-                return input_
+                return input_ / sg_normalizer[id]
 
         elif rule == 'I':
             def input_normalizer(input_, id):
                 global sg_centers
-                if not id in sg_centers.keys():
+                if not id in sg_centers.keys() or continuous:
                     sg_centers[id] = torch.mean(input_)
                 center = sg_centers[id]
                 return input_ - center
+
         elif rule == 'I_IV':
 
             def input_normalizer(input_, id):
                 global sg_normalizer
-                if not id in sg_normalizer.keys():
+                if not id in sg_normalizer.keys() or continuous:
                     sg_normalizer[id] = torch.std(input_)
                 std = sg_normalizer[id]
 
                 global sg_centers
-                if not id in sg_centers.keys():
+                if not id in sg_centers.keys() or continuous:
                     sg_centers[id] = torch.mean(input_)
                 center = sg_centers[id]
 
-                input_ = (input_ - center) / std
-                return input_
+                return (input_ - center) / std
         else:
             raise Exception('Unknown rule: {}'.format(rule))
 
@@ -84,7 +84,6 @@ class ConditionedSG(torch.nn.Module):
 
         characters = string.ascii_letters + string.digits
         self.id = ''.join(random.choice(characters) for _ in range(5))
-
 
     def forward(self, x):
         return self.act(x, self.id, self.sg_curve, self.input_normalizer)
