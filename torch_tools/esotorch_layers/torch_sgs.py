@@ -4,14 +4,16 @@ import torch
 
 sg_normalizer = {}
 sg_centers = {}
-sg_curve = lambda x: 1 / (10 * torch.abs(x) + 1.0) ** 2
 
 
-class SurrogateGrad(torch.autograd.Function):
+class SurrogateGradNormalizable(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, input_, id):
+    def forward(ctx, input_, id, sg_curve, input_normalizer):
         ctx.save_for_backward(input_)
         ctx.id = id
+        ctx.sg_curve = sg_curve
+        ctx.input_normalizer = input_normalizer
+
         return (input_ > 0).type(input_.dtype)
 
     @staticmethod
@@ -19,117 +21,70 @@ class SurrogateGrad(torch.autograd.Function):
         (input_,) = ctx.saved_tensors
         grad_input = grad_output.clone()
 
-        global sg_curve
-        grad = grad_input * sg_curve(input_)
+        input_ = ctx.input_normalizer(input_, ctx.id)
 
-        return grad, None
+        grad = grad_input * ctx.sg_curve(input_)
 
-
-class SurrogateGradIV(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input_, id):
-        ctx.save_for_backward(input_)
-        ctx.id = id
-        return (input_ > 0).type(input_.dtype)
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        (input_,) = ctx.saved_tensors
-        grad_input = grad_output.clone()
-
-        global sg_normalizer
-        if not ctx.id in sg_normalizer.keys():
-            sg_normalizer[ctx.id] = torch.std(input_)
-        input_ = input_ / sg_normalizer[ctx.id]
-
-        global sg_curve
-        grad = grad_input * sg_curve(input_)
-
-        return grad, None
-
-
-class SurrogateGradI_IV(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input_, id):
-        ctx.save_for_backward(input_)
-        ctx.id = id
-        return (input_ > 0).type(input_.dtype)
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        (input_,) = ctx.saved_tensors
-        grad_input = grad_output.clone()
-
-        global sg_centers
-        if not ctx.id in sg_centers.keys():
-            sg_centers[ctx.id] = torch.mean(grad_input)
-
-        global sg_normalizer
-        if not ctx.id in sg_normalizer.keys():
-            sg_normalizer[ctx.id] = torch.std(input_)
-
-        center = sg_centers[ctx.id]
-        std = sg_normalizer[ctx.id]
-        input_ = (input_ - center) / std
-
-        global sg_curve
-        grad = grad_input * sg_curve(input_)
-
-        return grad, None
-
-
-class SurrogateGradI(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input_, id):
-        ctx.save_for_backward(input_)
-        ctx.id = id
-        return (input_ > 0).type(input_.dtype)
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        (input_,) = ctx.saved_tensors
-        grad_input = grad_output.clone()
-
-        global sg_centers
-        if not ctx.id in sg_centers.keys():
-            sg_centers[ctx.id] = torch.mean(grad_input)
-
-        center = sg_centers[ctx.id]
-        input_ = input_ - center
-
-        global sg_curve
-        grad = grad_input * sg_curve(input_)
-        return grad, None
+        return grad, None, None, None
 
 
 class ConditionedSG(torch.nn.Module):
     def __init__(self, rule, curve_name='dfastsigmoid'):
         super().__init__()
+
+        self.act = SurrogateGradNormalizable.apply
+
         if rule == '0':
-            self.act = SurrogateGrad.apply
+            input_normalizer = lambda input_, id: input_
         elif rule == 'IV':
-            self.act = SurrogateGradIV.apply
+            def input_normalizer(input_, id):
+                global sg_normalizer
+                if not id in sg_normalizer.keys():
+                    sg_normalizer[id] = torch.std(input_)
+                input_ = input_ / sg_normalizer[id]
+                return input_
+
         elif rule == 'I':
-            self.act = SurrogateGradI.apply
+            def input_normalizer(input_, id):
+                global sg_centers
+                if not id in sg_centers.keys():
+                    sg_centers[id] = torch.mean(input_)
+                center = sg_centers[id]
+                return input_ - center
         elif rule == 'I_IV':
-            self.act = SurrogateGradI_IV.apply
+
+            def input_normalizer(input_, id):
+                global sg_normalizer
+                if not id in sg_normalizer.keys():
+                    sg_normalizer[id] = torch.std(input_)
+                std = sg_normalizer[id]
+
+                global sg_centers
+                if not id in sg_centers.keys():
+                    sg_centers[id] = torch.mean(input_)
+                center = sg_centers[id]
+
+                input_ = (input_ - center) / std
+                return input_
         else:
             raise Exception('Unknown rule: {}'.format(rule))
 
+        self.input_normalizer = input_normalizer
+
         if curve_name == 'dfastsigmoid':
-            global sg_curve
-            sg_curve = lambda x: 1 / (10 * torch.abs(x) + 1.0) ** 2
+            self.sg_curve = lambda x: 1 / (10 * torch.abs(x) + 1.0) ** 2
 
         elif curve_name == 'triangular':
-            global sg_curve
-            sg_curve = lambda x: torch.maximum(1 - 10 * torch.abs(x), torch.zeros_like(x))
+            self.sg_curve = lambda x: torch.maximum(1 - 10 * torch.abs(x), torch.zeros_like(x))
 
         elif curve_name == 'rectangular':
-            global sg_curve
-            sg_curve = lambda x: torch.abs(10 * x) < 1 / 2
+            self.sg_curve = lambda x: torch.abs(10 * x) < 1 / 2
+        else:
+            raise Exception('Unknown curve: {}'.format(curve_name))
 
         characters = string.ascii_letters + string.digits
         self.id = ''.join(random.choice(characters) for _ in range(5))
 
+
     def forward(self, x):
-        return self.act(x, self.id)
+        return self.act(x, self.id, self.sg_curve, self.input_normalizer)
