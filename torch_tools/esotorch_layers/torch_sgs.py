@@ -40,65 +40,41 @@ class ConditionedSG(torch.nn.Module):
         ingrad_normalizer = lambda input_, id: input_
 
         if rule == 'IV':
-            if not on_ingrad:
-                def input_normalizer(input_, id):
-                    global sg_normalizer
-                    if not id in sg_normalizer.keys() or continuous:
-                        sg_normalizer[id] = torch.std(input_)
-                    return input_ / sg_normalizer[id]
-            else:
-                def ingrad_normalizer(input_, id):
-                    global sg_normalizer
-                    if not id in sg_normalizer.keys() or continuous:
-                        sg_normalizer[id] = torch.std(input_)
-                    return input_ / sg_normalizer[id]
+            def f(input_, id):
+                global sg_normalizer
+                if not id in sg_normalizer.keys() or continuous:
+                    sg_normalizer[id] = torch.std(input_)
+                return input_ / sg_normalizer[id]
 
         elif rule == 'I':
-            if not on_ingrad:
-                def input_normalizer(input_, id):
-                    global sg_centers
-                    if not id in sg_centers.keys() or continuous:
-                        sg_centers[id] = torch.mean(input_)
-                    center = sg_centers[id]
-                    return input_ - center
-            else:
-                def ingrad_normalizer(input_, id):
-                    global sg_centers
-                    if not id in sg_centers.keys() or continuous:
-                        sg_centers[id] = torch.mean(input_)
-                    center = sg_centers[id]
-                    return input_ - center
+            def f(input_, id):
+                global sg_centers
+                if not id in sg_centers.keys() or continuous:
+                    sg_centers[id] = torch.mean(input_)
+                center = sg_centers[id]
+                return input_ - center
 
         elif rule == 'I_IV':
-            if not on_ingrad:
-                def input_normalizer(input_, id):
-                    global sg_normalizer
-                    if not id in sg_normalizer.keys() or continuous:
-                        sg_normalizer[id] = torch.std(input_)
-                    std = sg_normalizer[id]
+            def f(input_, id):
+                global sg_normalizer
+                if not id in sg_normalizer.keys() or continuous:
+                    sg_normalizer[id] = torch.std(input_)
+                std = sg_normalizer[id]
 
-                    global sg_centers
-                    if not id in sg_centers.keys() or continuous:
-                        sg_centers[id] = torch.mean(input_)
-                    center = sg_centers[id]
+                global sg_centers
+                if not id in sg_centers.keys() or continuous:
+                    sg_centers[id] = torch.mean(input_)
+                center = sg_centers[id]
 
-                    return (input_ - center) / std
-            else:
-                def ingrad_normalizer(input_, id):
-                    global sg_normalizer
-                    if not id in sg_normalizer.keys() or continuous:
-                        sg_normalizer[id] = torch.std(input_)
-                    std = sg_normalizer[id]
-
-                    global sg_centers
-                    if not id in sg_centers.keys() or continuous:
-                        sg_centers[id] = torch.mean(input_)
-                    center = sg_centers[id]
-
-                    return (input_ - center) / std
+                return (input_ - center) / std
 
         else:
             raise Exception('Unknown rule: {}'.format(rule))
+
+        if not on_ingrad:
+            input_normalizer = f
+        else:
+            ingrad_normalizer = f
 
         self.input_normalizer = input_normalizer
         self.ingrad_normalizer = ingrad_normalizer
@@ -114,6 +90,7 @@ class ConditionedSG(torch.nn.Module):
         elif curve_name == 'rectangular':
             m = 10 if not normalized_curve else 1
             self.sg_curve = lambda x: torch.abs(m * x) < 1 / 2
+
         else:
             raise Exception('Unknown curve: {}'.format(curve_name))
 
