@@ -2,8 +2,10 @@ import random, string
 
 import torch
 
-sg_normalizer = {}
-sg_centers = {}
+forward_normalizer = {}
+forward_centers = {}
+backward_normalizer = {}
+backward_centers = {}
 
 
 class SurrogateGradNormalizable(torch.autograd.Function):
@@ -31,50 +33,62 @@ class SurrogateGradNormalizable(torch.autograd.Function):
 
 
 class ConditionedSG(torch.nn.Module):
-    def __init__(self, rule, on_ingrad=False, curve_name='dfastsigmoid', continuous=False, normalized_curve=False):
+    def __init__(self, rule, on_ingrad=False, forwback=False, curve_name='dfastsigmoid', continuous=False, normalized_curve=False):
         super().__init__()
 
+        global forward_normalizer, forward_centers, backward_normalizer, backward_centers
         self.act = SurrogateGradNormalizable.apply
 
         input_normalizer = lambda input_, id: input_
         ingrad_normalizer = lambda input_, id: input_
 
         if rule == 'IV':
-            def f(input_, id):
-                global sg_normalizer
-                if not id in sg_normalizer.keys() or continuous:
-                    sg_normalizer[id] = torch.std(input_)
-                return input_ / sg_normalizer[id]
+
+            def f(centers, normalizer):
+                def _f(input_, id):
+                    if not id in normalizer.keys() or continuous:
+                        normalizer[id] = torch.std(input_)
+                    return input_ / normalizer[id]
+                return _f
 
         elif rule == 'I':
-            def f(input_, id):
-                global sg_centers
-                if not id in sg_centers.keys() or continuous:
-                    sg_centers[id] = torch.mean(input_)
-                center = sg_centers[id]
-                return input_ - center
+            def f(centers, normalizer):
+                def _f(input_, id):
+                    print(centers.keys())
+                    if not id in centers.keys() or continuous:
+                        centers[id] = torch.mean(input_)
+                    center = centers[id]
+                    return input_ - center
+                return _f
 
         elif rule == 'I_IV':
-            def f(input_, id):
-                global sg_normalizer
-                if not id in sg_normalizer.keys() or continuous:
-                    sg_normalizer[id] = torch.std(input_)
-                std = sg_normalizer[id]
+            def f(centers, normalizer):
+                def _f(input_, id):
+                    if not id in normalizer.keys() or continuous:
+                        normalizer[id] = torch.std(input_)
+                    std = normalizer[id]
 
-                global sg_centers
-                if not id in sg_centers.keys() or continuous:
-                    sg_centers[id] = torch.mean(input_)
-                center = sg_centers[id]
+                    if not id in centers.keys() or continuous:
+                        centers[id] = torch.mean(input_)
+                    center = centers[id]
 
-                return (input_ - center) / std
-
+                    return (input_ - center) / std
+                return _f
+        elif rule == '0':
+            def f(centers, normalizer):
+                def _f(input_, id):
+                    return input_
+                return _f
         else:
             raise Exception('Unknown rule: {}'.format(rule))
 
-        if not on_ingrad:
-            input_normalizer = f
+        if forwback:
+            input_normalizer = f(centers=forward_centers, normalizer=forward_normalizer)
+            ingrad_normalizer = f(centers=backward_centers, normalizer=backward_normalizer)
+        elif on_ingrad:
+            ingrad_normalizer = f(centers=backward_centers, normalizer=backward_normalizer)
         else:
-            ingrad_normalizer = f
+            input_normalizer = f(centers=forward_centers, normalizer=forward_normalizer)
 
         self.input_normalizer = input_normalizer
         self.ingrad_normalizer = ingrad_normalizer
