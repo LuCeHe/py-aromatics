@@ -5,7 +5,6 @@ import numpy as np
 
 
 def history_pick(k, v, min_epochs=0):
-
     o = None
     if isinstance(v, str):
         if 'array' in v:
@@ -29,19 +28,21 @@ def history_pick(k, v, min_epochs=0):
             if isinstance(v[-1], list):
                 if len(v[-1]) == 0:
                     v[-1] = np.nan
-                else:
+                elif isinstance(v[-1][0], int) or isinstance(v[-1][0], float):
                     if 'loss' in k:
                         v = [np.min(e) for e in v]
                     else:
                         v = [np.max(e) for e in v]
 
             if not np.isnan(v).all():
-                o = [(k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'), (k + ' initial', v[0]),
-                     (k + ' final', v[-1]),
-                     (k + ' mean', np.nanmean(v)), (k + ' min', np.nanmin(v)), (k + ' max', np.nanmax(v)),
-                     (k + ' list', v), (k + ' len', len(v)),
-                     (k + ' argmin', np.nanargmin(v)), (k + ' argmax', np.nanargmax(v)),
-                     ]
+                o = [
+                    (k + ' ends', f'{round(v[0], 3)}/{round(v[-1], 3)}'),
+                    (k + ' initial', v[0]),
+                    (k + ' final', v[-1]),
+                    (k + ' mean', np.nanmean(v)), (k + ' min', np.nanmin(v)), (k + ' max', np.nanmax(v)),
+                    (k + ' list', v), (k + ' len', len(v)),
+                    (k + ' argmin', np.nanargmin(v)), (k + ' argmax', np.nanargmax(v)),
+                ]
                 o = tuple(o)
             elif np.isnan(v).all():
                 v = ['nans']
@@ -141,5 +142,3 @@ def plot_history(histories, epochs, plot_filename=None, method_names=None, show=
             plt.show()
 
         return fig, axs
-
-

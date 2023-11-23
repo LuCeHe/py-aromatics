@@ -44,8 +44,9 @@ def unzip_good_exps(exp_origin, exp_destination, exp_identifiers=[''], except_fo
 
     ds = []
     for d in tmp_ds:
+        _, tail = os.path.split(d)
         for t_in in exp_identifiers:
-            if t_in in d:
+            if t_in in tail:
                 any_exception = False
                 for t_out in except_folders:
                     if t_out in d:

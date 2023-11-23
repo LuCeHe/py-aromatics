@@ -17,7 +17,9 @@ class SurrogateGradNormalizable(torch.autograd.Function):
         ctx.input_f = input_f
         ctx.input_grad_f = input_grad_f
 
-        return (input_ > 0).type(input_.dtype)
+        out = (input_ > 0).type(input_.dtype)
+        print('ehrer', torch.mean(out).cpu().detach().numpy())
+        return out
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -54,7 +56,6 @@ class ConditionedSG(torch.nn.Module):
         elif rule == 'I':
             def f(centers, normalizer):
                 def _f(input_, id):
-                    print(centers.keys())
                     if not id in centers.keys() or continuous:
                         centers[id] = torch.mean(input_)
                     center = centers[id]
