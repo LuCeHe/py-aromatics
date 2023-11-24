@@ -18,7 +18,7 @@ class SurrogateGradNormalizable(torch.autograd.Function):
         ctx.input_grad_f = input_grad_f
 
         out = (input_ > 0).type(input_.dtype)
-        print('ehrer', torch.mean(out).cpu().detach().numpy())
+        # print('ehrer', torch.mean(out).cpu().detach().numpy())
         return out
 
     @staticmethod
