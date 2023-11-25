@@ -29,14 +29,18 @@ class SurrogateGradNormalizable(torch.autograd.Function):
 
         grad_input = ctx.input_grad_f(grad_input, ctx.id)
         input_ = ctx.input_f(input_, ctx.id)
+
         sgout = ctx.sg_curve(input_)
+
+        sgout = ctx.sgout_f(sgout, ctx.id)
         grad = grad_input * sgout
 
-        return grad, None, None, None, None
+        return grad, None, None, None, None, None
 
 
 class ConditionedSG(torch.nn.Module):
-    def __init__(self, rule, on_ingrad=False, forwback=False, curve_name='dfastsigmoid', continuous=False, normalized_curve=False):
+    def __init__(self, rule, on_ingrad=False, forwback=False, curve_name='dfastsigmoid', continuous=False,
+                 normalized_curve=False, sgoutn=False):
         super().__init__()
 
         global forward_normalizer, forward_centers, backward_normalizer, backward_centers
@@ -44,6 +48,7 @@ class ConditionedSG(torch.nn.Module):
 
         input_normalizer = lambda input_, id: input_
         ingrad_normalizer = lambda input_, id: input_
+        sgout_normalizer = lambda input_, id: input_
 
         if rule == 'IV':
 
@@ -84,16 +89,23 @@ class ConditionedSG(torch.nn.Module):
         else:
             raise Exception('Unknown rule: {}'.format(rule))
 
-        if forwback:
+
+        if sgoutn:
+            sgout_normalizer = f(centers=forward_centers, normalizer=forward_normalizer)
+
+        elif forwback:
             input_normalizer = f(centers=forward_centers, normalizer=forward_normalizer)
             ingrad_normalizer = f(centers=backward_centers, normalizer=backward_normalizer)
+
         elif on_ingrad:
             ingrad_normalizer = f(centers=backward_centers, normalizer=backward_normalizer)
+
         else:
             input_normalizer = f(centers=forward_centers, normalizer=forward_normalizer)
 
         self.input_normalizer = input_normalizer
         self.ingrad_normalizer = ingrad_normalizer
+        self.sgout_normalizer = sgout_normalizer
 
         if curve_name == 'dfastsigmoid':
             m = 10 if not normalized_curve else 2
@@ -114,4 +126,4 @@ class ConditionedSG(torch.nn.Module):
         self.id = ''.join(random.choice(characters) for _ in range(5))
 
     def forward(self, x):
-        return self.act(x, self.id, self.sg_curve, self.input_normalizer, self.ingrad_normalizer)
+        return self.act(x, self.id, self.sg_curve, self.input_normalizer, self.ingrad_normalizer, self.sgout_normalizer)
