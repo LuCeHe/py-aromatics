@@ -10,12 +10,13 @@ backward_centers = {}
 
 class SurrogateGradNormalizable(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, input_, id, sg_curve, input_f, input_grad_f):
+    def forward(ctx, input_, id, sg_curve, input_f, input_grad_f, sgout_f):
         ctx.save_for_backward(input_)
         ctx.id = id
         ctx.sg_curve = sg_curve
         ctx.input_f = input_f
         ctx.input_grad_f = input_grad_f
+        ctx.sgout_f = sgout_f
 
         out = (input_ > 0).type(input_.dtype)
         # print('ehrer', torch.mean(out).cpu().detach().numpy())
@@ -28,8 +29,8 @@ class SurrogateGradNormalizable(torch.autograd.Function):
 
         grad_input = ctx.input_grad_f(grad_input, ctx.id)
         input_ = ctx.input_f(input_, ctx.id)
-
-        grad = grad_input * ctx.sg_curve(input_)
+        sgout = ctx.sg_curve(input_)
+        grad = grad_input * sgout
 
         return grad, None, None, None, None
 
