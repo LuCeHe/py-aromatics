@@ -40,8 +40,9 @@ class SurrogateGradNormalizable(torch.autograd.Function):
 
 class ConditionedSG(torch.nn.Module):
     def __init__(self, rule, on_ingrad=False, forwback=False, curve_name='dfastsigmoid', continuous=False,
-                 normalized_curve=False, sgoutn=False):
+                 normalized_curve=False, sgoutn=False, fanin=1, fanout=1):
         super().__init__()
+        assert fanin == 1, 'fanin is not supported yet'
 
         global forward_normalizer, forward_centers, backward_normalizer, backward_centers
         self.act = SurrogateGradNormalizable.apply
@@ -50,13 +51,15 @@ class ConditionedSG(torch.nn.Module):
         ingrad_normalizer = lambda input_, id: input_
         sgout_normalizer = lambda input_, id: input_
 
+        fanout = torch.tensor(fanout, dtype=torch.float32)
         if rule == 'IV':
 
             def f(centers, normalizer):
                 def _f(input_, id):
                     if not id in normalizer.keys() or continuous:
                         normalizer[id] = torch.std(input_)
-                    return input_ / normalizer[id]
+                    return input_ / normalizer[id] / torch.std(fanout)
+
                 return _f
 
         elif rule == 'I':
@@ -65,7 +68,8 @@ class ConditionedSG(torch.nn.Module):
                     if not id in centers.keys() or continuous:
                         centers[id] = torch.mean(input_)
                     center = centers[id]
-                    return input_ - center
+                    return (input_ - center) / torch.std(fanout)
+
                 return _f
 
         elif rule == 'I_IV':
@@ -79,16 +83,17 @@ class ConditionedSG(torch.nn.Module):
                         centers[id] = torch.mean(input_)
                     center = centers[id]
 
-                    return (input_ - center) / std
+                    return (input_ - center) / std / torch.std(fanout)
+
                 return _f
         elif rule == '0':
             def f(centers, normalizer):
                 def _f(input_, id):
                     return input_
+
                 return _f
         else:
             raise Exception('Unknown rule: {}'.format(rule))
-
 
         if sgoutn:
             sgout_normalizer = f(centers=forward_centers, normalizer=forward_normalizer)
