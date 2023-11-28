@@ -8,7 +8,8 @@ def run_experiments(
         experiments=None, subset=[0, None], init_command='python language_main.py with ',
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
         duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': -1},
-        env_location='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4, mock_send=False
+        env_location='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4, mock_send=False,
+        load_modules='module load gcc/9.3.0 arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020'
 ):
     delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
 
@@ -21,7 +22,7 @@ def run_experiments(
 
     if run_string is None:
         sh_name = create_sbatch_sh(sh_duration, sh_location, py_location, account, env_location, n_gpus, id, mem=mem,
-                                   cpus_per_task=cpus_per_task)
+                                   cpus_per_task=cpus_per_task, load_modules=load_modules)
         run_string = 'sbatch ' + sh_name
 
     stop_training = '' if duration['prestop_training_hours'] < 0 else ' stop_time={} '.format(int(stop_training))
@@ -103,7 +104,9 @@ def dict2iter(experiments, to_list=False):
     return full_ds
 
 
-def create_sbatch_sh(duration, sh_location, py_location, account, env_location, n_gpus, id, mem='32G', cpus_per_task=4):
+def create_sbatch_sh(
+        duration, sh_location, py_location, account, env_location, n_gpus, id, mem='32G', cpus_per_task=4,
+                     load_modules=''):
     import numpy as np
     named_tuple = time.localtime()  # get struct_time
     time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
@@ -112,11 +115,17 @@ def create_sbatch_sh(duration, sh_location, py_location, account, env_location, 
     sh_name = f'{id}--' + time_string + random_string + '.sh'
     sh_path = os.path.join(sh_location, sh_name)
     with open(sh_path, 'w') as f:
-        f.write(sh_base(duration, account, py_location, env_location, n_gpus, mem, cpus_per_task=cpus_per_task))
+        f.write(
+            sh_base(duration, account, py_location, env_location, n_gpus, mem, cpus_per_task=cpus_per_task,
+                        load_modules=load_modules)
+        )
     return sh_path
 
 
-def sh_base(time, account, py_location, env_location, n_gpus, mem='32G', cpus_per_task=4):
+def sh_base(
+        time, account, py_location, env_location, n_gpus, mem='32G', cpus_per_task=4,
+        load_modules='module load gcc/9.3.0 arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020'
+):
     gpus_line = '' if n_gpus == 0 else f'#SBATCH --gres=gpu:{n_gpus}'
     return f"""#!/bin/bash
 #SBATCH --time={time}
@@ -125,7 +134,7 @@ def sh_base(time, account, py_location, env_location, n_gpus, mem='32G', cpus_pe
 #SBATCH --cpus-per-task {cpus_per_task}
 {gpus_line}
 
-module load gcc/9.3.0 arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020 
+{load_modules}
 source {env_location}
 cd {py_location}
 $1
