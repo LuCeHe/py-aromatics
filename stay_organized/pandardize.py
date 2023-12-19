@@ -154,6 +154,11 @@ def complete_missing_exps(sdf, exps, coi, loop_method=False):
     all_exps = all_exps.drop_duplicates()
     sdf = sdf.drop_duplicates()
 
+    print('all_exps')
+    print(all_exps.head().to_string())
+    print('sdf')
+    print(sdf.head().to_string())
+
     # remove the experiments that were run successfully
     # df = pd.concat([sdf, all_exps])
     # df = df.drop_duplicates(keep=False)
