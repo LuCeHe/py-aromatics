@@ -201,9 +201,9 @@ def truer_split_model(model, pairs):
 
 def test_split_model():
     import numpy as np
-    from alif_sg.neural_models.modified_efficientnet import EfficientNetB0
+    from innocent_explorations.lsc_unused.modified_efficientnet import EfficientNetB0
 
-    from alif_sg.neural_models.transformer_model import build_model as build_transf
+    from innocent_explorations.lsc_unused.transformer_model import build_model as build_transf
     from sg_design_lif.neural_models.full_model import build_model as build_alif
 
     n_tries = 10
