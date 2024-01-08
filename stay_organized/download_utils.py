@@ -6,7 +6,6 @@ import numpy as np
 from urllib.parse import urlparse
 import tarfile
 from zipfile import ZipFile
-from google.cloud import storage
 
 # this file path
 FILENAME = os.path.realpath(__file__)
@@ -42,6 +41,8 @@ def decode_gcs_url(url):
 
 
 def download_blob(url, folderpath=DATADIR):
+    from google.cloud import storage
+
     storage_client = storage.Client.create_anonymous_client()
     bucket, filename = decode_gcs_url(url)
     bucket = storage_client.bucket(bucket)

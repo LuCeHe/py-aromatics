@@ -72,20 +72,6 @@ def Task(timerepeat=1, batch_size=64, steps_per_epoch=None, epochs=1, name='time
             config=comments)
 
 
-    elif 'wordptb1' == name:
-        gen = PTBGenerator(
-            data_dir=DATADIR,
-            batch_size=batch_size,
-            epochs=epochs,
-            steps_per_epoch=steps_per_epoch,
-            maxlen=maxlen,
-            repetitions=timerepeat,
-            train_val_test=train_val_test,
-            neutral_phase_length=neutral_phase_length,
-            category_coding='',
-            char_or_word='word',
-            config=comments + '_ptb1')
-
     elif 'wordptb_oh' == name:
         gen = PTBGenerator(
             data_dir=DATADIR,
@@ -278,7 +264,7 @@ def checkTaskMeanVariance(task_name):
         full_var /= spe
         new_row = {'task_name': task_name, 'mean': full_mean, 'var': full_var}
 
-        df = df.append(new_row, ignore_index=True)
+        df = df._append(new_row, ignore_index=True)
         df.to_csv(STATSPATH)
     else:
         full_mean = df.loc[df.task_name == task_name, 'mean'].values[0]

@@ -1,10 +1,10 @@
 import numpy as np
 
 import tensorflow as tf
-import tensorflow_probability as tfp
+# import tensorflow_probability as tfp
 from tensorflow.python.keras.initializers.initializers_v2 import _RandomGenerator, _compute_fans, Orthogonal
 
-tfd = tfp.distributions
+# tfd = tfp.distributions
 _PARTITION_SHAPE = 'partition_shape'
 
 distributions_possible = ['uniform', 'truncated_normal', 'untruncated_normal', 'bi_gamma', 'bi_gamma_10',

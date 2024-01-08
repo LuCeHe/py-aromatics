@@ -96,7 +96,7 @@ def CustomExperiment(experiment_name, base_dir=None, GPU=None, seed=10, ingredie
     ex.captured_out_filter = apply_backspaces_and_linefeeds
 
     # create convenient folders for all experiments
-    basic_folders = ['data', 'experiments', 'good_experiments']
+    basic_folders = ['experiments', 'good_experiments']
     for path in basic_folders:
         complete_path = os.path.join(base_dir, path)
         os.makedirs(complete_path, exist_ok=True)
