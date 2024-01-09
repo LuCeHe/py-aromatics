@@ -18,9 +18,11 @@ setup(
     project_urls = {
         "Bug Tracker": "https://github.com/lucehe/pyaromatics/issues"
     },
+    packages=find_packages(where="."),
+    package_dir={"": "."},
     license='MIT',
     python_requires=">=3.6",
-    packages=find_packages(),
+    # packages=find_packages(),
     install_requires=[],
     classifiers=[
         "Development Status :: 3 - Alpha",
