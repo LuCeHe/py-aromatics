@@ -11,7 +11,7 @@ setup(
     version='0.0.2',
     author='Luca Herrtti',
     author_email='luca.herrtti@gmail.com',
-    description='Testing installation of Package',
+    description='Mix of convenience functions',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://github.com/lucehe/pyaromatics',
