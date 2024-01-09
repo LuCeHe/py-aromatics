@@ -14,9 +14,9 @@ setup(
     description='Mix of convenience functions',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='https://github.com/lucehe/pyaromatics',
+    url='https://github.com/lucehe/py-aromatics',
     project_urls = {
-        "Bug Tracker": "https://github.com/lucehe/pyaromatics/issues"
+        "Bug Tracker": "https://github.com/lucehe/py-aromatics/issues"
     },
     packages=find_packages(where="src"),
     package_dir={"": "src"},
