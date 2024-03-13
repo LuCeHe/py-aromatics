@@ -7,3 +7,7 @@ is referenced close to the function or at the beginning of the script. If I forg
 It can be installed by 
 
 ```pip install pyaromatics```
+
+or
+
+```pip install git+https://github.com/LuCeHe/py-aromatics```
