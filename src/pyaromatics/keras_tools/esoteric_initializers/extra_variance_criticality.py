@@ -1,8 +1,13 @@
 import numpy as np
+import os
 
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
+import keras
 import tensorflow as tf
+
 # import tensorflow_probability as tfp
-from tensorflow.python.keras.initializers.initializers_v2 import _RandomGenerator, _compute_fans, Orthogonal
+from keras.initializers.initializers_v2 import _compute_fans, Orthogonal
 
 # tfd = tfp.distributions
 _PARTITION_SHAPE = 'partition_shape'
@@ -70,7 +75,7 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
         self.orthogonalize = orthogonalize
         self.mean = mean
         self.seed = seed
-        self._random_generator = _RandomGenerator(seed)
+        # self._random_generator = _RandomGenerator(seed)
 
     def __call__(self, shape, dtype=tf.float32, **kwargs):
         """Returns a tensor object initialized as specified by the initializer.
@@ -101,12 +106,12 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
 
         if 'untruncated_normal' in self.distribution:
             stddev = tf.sqrt(scale)
-            distribution = self._random_generator.random_normal(shape, 0.0, stddev, dtype)
+            distribution = keras.random.normal(shape, 0.0, stddev, dtype)
 
         elif 'truncated_normal' in self.distribution:
             # constant from scipy.stats.truncnorm.std(a=-2, b=2, loc=0., scale=1.)
             stddev = tf.sqrt(scale) / .87962566103423978
-            distribution = self._random_generator.truncated_normal(shape, 0.0, stddev, dtype)
+            distribution = keras.random.truncated_normal(shape, 0.0, stddev, dtype)
 
         elif 'bi_gamma_10' in self.distribution:
             dist = tfd.Gamma(concentration=10.0, rate=10.0)
@@ -142,9 +147,13 @@ class MoreVarianceScalingAndOrthogonal(tf.keras.initializers.Initializer):
             distribution = tf.random.shuffle(distribution)
             distribution = tf.reshape(distribution, (*shape, 2))[..., 0]
 
-        else:
+        elif 'uniform' in self.distribution:
             stddev = tf.sqrt(3.0 * scale)
-            distribution = self._random_generator.random_uniform(shape, -stddev, stddev, dtype)
+            # distribution = keras.random.uniform(shape, -stddev, stddev, dtype)
+            distribution = tf.random.uniform(shape, -stddev, stddev, dtype)
+
+        else:
+            raise NotImplementedError
 
         if 'tanh' in self.distribution:
             distribution = stddev * tf.math.tanh(distribution)

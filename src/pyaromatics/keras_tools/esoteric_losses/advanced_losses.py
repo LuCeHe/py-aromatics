@@ -1,4 +1,4 @@
-from tensorflow.keras import backend as K
+from keras import backend as K
 import numpy as np
 import tensorflow as tf
 from scipy.ndimage import distance_transform_edt as distance

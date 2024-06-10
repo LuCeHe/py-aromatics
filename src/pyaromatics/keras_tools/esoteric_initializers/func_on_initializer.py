@@ -1,7 +1,7 @@
 import tensorflow as tf
+import keras
 
-
-class FuncOnInitializer(tf.keras.initializers.Initializer):
+class FuncOnInitializer(keras.initializers.Initializer):
 
     def __init__(self, func, initializer):
         self.func = func

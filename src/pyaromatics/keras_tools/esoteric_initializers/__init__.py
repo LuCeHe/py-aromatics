@@ -2,7 +2,7 @@ import sys, inspect
 from pyaromatics.keras_tools.esoteric_initializers.extra_variance_criticality import *
 from pyaromatics.keras_tools.esoteric_initializers.func_on_initializer import *
 
-from tensorflow.keras.initializers import *
+# from tensorflow.keras.initializers import *
 
 esoteric_initializers_list = [
     'BiGamma', 'BiGamma10', 'BiGammaOrthogonal', 'BiGamma10Orthogonal',

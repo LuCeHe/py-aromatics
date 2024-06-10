@@ -1,4 +1,4 @@
-from tensorflow.keras.losses import mean_absolute_error
+from keras.losses import mean_absolute_error
 
 from pyaromatics.stay_organized.utils import rename
 

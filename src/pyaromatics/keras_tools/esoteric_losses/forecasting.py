@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras import backend as K
+from keras import backend as K
 
 from pyaromatics.stay_organized.utils import rename
 
