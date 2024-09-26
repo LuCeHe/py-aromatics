@@ -9,7 +9,7 @@ def run_experiments(
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
         duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': -1},
         env_location='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4, mock_send=False,
-        load_modules='module load gcc/9.3.0 arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020'
+        load_modules='module load gcc arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020'
 ):
     delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
 
