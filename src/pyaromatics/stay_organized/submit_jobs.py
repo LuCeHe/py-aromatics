@@ -29,9 +29,11 @@ def run_experiments(
     if is_argparse:
         stop_training = stop_training.replace('stop_time', '--stop_time')
 
-    if not experiments is None:
+    if not experiments is None and not isinstance(experiments, int):
         ds = dict2iter(experiments)
 
+    elif isinstance(experiments, int):
+        ds = ['' for _ in range(experiments)]
     else:
         ds = ['']
 
@@ -77,7 +79,7 @@ def run_experiments(
     if len(ds) > 0:
         print(f'Number jobs: {len(ds)}/{len(ods)}')
         for i, d in enumerate(ds):
-            if not experiments is None:
+            if not experiments is None and not isinstance(experiments, int):
                 a = '--' if is_argparse else ''
                 config_update = ''.join([a + '{}={} '.format(k, v) for k, v in d.items()])
                 command = init_command + config_update
