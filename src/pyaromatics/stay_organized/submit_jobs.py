@@ -40,6 +40,8 @@ def run_experiments(
     if subset == True:
         subset, _ = get_subset(ds)
 
+    elif 'DESKTOP' in socket.gethostname():
+        subset = [0, None]
 
     elif isinstance(subset, dict):
         servers = [k for k, v in subset.items()]
