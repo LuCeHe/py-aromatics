@@ -30,7 +30,7 @@ def run_experiments(
         stop_training = stop_training.replace('stop_time', '--stop_time')
 
     if not experiments is None and not isinstance(experiments, int):
-        ds = dict2iter(experiments)
+        ds = dict2iter(experiments)[0:32]
 
     elif isinstance(experiments, int):
         ds = ['' for _ in range(experiments)]
@@ -47,11 +47,14 @@ def run_experiments(
         servers = [k for k, v in subset.items()]
         probs = [v for k, v in subset.items()]
         cumprobs = np.cumsum(probs)
+        current_server = socket.gethostname()
+        # print('here?')
+        # current_server = 'narval'
 
         amount = len(ds)
         server_found = False
         for i, server in enumerate(servers):
-            if server in socket.gethostname():
+            if server in current_server:
                 server_found = True
                 if not probs[i] == 0:
                     cp = cumprobs[i]
