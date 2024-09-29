@@ -30,7 +30,7 @@ def run_experiments(
         stop_training = stop_training.replace('stop_time', '--stop_time')
 
     if not experiments is None and not isinstance(experiments, int):
-        ds = dict2iter(experiments)[0:32]
+        ds = dict2iter(experiments)
 
     elif isinstance(experiments, int):
         ds = ['' for _ in range(experiments)]
