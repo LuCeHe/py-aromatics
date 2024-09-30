@@ -9,8 +9,13 @@ def run_experiments(
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
         duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': -1},
         env_location='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4, mock_send=False,
-        load_modules='module load gcc arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020'
-):
+        load_modules='module load gcc arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020',
+        randomize_seed=None):
+
+    if isinstance(randomize_seed, int):
+        random.seed(randomize_seed)
+        np.random.seed(randomize_seed)
+
     delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
 
     # stop training 2 hours before the total allocated time, to run tests
@@ -75,8 +80,8 @@ def run_experiments(
         if not server_found:
             subset = [0, 0]
 
-    random.seed(0)
-    random.shuffle(ds)
+    if isinstance(randomize_seed, int):
+        random.shuffle(ds)
 
     ods = ds
     ds = ds[subset[0]:subset[1]]
@@ -113,7 +118,7 @@ def dict2iter(experiments, to_list=False):
 
 def create_sbatch_sh(
         duration, sh_location, py_location, account, env_location, n_gpus, id, mem='32G', cpus_per_task=4,
-                     load_modules=''):
+        load_modules=''):
     import numpy as np
     named_tuple = time.localtime()  # get struct_time
     time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
@@ -124,7 +129,7 @@ def create_sbatch_sh(
     with open(sh_path, 'w') as f:
         f.write(
             sh_base(duration, account, py_location, env_location, n_gpus, mem, cpus_per_task=cpus_per_task,
-                        load_modules=load_modules)
+                    load_modules=load_modules)
         )
     return sh_path
 
