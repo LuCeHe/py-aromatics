@@ -47,7 +47,7 @@ def run_experiments(
         cumprobs = np.cumsum(probs)
         current_server = socket.gethostname()
         # print('here?')
-        current_server = 'graham'
+        # current_server = 'graham'
 
         amount = len(ds)
         server_found = False
