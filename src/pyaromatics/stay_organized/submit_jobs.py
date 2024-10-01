@@ -35,6 +35,11 @@ def run_experiments(
     else:
         ds = ['']
 
+    # FIXME: This is a hack to get the last 5 jobs
+    ds = ds[66:None]
+
+
+
     if subset == True:
         subset, _ = get_subset(ds)
 
@@ -76,8 +81,6 @@ def run_experiments(
     if isinstance(randomize_seed, int):
         random.shuffle(ds)
 
-    # FIXME: This is a hack to get the last 5 jobs
-    ds = ds[66:None]
     print(subset)
     ods = ds
     ds = ds[subset[0]:subset[1]]
