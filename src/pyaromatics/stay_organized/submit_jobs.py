@@ -92,7 +92,7 @@ def run_experiments(
             else:
                 command = init_command
 
-            command = "{} '{}'".format(run_string, command + stop_training)
+            command = "{} '{}'".format(run_string, command)
             command = command.replace('  ', ' ')
             print('{}/{}'.format(i + 1, len(ds)), command)
             if not mock_send:
