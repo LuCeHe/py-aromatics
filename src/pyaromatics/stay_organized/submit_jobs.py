@@ -1,5 +1,5 @@
 import os, itertools, time, socket, random
-from datetime import datetime, timedelta
+from datetime import timedelta
 import numpy as np
 from CCsubmit.helpers import get_subset
 
@@ -18,9 +18,6 @@ def run_experiments(
 
     delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
 
-    # stop training 2 hours before the total allocated time, to run tests
-    stop_training = int(delta.total_seconds() - duration['prestop_training_hours'] * 3600)
-
     hours, remainder = divmod(delta.total_seconds(), 3600)
     minutes, seconds = divmod(remainder, 60)
     sh_duration = "{}:{}:00".format(str(int(hours)).zfill(2), str(int(minutes)).zfill(2))
@@ -29,10 +26,6 @@ def run_experiments(
         sh_name = create_sbatch_sh(sh_duration, sh_location, py_location, account, env_location, n_gpus, id, mem=mem,
                                    cpus_per_task=cpus_per_task, load_modules=load_modules)
         run_string = 'sbatch ' + sh_name
-
-    stop_training = '' if duration['prestop_training_hours'] < 0 else ' stop_time={} '.format(int(stop_training))
-    if is_argparse:
-        stop_training = stop_training.replace('stop_time', '--stop_time')
 
     if not experiments is None and not isinstance(experiments, int):
         ds = dict2iter(experiments)
@@ -45,8 +38,8 @@ def run_experiments(
     if subset == True:
         subset, _ = get_subset(ds)
 
-    elif 'DESKTOP' in socket.gethostname():
-        subset = [0, None]
+    # elif 'DESKTOP' in socket.gethostname():
+    #     subset = [0, None]
 
     elif isinstance(subset, dict):
         servers = [k for k, v in subset.items()]
@@ -54,7 +47,7 @@ def run_experiments(
         cumprobs = np.cumsum(probs)
         current_server = socket.gethostname()
         # print('here?')
-        # current_server = 'narval'
+        current_server = 'graham'
 
         amount = len(ds)
         server_found = False
@@ -83,6 +76,9 @@ def run_experiments(
     if isinstance(randomize_seed, int):
         random.shuffle(ds)
 
+    # FIXME: This is a hack to get the last 5 jobs
+    ds = ds[66:None]
+    print(subset)
     ods = ds
     ds = ds[subset[0]:subset[1]]
 
