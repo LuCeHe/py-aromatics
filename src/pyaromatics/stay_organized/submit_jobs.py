@@ -35,16 +35,11 @@ def run_experiments(
     else:
         ds = ['']
 
-    # FIXME: This is a hack to get the last 5 jobs
-    ds = ds[66:None]
-
-
-
     if subset == True:
         subset, _ = get_subset(ds)
 
-    # elif 'DESKTOP' in socket.gethostname():
-    #     subset = [0, None]
+    elif 'DESKTOP' in socket.gethostname():
+        subset = [0, None]
 
     elif isinstance(subset, dict):
         servers = [k for k, v in subset.items()]
