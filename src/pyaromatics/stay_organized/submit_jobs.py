@@ -76,7 +76,6 @@ def run_experiments(
     if isinstance(randomize_seed, int):
         random.shuffle(ds)
 
-    print(subset)
     ods = ds
     ds = ds[subset[0]:subset[1]]
 
