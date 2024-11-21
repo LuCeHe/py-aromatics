@@ -10,8 +10,7 @@ def run_experiments(
         duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': -1},
         env_location='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4, mock_send=False,
         load_modules='module load gcc arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020',
-        randomize_seed=None):
-
+        randomize_seed=None, prevent=[]):
     if isinstance(randomize_seed, int):
         random.seed(randomize_seed)
         np.random.seed(randomize_seed)
@@ -29,6 +28,20 @@ def run_experiments(
 
     if not experiments is None and not isinstance(experiments, int):
         ds = dict2iter(experiments)
+        print('len(ds)', len(ds))
+        new_ds = []
+        for d in ds:
+            passed = True
+            for pd in prevent:
+                n_trues = 0
+                for k, v in pd.items():
+                    n_trues += v in d[k]
+                if n_trues > 1:
+                    passed = False
+            if passed:
+                new_ds.append(d)
+        ds = new_ds
+        print('len(ds)', len(ds))
 
     elif isinstance(experiments, int):
         ds = ['' for _ in range(experiments)]
