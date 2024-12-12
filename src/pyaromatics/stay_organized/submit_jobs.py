@@ -5,7 +5,7 @@ from CCsubmit.helpers import get_subset
 
 
 def run_experiments(
-        experiments=None, subset=[0, None], init_command='python language_main.py with ',
+        experiments=None, subset=None, init_command='python language_main.py with ',
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
         duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': -1},
         env_location='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4, mock_send=False,
@@ -48,7 +48,10 @@ def run_experiments(
     else:
         ds = ['']
 
-    if subset == True:
+    if subset is None:
+        subset = [0, None]
+
+    elif subset == True:
         subset, _ = get_subset(ds)
 
     elif 'DESKTOP' in socket.gethostname():
