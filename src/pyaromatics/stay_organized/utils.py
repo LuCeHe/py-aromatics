@@ -464,6 +464,13 @@ def save_results(other_dir, results):
         print('Could not save results to file')
 
 
+def do_save_dicts(save_dicts, save_dir):
+    print('Saving results')
+    for key, value in save_dicts.items():
+        string_result = json.dumps(value, indent=4, cls=NumpyEncoder)
+        path = os.path.join(save_dir, f'{key}.txt')
+        with open(path, "w") as f:
+            f.write(string_result)
 
 if __name__ == '__main__':
     test_is_progress_bar()
