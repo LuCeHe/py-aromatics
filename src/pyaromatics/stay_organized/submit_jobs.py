@@ -11,6 +11,7 @@ def run_experiments(
         env_location='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4, mock_send=False,
         load_modules='module load gcc arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020',
         randomize_seed=None, prevent=[]):
+
     if isinstance(randomize_seed, int):
         random.seed(randomize_seed)
         np.random.seed(randomize_seed)
