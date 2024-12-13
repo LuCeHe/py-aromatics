@@ -20,6 +20,7 @@ def flaggedtry(function, tryornot=True):
     else:
         return function()
 
+
 def make_directories(time_string=None):
     experiments_folder = "experiments"
     if not os.path.isdir(experiments_folder):
@@ -44,7 +45,6 @@ def make_directories(time_string=None):
         os.mkdir(log_folder)
 
     return experiment_folder
-
 
 
 def checkDuringTraining(generator_class, indices_sentences, encoder_model, decoder_model, batch_size, lat_dim):
@@ -309,7 +309,6 @@ def summarize_logs(
     # remove existing summary files
     os.system(f"cd {containing_folder}; rm -f *summary*")
 
-
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
     isolate_word = str2val(comments, 'isolate', str, default=None)
 
@@ -471,6 +470,7 @@ def do_save_dicts(save_dicts, save_dir):
         path = os.path.join(save_dir, f'{key}.txt')
         with open(path, "w") as f:
             f.write(string_result)
+
 
 if __name__ == '__main__':
     test_is_progress_bar()
