@@ -120,6 +120,10 @@ class CustomTrainer(SFTTrainer):
 
             # Prediction step
             losses, logits, labels = self.prediction_step(model, inputs, prediction_loss_only, ignore_keys=ignore_keys)
+            if isinstance(logits, tuple):
+                # this is to fix Mamba 2 issues
+                logits = logits[0]
+
             main_input_name = getattr(self.model, "main_input_name", "input_ids")
             inputs_decode = self._prepare_input(inputs[main_input_name]) if args.include_inputs_for_metrics else None
 
