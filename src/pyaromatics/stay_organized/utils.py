@@ -171,7 +171,7 @@ def move_mouse():
 
 
 def str2val(comments, flag, output_type=float, default=None, split_symbol='_', equality_symbol=':', remove_flag=True,
-            replace=None, exact_flag=False):
+            replace=None, exact_flag=True):
     if replace is None:
         if exact_flag:
             condition = lambda s: s.startswith('{}{}'.format(flag, equality_symbol))
