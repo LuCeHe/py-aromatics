@@ -1,27 +1,3 @@
-# from: https://dfrieds.com/data-visualizations/how-format-large-tick-values.html
-
-def large_num_to_reasonable_string(tick_val, decimals=1, bites=False):
-    if abs(tick_val) >= 1e12:
-        val = round(tick_val / 1e12, decimals)
-        new_tick_format = '{:}T'.format(val)
-    elif abs(tick_val) >= 1e9:
-        val = round(tick_val / 1e9, decimals)
-        if bites:
-            new_tick_format = '{:}G'.format(val)
-        else:
-            new_tick_format = '{:}B'.format(val)
-    elif abs(tick_val) >= 1e6:
-        val = round(tick_val / 1e6, decimals)
-        new_tick_format = '{:}M'.format(val)
-    elif abs(tick_val) >= 1e3:
-        val = round(tick_val / 1e3, decimals)
-        new_tick_format = '{:}K'.format(val)
-    elif abs(tick_val) < 1e3:
-        new_tick_format = round(tick_val, decimals)
-    else:
-        new_tick_format = tick_val
-
-    return new_tick_format
 
 
 def reformat_large_tick_values(tick_val, pos):
