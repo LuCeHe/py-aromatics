@@ -18,7 +18,7 @@ def run_experiments(
     if run_string is None:
         sh_name = create_sbatch_sh(
             sh_location, py_location, env_location, id,
-            load_modules=load_modules, sbatch_arg=sbatch_args
+            load_modules=load_modules, sbatch_args=sbatch_args
         )
         run_string = 'sbatch ' + sh_name
 
