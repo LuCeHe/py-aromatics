@@ -6,25 +6,20 @@ from CCsubmit.helpers import get_subset
 
 def run_experiments(
         experiments=None, subset=None, init_command='python language_main.py with ',
-        run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='', account='',
-        duration={'days': 0, 'hours': 12, 'minutes': 0, 'prestop_training_hours': -1},
-        env_location='denv2', n_gpus=0, id='', mem='32G', cpus_per_task=4, mock_send=False,
+        run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='',
+        env_location='denv2', id='', mock_send=False,
         load_modules='module load gcc arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020',
-        randomize_seed=None, prevent=[]):
-
+        randomize_seed=None, prevent=[], sbatch_args={}):
     if isinstance(randomize_seed, int):
         random.seed(randomize_seed)
         np.random.seed(randomize_seed)
 
-    delta = timedelta(days=duration['days'], hours=duration['hours'], minutes=duration['minutes'])
-
-    hours, remainder = divmod(delta.total_seconds(), 3600)
-    minutes, seconds = divmod(remainder, 60)
-    sh_duration = "{}:{}:00".format(str(int(hours)).zfill(2), str(int(minutes)).zfill(2))
 
     if run_string is None:
-        sh_name = create_sbatch_sh(sh_duration, sh_location, py_location, account, env_location, n_gpus, id, mem=mem,
-                                   cpus_per_task=cpus_per_task, load_modules=load_modules)
+        sh_name = create_sbatch_sh(
+            sh_location, py_location, env_location, id,
+            load_modules=load_modules, sbatch_arg=sbatch_args
+        )
         run_string = 'sbatch ' + sh_name
 
     if not experiments is None and not isinstance(experiments, int):
@@ -127,8 +122,9 @@ def dict2iter(experiments, to_list=False):
 
 
 def create_sbatch_sh(
-        duration, sh_location, py_location, account, env_location, n_gpus, id, mem='32G', cpus_per_task=4,
-        load_modules=''):
+        sh_location, py_location, env_location, id,
+        load_modules='', sbatch_args={}
+):
     import numpy as np
     named_tuple = time.localtime()  # get struct_time
     time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
@@ -138,24 +134,20 @@ def create_sbatch_sh(
     sh_path = os.path.join(sh_location, sh_name)
     with open(sh_path, 'w') as f:
         f.write(
-            sh_base(duration, account, py_location, env_location, n_gpus, mem, cpus_per_task=cpus_per_task,
-                    load_modules=load_modules)
+            sh_base(py_location, env_location,
+                    load_modules=load_modules, sbatch_args=sbatch_args)
         )
     return sh_path
 
 
 def sh_base(
-        time, account, py_location, env_location, n_gpus, mem='32G', cpus_per_task=4,
-        load_modules='module load gcc/9.3.0 arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020'
+        py_location, env_location,
+        load_modules='module load gcc/9.3.0 arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020',
+        sbatch_args={}
 ):
-    gpus_line = '' if n_gpus == 0 else f'#SBATCH --gres=gpu:{n_gpus}'
+    sbatch_args_line = ''.join([f'#SBATCH --{k}={v}\n' for k, v in sbatch_args.items()])
     return f"""#!/bin/bash
-#SBATCH --time={time}
-#SBATCH --account={account}
-#SBATCH --mem {mem}
-#SBATCH --cpus-per-task {cpus_per_task}
-{gpus_line}
-
+{sbatch_args_line}
 {load_modules}
 source {env_location}
 cd {py_location}
