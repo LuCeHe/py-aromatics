@@ -237,7 +237,10 @@ def module_from_file(module_name, file_path):
 
 
 class NumpyEncoder(json.JSONEncoder):
-    """ Custom encoder for numpy data types """
+    def __init__(self, *args, **kwargs):
+        super(NumpyEncoder, self).__init__(*args, **kwargs)
+        import torch
+        self.torch = torch
 
     def default(self, obj):
         if isinstance(obj, (np.int_, np.intc, np.intp, np.int8,
@@ -260,6 +263,9 @@ class NumpyEncoder(json.JSONEncoder):
 
         elif isinstance(obj, (np.void)):
             return None
+
+        elif isinstance(obj, self.torch.dtype): # might wanna add np, jnp types too?
+            return str(obj)
 
         return json.JSONEncoder.default(self, obj)
 
