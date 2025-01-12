@@ -9,11 +9,10 @@ def run_experiments(
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='',
         env_location='denv2', id='', mock_send=False,
         load_modules='module load gcc arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020',
-        randomize_seed=None, prevent=[], sbatch_args={}):
+        randomize_seed=None, prevent=[], sbatch_args={}, remove_duplicates=True):
     if isinstance(randomize_seed, int):
         random.seed(randomize_seed)
         np.random.seed(randomize_seed)
-
 
     if run_string is None:
         sh_name = create_sbatch_sh(
@@ -23,21 +22,42 @@ def run_experiments(
         run_string = 'sbatch ' + sh_name
 
     if not experiments is None and not isinstance(experiments, int):
+        # flatten list of dictionaries
         ds = dict2iter(experiments)
-        print('len(ds)', len(ds))
+
+        # convert to string for argparse and to simpler repeat removal
+        new_ds = []
+        a = '--' if is_argparse else ''
+        for d in ds:
+            new_d = ''.join([a + '{}={} '.format(k, v) for k, v in d.items()])
+            new_ds.append(new_d)
+        ds = new_ds
+
+        # remove repeats
+        ds = list(set(ds))
+
+        # remove unwanted combinations
         new_ds = []
         for d in ds:
-            passed = True
-            for pd in prevent:
-                n_trues = 0
-                for k, v in pd.items():
-                    n_trues += v in d[k]
-                if n_trues > 1:
-                    passed = False
-            if passed:
+            elements = d.split(' ')
+            to_include = True
+            for prevention in prevent:
+                assert len(prevention.keys()) == 2
+                k1, v1 = list(prevention.items())[0]
+                k2, v2 = list(prevention.items())[1]
+                e1 = [e for e in elements if e.replace('--', '').startswith(k1)][0]
+                e2 = [e for e in elements if e.replace('--', '').startswith(k2)][0]
+                if v1 in e1 and v2 in e2:
+                    to_include = False
+                    break
+            if to_include:
                 new_ds.append(d)
+
         ds = new_ds
+
         print('len(ds)', len(ds))
+
+
 
     elif isinstance(experiments, int):
         ds = ['' for _ in range(experiments)]
@@ -94,13 +114,7 @@ def run_experiments(
     if len(ds) > 0:
         print(f'Number jobs: {len(ds)}/{len(ods)}')
         for i, d in enumerate(ds):
-            if not experiments is None and not isinstance(experiments, int):
-                a = '--' if is_argparse else ''
-                config_update = ''.join([a + '{}={} '.format(k, v) for k, v in d.items()])
-                command = init_command + config_update
-            else:
-                command = init_command
-
+            command = init_command + d
             command = "{} '{}'".format(run_string, command)
             command = command.replace('  ', ' ')
             print('{}/{}'.format(i + 1, len(ds)), command)
