@@ -111,6 +111,7 @@ def run_experiments(
     ods = ds
     ds = ds[subset[0]:subset[1]]
 
+    print('here', ds)
     if len(ds) > 0:
         print(f'Number jobs: {len(ds)}/{len(ods)}')
         for i, d in enumerate(ds):
