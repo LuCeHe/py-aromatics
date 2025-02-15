@@ -8,7 +8,7 @@ def run_experiments(
         experiments=None, subset=None, init_command='python language_main.py with ',
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='',
         env_location='denv2', id='', mock_send=False,
-        load_modules='module load gcc arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020',
+        load_modules='',
         randomize_seed=None, prevent=[], sbatch_args={}, remove_duplicates=True):
     if isinstance(randomize_seed, int):
         random.seed(randomize_seed)
