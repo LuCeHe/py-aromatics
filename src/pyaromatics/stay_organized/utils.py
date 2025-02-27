@@ -273,7 +273,8 @@ class NumpyEncoder(json.JSONEncoder):
         elif isinstance(obj, self.torch.dtype):  # might wanna add np, jnp types too?
             return str(obj)
 
-        return json.JSONEncoder.default(self, obj)
+        # return json.JSONEncoder.default(self, str(obj))
+        return str(obj)
 
 
 def filetail(f, lines=20):
@@ -502,6 +503,7 @@ def save_results(other_dir, results):
 
 def do_save_dicts(save_dicts, save_dir):
     print('Saving results')
+    print(save_dicts)
     for key, value in save_dicts.items():
         string_result = json.dumps(value, indent=4, cls=NumpyEncoder)
         path = os.path.join(save_dir, f'{key}.txt')
