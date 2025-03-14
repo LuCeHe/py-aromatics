@@ -55,9 +55,6 @@ def run_experiments(
 
         ds = new_ds
 
-
-
-
     elif isinstance(experiments, int):
         ds = ['' for _ in range(experiments)]
     else:
@@ -77,13 +74,11 @@ def run_experiments(
         probs = [v for k, v in subset.items()]
         cumprobs = np.cumsum(probs)
         current_server = socket.gethostname()
-        # print('here?')
-        # current_server = 'graham'
 
         amount = len(ds)
         server_found = False
         for i, server in enumerate(servers):
-            if server in current_server:
+            if server in current_server or (server == 'perlmutter' and not os.getenv("NERSC_PYMON_UUID") is None):
                 server_found = True
                 if not probs[i] == 0:
                     cp = cumprobs[i]
