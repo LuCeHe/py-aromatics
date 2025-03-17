@@ -9,7 +9,7 @@ def run_experiments(
         run_string='sbatch run_tf2.sh ', is_argparse=False, sh_location='', py_location='',
         env_location='denv2', id='', mock_send=False,
         load_modules='',
-        randomize_seed=None, prevent=[], sbatch_args={}, remove_duplicates=True):
+        randomize_seed=0, prevent=[], sbatch_args={}, remove_duplicates=True):
     if isinstance(randomize_seed, int):
         random.seed(randomize_seed)
         np.random.seed(randomize_seed)
