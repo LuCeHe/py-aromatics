@@ -28,3 +28,8 @@ def get_hf_key(savekey_dir):
     # detect internet connection
     if connected_to_internet():
         login(token=token)
+
+    # set the environment variable
+    os.environ['HF_AUTH_TOKEN'] = token
+    os.system(f"export HF_AUTH_TOKEN={token}")
+    return token
