@@ -12,7 +12,7 @@ logger = logging.getLogger('mylogger')
 
 # from: https://dfrieds.com/data-visualizations/how-format-large-tick-values.html
 
-def large_num_to_reasonable_string(number, decimals=1, bites=False, scientific=True):
+def large_num_to_reasonable_string(number, decimals=1, bites=False, scientific=False):
     if scientific:
         if number == 0:
             return '0'
