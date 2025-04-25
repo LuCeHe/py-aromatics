@@ -134,10 +134,10 @@ def create_sbatch_sh(
         sh_location, py_location, env_location, id,
         load_modules='', sbatch_args={}
 ):
-    import numpy as np
+    import random
     named_tuple = time.localtime()  # get struct_time
     time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
-    random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
+    random_string = ''.join([str(random.randint(0, 9)) for _ in range(4)])
 
     sh_name = f'{id}--' + time_string + random_string + '.sh'
     sh_path = os.path.join(sh_location, sh_name)
