@@ -81,7 +81,6 @@ class PackingOnlineCollator:
         input_ids = torch.tensor(input_ids)
         attention_mask = torch.tensor(attention_mask)
 
-        print('shapes:', input_ids.shape, attention_mask.shape)
         return {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
