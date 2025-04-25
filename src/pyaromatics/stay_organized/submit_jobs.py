@@ -1,6 +1,6 @@
 import os, itertools, time, socket, random
 from datetime import timedelta
-# import numpy as np
+import numpy as np
 from CCsubmit.helpers import get_subset
 
 
@@ -13,7 +13,7 @@ def run_experiments(
 
     if isinstance(randomize_seed, int):
         random.seed(randomize_seed)
-        # np.random.seed(randomize_seed)
+        np.random.seed(randomize_seed)
 
     if run_string is None:
         sh_name = create_sbatch_sh(
@@ -73,7 +73,8 @@ def run_experiments(
     elif isinstance(subset, dict):
         servers = [k for k, v in subset.items()]
         probs = [v for k, v in subset.items()]
-        # cumprobs = np.cumsum(probs)
+        cumprobs = np.cumsum(probs)
+
         current_server = socket.gethostname()
 
         amount = len(ds)
