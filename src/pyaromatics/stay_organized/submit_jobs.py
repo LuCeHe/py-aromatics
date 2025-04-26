@@ -6,7 +6,7 @@ from CCsubmit.helpers import get_subset
 
 def run_experiments(
         experiments=None, subset=None, init_command='python language_main.py with ',
-        run_string=None, is_argparse=False, sh_location='', py_location='',
+        run_string=None, is_argparse=True, sh_location='', py_location='',
         env_location='denv2', id='', mock_send=False,
         load_modules='',
         randomize_seed=0, prevent=[], sbatch_args={}, remove_duplicates=True):
