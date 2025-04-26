@@ -1,15 +1,13 @@
 import os, itertools, time, socket, random
-from datetime import timedelta
 import numpy as np
 from CCsubmit.helpers import get_subset
 
 
 def run_experiments(
-        experiments=None, subset=None, init_command='python language_main.py with ',
-        run_string=None, is_argparse=True, sh_location='', py_location='',
-        env_location='denv2', id='', mock_send=False,
-        load_modules='',
-        randomize_seed=0, prevent=[], sbatch_args={}, remove_duplicates=True):
+        experiments=None, subset=None, init_command='python main.py ',
+        run_string=None, is_argparse=True, sh_location='', bash_prelines='', id='', mock_send=False,
+        randomize_seed=0, prevent=[], sbatch_args={}, remove_duplicates=True
+):
 
     if isinstance(randomize_seed, int):
         random.seed(randomize_seed)
@@ -17,8 +15,9 @@ def run_experiments(
 
     if run_string is None:
         sh_name = create_sbatch_sh(
-            sh_location, py_location, env_location, id,
-            load_modules=load_modules, sbatch_args=sbatch_args
+            sh_location=sh_location, id=id,
+            bash_prelines=bash_prelines,
+            sbatch_args=sbatch_args,
         )
         run_string = 'sbatch ' + sh_name
 
@@ -35,7 +34,8 @@ def run_experiments(
         ds = new_ds
 
         # remove repeats
-        ds = list(set(ds))
+        if remove_duplicates:
+            ds = list(set(ds))
 
         # remove unwanted combinations
         new_ds = []
@@ -132,8 +132,8 @@ def dict2iter(experiments, to_list=False):
 
 
 def create_sbatch_sh(
-        sh_location, py_location, env_location, id,
-        load_modules='', sbatch_args={}
+        sh_location, id,
+        bash_prelines='', sbatch_args={}
 ):
     import random
     named_tuple = time.localtime()  # get struct_time
@@ -144,22 +144,14 @@ def create_sbatch_sh(
     sh_path = os.path.join(sh_location, sh_name)
     with open(sh_path, 'w') as f:
         f.write(
-            sh_base(py_location, env_location,
-                    load_modules=load_modules, sbatch_args=sbatch_args)
+            sh_base(bash_prelines=bash_prelines, sbatch_args=sbatch_args)
         )
     return sh_path
 
 
 def sh_base(
-        py_location, env_location,
-        load_modules='module load gcc/9.3.0 arrow cuda/11.1 python/3.9 scipy-stack StdEnv/2020',
+        bash_prelines='',
         sbatch_args={}
 ):
     sbatch_args_line = ''.join([f'#SBATCH --{k}={v}\n' for k, v in sbatch_args.items()])
-    return f"""#!/bin/bash
-{sbatch_args_line}
-{load_modules}
-source {env_location}
-cd {py_location}
-$1
-"""
+    return f"#!/bin/bash\n{sbatch_args_line}\n{bash_prelines}\n$1"
