@@ -28,6 +28,7 @@ def get_hf_key(savekey_dir):
     # detect internet connection
     if connected_to_internet():
         print("\nConnected to the internet, logging in to Hugging Face Hub...\n")
+        print(token)
         login(token=token)
 
     # set the environment variable
