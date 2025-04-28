@@ -60,6 +60,7 @@ class PackingOnlineCollator:
         self.max_length = max_length
 
     def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
+        original_batch_size = len(batch)
         # Flatten all texts in the batch
         texts = [example["text"] for example in batch]
         encodings = self.tokenizer(texts, add_special_tokens=False).input_ids
@@ -80,6 +81,18 @@ class PackingOnlineCollator:
 
         input_ids = torch.tensor(input_ids)
         attention_mask = torch.tensor(attention_mask)
+        print(f"1. input_ids shape: {input_ids.shape}")
+
+        # Since bounding will lose information, let's try to show more data randomly in another epoch
+        shuffling = torch.randperm(input_ids.size(0))
+        input_ids = input_ids[shuffling]
+        attention_mask = attention_mask[shuffling]
+        print(f"2. input_ids shape: {input_ids.shape}")
+
+        # Ensure a bounded batch size
+        input_ids = input_ids[:2 * original_batch_size]
+        attention_mask = attention_mask[:2 * original_batch_size]
+        print(f"3. input_ids shape: {input_ids.shape}")
 
         return {
             "input_ids": input_ids,
