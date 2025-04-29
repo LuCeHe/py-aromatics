@@ -63,17 +63,15 @@ class PackingOnlineCollator:
         original_batch_size = len(batch)
         # Flatten all texts in the batch
         texts = [example["text"] for example in batch]
+        print('texts:', texts[0])
         encodings = self.tokenizer(texts, add_special_tokens=False).input_ids
 
         # Flatten all tokens into one long list
         all_tokens = [token for sequence in encodings for token in sequence]
+        print('all_tokens:', all_tokens)
 
         # Pack into chunks of max_length
-        chunks = [
-            all_tokens[i:i + self.max_length]
-            for i in range(0, len(all_tokens), self.max_length)
-            if len(all_tokens[i:i + self.max_length]) >= 10  # Optional min length filter
-        ]
+        chunks = [all_tokens[i:i + self.max_length] for i in range(0, len(all_tokens), self.max_length)]
 
         # Pad all chunks to max_length
         input_ids = [chunk + [self.tokenizer.pad_token_id] * (self.max_length - len(chunk)) for chunk in chunks]
