@@ -91,6 +91,7 @@ class PackingOnlineCollator:
         # Ensure a bounded batch size
         input_ids = input_ids[:2 * original_batch_size]
         attention_mask = attention_mask[:2 * original_batch_size]
+        print('shapes of input_ids and attention_mask:', input_ids.shape, attention_mask.shape)
 
         return {
             "input_ids": input_ids,
