@@ -59,7 +59,6 @@ class PackingOnlineCollator:
         self.tokenizer = tokenizer
         self.max_length = max_length
 
-
     def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
         original_batch_size = len(batch)
         # Flatten all texts in the batch
