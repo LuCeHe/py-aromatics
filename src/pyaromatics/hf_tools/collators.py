@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, List, NewType, Optional, Tuple, Union
 from trl.trainer.utils import pad
 import torch
 
-from transformers.data.data_collator import DataCollatorMixin
+from transformers.data.data_collator import DataCollatorMixin, pad_without_fast_tokenizer_warning
 from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
 
 
@@ -58,6 +58,8 @@ class PackingOnlineCollator:
     def __init__(self, tokenizer, max_length=1024):
         self.tokenizer = tokenizer
         self.max_length = max_length
+
+        print('vocab size:', self.tokenizer.vocab_size)
 
     def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
         original_batch_size = len(batch)
