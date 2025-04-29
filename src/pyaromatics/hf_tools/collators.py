@@ -82,6 +82,9 @@ class PackingOnlineCollator:
         input_ids = torch.tensor(input_ids)
         attention_mask = torch.tensor(attention_mask)
 
+        print('max value of input_ids:', input_ids.max())
+        print('min value of input_ids:', input_ids.min())
+
         # Since bounding will lose information, let's try to show more data randomly in another epoch
         shuffling = torch.randperm(input_ids.size(0))
         input_ids = input_ids[shuffling]
