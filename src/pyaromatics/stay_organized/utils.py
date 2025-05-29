@@ -4,6 +4,9 @@ import importlib.util
 from tqdm import tqdm
 from itertools import groupby
 
+from contextlib import contextmanager
+import traceback
+
 import numpy as np
 from difflib import SequenceMatcher
 
@@ -510,6 +513,16 @@ def do_save_dicts(save_dicts, save_dir):
         with open(path, "w") as f:
             f.write(string_result)
 
+@contextmanager
+def safe_mode(enabled=True):
+    try:
+        yield
+    except Exception as e:
+        if enabled:
+            print(f"[safe_mode] Caught exception: {e}")
+            traceback.print_exc()
+        else:
+            raise
 
 if __name__ == '__main__':
     test_is_progress_bar()
