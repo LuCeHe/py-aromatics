@@ -55,65 +55,6 @@ def flaggedtry(function, tryornot=True):
         return function()
 
 
-def make_directories(time_string=None):
-    experiments_folder = "experiments"
-    if not os.path.isdir(experiments_folder):
-        os.mkdir(experiments_folder)
-
-    if time_string == None:
-        time_string = strftime("%Y-%m-%d-at-%H:%M:%S", localtime())
-
-    experiment_folder = experiments_folder + '/experiment-' + time_string + '/'
-
-    if not os.path.isdir(experiment_folder):
-        os.mkdir(experiment_folder)
-
-        # create folder to save new models trained
-    model_folder = experiment_folder + '/model/'
-    if not os.path.isdir(model_folder):
-        os.mkdir(model_folder)
-
-        # create folder to save TensorBoard
-    log_folder = experiment_folder + '/log/'
-    if not os.path.isdir(log_folder):
-        os.mkdir(log_folder)
-
-    return experiment_folder
-
-
-def checkDuringTraining(generator_class, indices_sentences, encoder_model, decoder_model, batch_size, lat_dim):
-    # original sentences
-    sentences = generator_class.indicesToSentences(indices_sentences)
-
-    # reconstructed sentences
-    point = encoder_model.predict(indices_sentences)
-    indices_reconstructed, _ = decoder_model.predict(point)
-
-    sentences_reconstructed = generator_class.indicesToSentences(indices_reconstructed)
-
-    # generated sentences
-    noise = np.random.rand(batch_size, lat_dim)
-    indicess, softmaxes = decoder_model.predict(noise)
-    sentences_generated = generator_class.indicesToSentences(indicess)
-
-    from prettytable import PrettyTable
-
-    table = PrettyTable(['original', 'reconstructed', 'generated'])
-    for b, a, g in zip(sentences, sentences_reconstructed, sentences_generated):
-        table.add_row([b, a, g])
-    for column in table.field_names:
-        table.align[column] = "l"
-    print(table)
-
-    print('')
-    print('number unique generated sentences:   ', len(set(sentences_generated)))
-    print('')
-    print(softmaxes[0][0])
-    print('')
-
-    return softmaxes
-
-
 def get_random_string():
     random_string = ''.join([str(r) for r in np.random.choice(10, 4)])
     # named_tuple = time.localtime()  # get struct_time
@@ -205,12 +146,13 @@ def move_mouse():
 
 
 def str2val(comments, flag, output_type=float, default=None, split_symbol='_', equality_symbol=':', remove_flag=True,
-            replace=None, exact_flag=True):
+            replace=None, exact_flag=True, return_unflagged=False):
+    if exact_flag:
+        condition = lambda s: s.startswith('{}{}'.format(flag, equality_symbol))
+    else:
+        condition = lambda s: '{}{}'.format(flag, equality_symbol) in s
+
     if replace is None:
-        if exact_flag:
-            condition = lambda s: s.startswith('{}{}'.format(flag, equality_symbol))
-        else:
-            condition = lambda s: '{}{}'.format(flag, equality_symbol) in s
 
         if '{}{}'.format(flag, equality_symbol) in comments:
             flags_detected = [
@@ -220,29 +162,28 @@ def str2val(comments, flag, output_type=float, default=None, split_symbol='_', e
                 for s in comments.split(split_symbol)
                 if condition(s)
             ]
-            flags_detected = sorted([output_type(f) for f in flags_detected])
+
+            flags_detected = [[output_type(fi) for fi in f.split(':')] for f in flags_detected]
+            flags_detected = [f[0] if len(f) == 1 else f for f in flags_detected]
             output = flags_detected[0] if len(flags_detected) == 1 else flags_detected
         else:
             output = default
     else:
         splits = [s for s in comments.split(split_symbol) if not flag in s]
         output = split_symbol.join(splits) + split_symbol + flag + equality_symbol + str(replace)
+
+    if return_unflagged:
+        unflagged = [
+            s.replace(
+                '{}{}'.format(flag if remove_flag else '', equality_symbol), ''
+            )
+            for s in comments.split(split_symbol)
+            if not condition(s)
+        ]
+        unflagged = split_symbol.join(unflagged)
+        print('here', unflagged)
+        return output, unflagged
     return output
-
-
-def rename(newname):
-    def decorator(f):
-        f.__name__ = newname
-        return f
-
-    return decorator
-
-
-def module_from_file(module_name, file_path):
-    spec = importlib.util.spec_from_file_location(module_name, file_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -513,16 +454,6 @@ def do_save_dicts(save_dicts, save_dir):
         with open(path, "w") as f:
             f.write(string_result)
 
-@contextmanager
-def safe_mode(enabled=True):
-    try:
-        yield
-    except Exception as e:
-        if enabled:
-            print(f"[safe_mode] Caught exception: {e}")
-            traceback.print_exc()
-        else:
-            raise
 
 if __name__ == '__main__':
     test_is_progress_bar()
