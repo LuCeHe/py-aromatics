@@ -260,7 +260,7 @@ class CustomTrainer(SFTTrainer):
 
         return EvalLoopOutput(predictions=all_preds, label_ids=all_labels, metrics=metrics, num_samples=num_samples)
 
-    def training_step_alternative(
+    def training_step(
             self,
             model: nn.Module,
             inputs: dict[str, Union[torch.Tensor, Any]],
