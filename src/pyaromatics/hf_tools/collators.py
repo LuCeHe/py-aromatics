@@ -1,10 +1,8 @@
-from typing import Any, Callable, Dict, List, NewType, Optional, Tuple, Union
+from typing import Any, Dict, List, Union
 
-from trl.trainer.utils import pad
 import torch
-
-from transformers.data.data_collator import DataCollatorMixin, pad_without_fast_tokenizer_warning
-from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
+from transformers.data.data_collator import DataCollatorMixin
+from trl.trainer.utils import pad
 
 
 class DataCollatorForOnlineLanguageModeling(DataCollatorMixin):
