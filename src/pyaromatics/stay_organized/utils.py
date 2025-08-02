@@ -1,11 +1,7 @@
-import argparse, logging, os, random, time, gc, json, re
-from time import strftime, localtime
-import importlib.util
+import argparse, logging, os, random, time, gc, json, re, shutil
+
 from tqdm import tqdm
 from itertools import groupby
-
-from contextlib import contextmanager
-import traceback
 
 import numpy as np
 from difflib import SequenceMatcher
@@ -445,7 +441,7 @@ def save_results(other_dir, results):
         print('Could not save results to file')
 
 
-def do_save_dicts(save_dicts, save_dir):
+def do_save_dicts(save_dicts, save_dir, do_zip=True):
     print('Saving results')
     print(save_dicts)
     for key, value in save_dicts.items():
@@ -453,6 +449,9 @@ def do_save_dicts(save_dicts, save_dir):
         path = os.path.join(save_dir, f'{key}.txt')
         with open(path, "w") as f:
             f.write(string_result)
+
+    if do_zip:
+        shutil.make_archive(save_dir, 'zip', save_dir)
 
 
 if __name__ == '__main__':
