@@ -1,4 +1,4 @@
-import argparse, logging, os, random, time, gc, json, re, shutil
+import argparse, logging, os, random, time, gc, json, re, shutil, functools
 
 from tqdm import tqdm
 from itertools import groupby
@@ -452,6 +452,24 @@ def do_save_dicts(save_dicts, save_dir, do_zip=True):
 
     if do_zip:
         shutil.make_archive(save_dir, 'zip', save_dir)
+
+
+def error_handler_with_sleep(sleep_seconds=5):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                print(f"Error caught in {func.__name__}: {e}")
+                print(f"Sleeping for {sleep_seconds} seconds...")
+                time.sleep(sleep_seconds)
+                # Optional: re-raise or suppress the exception
+                raise  # Uncomment if you want to propagate the error
+
+        return wrapper
+
+    return decorator
 
 
 if __name__ == '__main__':
