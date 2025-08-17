@@ -282,12 +282,17 @@ def summarize_logs(
         exclude_as_errors=['mean_squared_error', 'mean_absolute_error', 'TracebackException'],
         completion_keys=['DONE', 'All done', 'Completed after'],
         error_similarity_threshold=.8,
-        comments=''
+        comments='',
+only_last=False,
 ):
     # remove existing summary files
     os.system(f"cd {containing_folder}; rm -f *summary*")
 
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
+    if only_last:
+        ds = ds[-only_last:]
+
+
     isolate_word = str2val(comments, 'isolate', str, default=None)
 
     all_lines = []
