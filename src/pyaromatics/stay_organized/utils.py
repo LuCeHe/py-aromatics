@@ -5,6 +5,7 @@ from itertools import groupby
 
 import numpy as np
 from difflib import SequenceMatcher
+import traceback
 
 logger = logging.getLogger('mylogger')
 
@@ -283,7 +284,7 @@ def summarize_logs(
         completion_keys=['DONE', 'All done', 'Completed after'],
         error_similarity_threshold=.8,
         comments='',
-only_last=False,
+        only_last=False,
 ):
     # remove existing summary files
     os.system(f"cd {containing_folder}; rm -f *summary*")
@@ -291,7 +292,6 @@ only_last=False,
     ds = sorted([d for d in os.listdir(containing_folder) if '.out' in d])
     if only_last:
         ds = ds[-only_last:]
-
 
     isolate_word = str2val(comments, 'isolate', str, default=None)
 
@@ -466,9 +466,15 @@ def error_handler_with_sleep(sleep_seconds=5):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                print(f"Error caught in {func.__name__}: {e}")
-                print(f"Sleeping for {sleep_seconds} seconds...")
+                print(f"Error captured in {func.__name__}: {e}")
+
+                # show full error
+                traceback.print_exc()
+
                 time.sleep(sleep_seconds)
+
+                print(f"Sleeping for {sleep_seconds} seconds...")
+
                 # Optional: re-raise or suppress the exception
                 raise  # Uncomment if you want to propagate the error
 
