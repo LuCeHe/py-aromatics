@@ -129,3 +129,48 @@ class TimeStoppingCallback(TrainerCallback, ExportableState):
                 "initial_time": self.initial_time,
             },
         }
+
+
+
+
+
+
+class EmaEarlyStoppingCallback(EarlyStoppingCallback):
+    def __init__(self, early_stopping_patience: int = 1, early_stopping_threshold: float = 0.0,
+                 ema_lifetime: int = 5):
+        super().__init__(early_stopping_patience, early_stopping_threshold)
+        self.ema_lifetime = ema_lifetime
+        self.ema_best = None
+
+    def check_metric_value(self, args, state, control, metric_value):
+        # best_metric is set by code for load_best_model
+        operator = np.greater if args.greater_is_better else np.less
+
+        if not state.best_metric is None:
+            if self.ema_best is None:
+                self.ema_best = state.best_metric
+
+            alpha = 2 / (self.ema_lifetime + 1)
+            self.ema_best = alpha * metric_value + (1 - alpha) * self.ema_best
+
+        if state.best_metric is None or (
+                operator(metric_value, self.ema_best)
+                and abs(metric_value - self.ema_best) > self.early_stopping_threshold
+        ):
+            self.early_stopping_patience_counter = 0
+        else:
+            self.early_stopping_patience_counter += 1
+
+
+
+    def state(self) -> dict:
+        return {
+            "args": {
+                "early_stopping_patience": self.early_stopping_patience,
+                "early_stopping_threshold": self.early_stopping_threshold,
+                "ema_lifetime": self.ema_lifetime,
+            },
+            "attributes": {
+                "early_stopping_patience_counter": self.early_stopping_patience_counter,
+            },
+        }

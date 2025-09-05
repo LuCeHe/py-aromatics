@@ -53,14 +53,15 @@ class DataCollatorForOnlineLanguageModeling(DataCollatorMixin):
 
 
 class PackingOnlineCollator:
-    def __init__(self, tokenizer, max_length=1024):
+    def __init__(self, tokenizer, dataset_text_field='text', max_length=1024):
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.dataset_text_field = dataset_text_field
 
     def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
         original_batch_size = len(batch)
         # Flatten all texts in the batch
-        texts = [example["text"] for example in batch]
+        texts = [example[self.dataset_text_field] for example in batch]
         encodings = self.tokenizer(texts, add_special_tokens=False).input_ids
 
         # Flatten all tokens into one long list
@@ -87,6 +88,54 @@ class PackingOnlineCollator:
 
         return {
             "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": input_ids.clone()  # Labels are the same as input_ids for LM
+        }
+
+
+
+
+class TwoTokenizersCollator:
+    def __init__(self, tokenizer_1, text_field_1='text', tokenizer_2=None, text_field_2=None,
+                 max_length=1024):
+        self.tokenizer_1 = tokenizer_1
+        self.text_field_1 = text_field_1
+        self.tokenizer_2 = tokenizer_2 if tokenizer_2 is not None else tokenizer_1
+        self.text_field_2 = text_field_2 if text_field_2 is not None else text_field_1
+        self.max_length = max_length
+
+    def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
+        print('batch', batch)
+        original_batch_size = len(batch)
+        # Flatten all texts in the batch
+        texts = [example[self.text_field_1] for example in batch]
+        encodings = self.tokenizer_1(texts, add_special_tokens=False).input_ids
+
+        # Flatten all tokens into one long list
+        all_tokens = [token for sequence in encodings for token in sequence]
+
+        # Pack into chunks of max_length
+        chunks = [all_tokens[i:i + self.max_length] for i in range(0, len(all_tokens), self.max_length)]
+
+        # Pad all chunks to max_length
+        input_ids = [chunk + [self.tokenizer_1.pad_token_id] * (self.max_length - len(chunk)) for chunk in chunks]
+        attention_mask = [[1] * len(chunk) + [0] * (self.max_length - len(chunk)) for chunk in chunks]
+
+        input_ids = torch.tensor(input_ids)
+        attention_mask = torch.tensor(attention_mask)
+
+        # Since bounding will lose information, let's try to show more data randomly in another epoch
+        shuffling = torch.randperm(input_ids.size(0))
+        input_ids = input_ids[shuffling]
+        attention_mask = attention_mask[shuffling]
+
+        # Ensure a bounded batch size
+        input_ids = input_ids[:2 * original_batch_size]
+        attention_mask = attention_mask[:2 * original_batch_size]
+
+        return {
+            "input_ids_1": input_ids,
+            "input_ids_2": input_ids,
             "attention_mask": attention_mask,
             "labels": input_ids.clone()  # Labels are the same as input_ids for LM
         }
