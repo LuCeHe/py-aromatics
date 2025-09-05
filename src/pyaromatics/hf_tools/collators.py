@@ -1,3 +1,5 @@
+import random
+
 from typing import Any, Dict, List, Union
 
 import torch
@@ -93,49 +95,97 @@ class PackingOnlineCollator:
         }
 
 
+def time_fold_tensor(x, n_folds, pad_id):
+    b, t = x.shape
+    remainder = t % n_folds
+    if remainder != 0:
+        pad_len = n_folds - remainder
+        pad_tensor = x.new_full((b, pad_len), pad_id)
+        x = torch.cat([x, pad_tensor], dim=1)
+        t = x.shape[1]
+
+    # Reshape: (batch, n_folds, time // n_folds)
+    x = x.view(b, n_folds, t // n_folds)
+
+    # Move folds axis to the front
+    x = x.permute(1, 0, 2).contiguous()
+    return x
 
 
 class TwoTokenizersCollator:
-    def __init__(self, tokenizer_1, text_field_1='text', tokenizer_2=None, text_field_2=None,
-                 max_length=1024):
-        self.tokenizer_1 = tokenizer_1
-        self.text_field_1 = text_field_1
-        self.tokenizer_2 = tokenizer_2 if tokenizer_2 is not None else tokenizer_1
-        self.text_field_2 = text_field_2 if text_field_2 is not None else text_field_1
+    def __init__(
+            self,
+            tokenizer_encoder,
+            text_field_encoder='text',
+            tokenizer_decoder=None,
+            text_field_decoder=None,
+            truncation_encoder=False,
+            truncation_decoder=False,
+            random_encoder_folding=True,
+            max_length=1024
+    ):
+        """
+        Data collator that uses two different tokenizers for two different text fields in the dataset.
+        Args:
+            tokenizer_encoder: The tokenizer for the encoder input (e.g., the article text).
+            text_field_encoder: The field name in the dataset for the encoder input text.
+            tokenizer_decoder: The tokenizer for the decoder input (e.g., the summary text). If None, uses tokenizer_encoder.
+            text_field_decoder: The field name in the dataset for the decoder input text. If None, uses text_field_encoder.
+            max_length: The maximum sequence length for padding/truncation.
+        """
+        self.tokenizer_encoder = tokenizer_encoder
+        self.text_field_encoder = text_field_encoder
+        self.tokenizer_decoder = tokenizer_decoder if tokenizer_decoder is not None else tokenizer_encoder
+        self.text_field_decoder = text_field_decoder if text_field_decoder is not None else text_field_encoder
+        self.truncation_encoder = truncation_encoder
+        self.truncation_decoder = truncation_decoder
+        self.random_encoder_folding = random_encoder_folding
         self.max_length = max_length
 
+    def do_random_encoder_folding(self, encodings):
+        if not self.random_encoder_folding:
+            return encodings
+        possible_folds = list(range(11))
+        n_folds = random.choice(possible_folds)
+
+        if n_folds == 0:
+            encodings['input_ids'] = encodings['input_ids'].unsqueeze(0)
+            encodings['attention_mask'] = encodings['attention_mask'].unsqueeze(0)
+            return encodings
+
+        encodings['input_ids'] = time_fold_tensor(encodings['input_ids'], n_folds + 1,
+                                                  self.tokenizer_encoder.pad_token_id)
+        encodings['attention_mask'] = time_fold_tensor(encodings['attention_mask'], n_folds + 1, 0)
+
+        return encodings
+
     def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
-        print('batch', batch)
-        original_batch_size = len(batch)
         # Flatten all texts in the batch
-        texts = [example[self.text_field_1] for example in batch]
-        encodings = self.tokenizer_1(texts, add_special_tokens=False).input_ids
+        texts_encoder = [example[self.text_field_encoder] for example in batch]
+        ids_encoder = self.tokenizer_encoder(
+            texts_encoder,
+            add_special_tokens=True,
+            padding=True,  # same as "longest"
+            truncation=self.truncation_encoder,
+            return_tensors="pt"
+        )
 
-        # Flatten all tokens into one long list
-        all_tokens = [token for sequence in encodings for token in sequence]
+        texts_decoder = [example[self.text_field_decoder] for example in batch]
+        ids_decoder = self.tokenizer_decoder(
+            texts_decoder,
+            add_special_tokens=True,
+            padding=True,  # same as "longest"
+            truncation=self.truncation_decoder,
+            return_tensors="pt"
+        )
 
-        # Pack into chunks of max_length
-        chunks = [all_tokens[i:i + self.max_length] for i in range(0, len(all_tokens), self.max_length)]
-
-        # Pad all chunks to max_length
-        input_ids = [chunk + [self.tokenizer_1.pad_token_id] * (self.max_length - len(chunk)) for chunk in chunks]
-        attention_mask = [[1] * len(chunk) + [0] * (self.max_length - len(chunk)) for chunk in chunks]
-
-        input_ids = torch.tensor(input_ids)
-        attention_mask = torch.tensor(attention_mask)
-
-        # Since bounding will lose information, let's try to show more data randomly in another epoch
-        shuffling = torch.randperm(input_ids.size(0))
-        input_ids = input_ids[shuffling]
-        attention_mask = attention_mask[shuffling]
-
-        # Ensure a bounded batch size
-        input_ids = input_ids[:2 * original_batch_size]
-        attention_mask = attention_mask[:2 * original_batch_size]
+        ids_encoder = self.do_random_encoder_folding(ids_encoder)
 
         return {
-            "input_ids_1": input_ids,
-            "input_ids_2": input_ids,
-            "attention_mask": attention_mask,
-            "labels": input_ids.clone()  # Labels are the same as input_ids for LM
+            "input_ids": ids_decoder["input_ids"],
+            "input_ids_encoder": ids_encoder["input_ids"],
+            "attention_mask": ids_decoder["attention_mask"],
+            "attention_mask_encoder": ids_encoder["attention_mask"],
+
+            "labels": ids_decoder["input_ids"].clone()  # Labels are the same as input_ids for LM
         }
