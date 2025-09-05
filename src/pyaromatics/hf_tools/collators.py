@@ -55,9 +55,9 @@ class DataCollatorForOnlineLanguageModeling(DataCollatorMixin):
 
 
 class PackingOnlineCollator:
-    def __init__(self, tokenizer, dataset_text_field='text', max_length=1024):
+    def __init__(self, tokenizer, dataset_text_field='text'):
         self.tokenizer = tokenizer
-        self.max_length = max_length
+        self.max_length = tokenizer.model_max_length
         self.dataset_text_field = dataset_text_field
 
     def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
@@ -122,7 +122,6 @@ class TwoTokenizersCollator:
             truncation_encoder=False,
             truncation_decoder=False,
             random_encoder_folding=True,
-            max_length=1024
     ):
         """
         Data collator that uses two different tokenizers for two different text fields in the dataset.
@@ -131,8 +130,11 @@ class TwoTokenizersCollator:
             text_field_encoder: The field name in the dataset for the encoder input text.
             tokenizer_decoder: The tokenizer for the decoder input (e.g., the summary text). If None, uses tokenizer_encoder.
             text_field_decoder: The field name in the dataset for the decoder input text. If None, uses text_field_encoder.
-            max_length: The maximum sequence length for padding/truncation.
+            truncation_encoder: Whether to truncate the encoder input to the model's maximum length.
+            truncation_decoder: Whether to truncate the decoder input to the model's maximum length.
+            random_encoder_folding: Whether to randomly fold the encoder input in time dimension for data augmentation.
         """
+
         self.tokenizer_encoder = tokenizer_encoder
         self.text_field_encoder = text_field_encoder
         self.tokenizer_decoder = tokenizer_decoder if tokenizer_decoder is not None else tokenizer_encoder
@@ -140,7 +142,6 @@ class TwoTokenizersCollator:
         self.truncation_encoder = truncation_encoder
         self.truncation_decoder = truncation_decoder
         self.random_encoder_folding = random_encoder_folding
-        self.max_length = max_length
 
     def do_random_encoder_folding(self, encodings):
         if not self.random_encoder_folding:
@@ -153,9 +154,14 @@ class TwoTokenizersCollator:
             encodings['attention_mask'] = encodings['attention_mask'].unsqueeze(0)
             return encodings
 
-        encodings['input_ids'] = time_fold_tensor(encodings['input_ids'], n_folds + 1,
-                                                  self.tokenizer_encoder.pad_token_id)
-        encodings['attention_mask'] = time_fold_tensor(encodings['attention_mask'], n_folds + 1, 0)
+        encodings['input_ids'] = time_fold_tensor(
+            encodings['input_ids'],
+            n_folds + 1, self.tokenizer_encoder.pad_token_id
+        )
+        encodings['attention_mask'] = time_fold_tensor(
+            encodings['attention_mask'],
+            n_folds + 1, 0
+        )
 
         return encodings
 
@@ -187,5 +193,24 @@ class TwoTokenizersCollator:
             "attention_mask": ids_decoder["attention_mask"],
             "attention_mask_encoder": ids_encoder["attention_mask"],
 
-            "labels": ids_decoder["input_ids"].clone()  # Labels are the same as input_ids for LM
+            "labels": ids_decoder["input_ids"].clone(),
         }
+
+
+
+def get_collator(dataset_name, tokenizer):
+    collator = None
+    if 'dolma' in dataset_name:
+        collator = PackingOnlineCollator(tokenizer)
+
+    if 'cnndn' in dataset_name:
+        collator = TwoTokenizersCollator(
+            tokenizer_encoder=tokenizer,
+            tokenizer_decoder=tokenizer,
+            text_field_encoder="text",
+            text_field_decoder="highlights",
+            truncation_encoder=True,
+            truncation_decoder=True,
+        )
+
+    return collator
