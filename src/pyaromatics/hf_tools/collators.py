@@ -6,6 +6,8 @@ import torch
 from transformers.data.data_collator import DataCollatorMixin
 from trl.trainer.utils import pad
 
+from bridge_official.neural_models.in_batch_docs import build_in_batch_docs
+
 
 class DataCollatorForOnlineLanguageModeling(DataCollatorMixin):
     """
@@ -122,6 +124,8 @@ class TwoTokenizersCollator:
             truncation_encoder=False,
             truncation_decoder=False,
             random_encoder_folding=True,
+            in_batch_docs=False,
+            encoder_docs_axis=True
     ):
         """
         Data collator that uses two different tokenizers for two different text fields in the dataset.
@@ -142,6 +146,10 @@ class TwoTokenizersCollator:
         self.truncation_encoder = truncation_encoder
         self.truncation_decoder = truncation_decoder
         self.random_encoder_folding = random_encoder_folding
+        self.in_batch_docs = in_batch_docs
+        self.encoder_docs_axis = encoder_docs_axis
+
+        self.encoder_max_length = self.tokenizer_encoder.model_max_length
 
     def do_random_encoder_folding(self, encodings):
         if not self.random_encoder_folding:
@@ -165,18 +173,9 @@ class TwoTokenizersCollator:
 
         return encodings
 
-    def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
-        # Flatten all texts in the batch
-        texts_encoder = [example[self.text_field_encoder] for example in batch]
-        ids_encoder = self.tokenizer_encoder(
-            texts_encoder,
-            add_special_tokens=True,
-            padding=True,  # same as "longest"
-            truncation=self.truncation_encoder,
-            return_tensors="pt"
-        )
+    def __call__(self, examples: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
 
-        texts_decoder = [example[self.text_field_decoder] for example in batch]
+        texts_decoder = [example[self.text_field_decoder] for example in examples]
         ids_decoder = self.tokenizer_decoder(
             texts_decoder,
             add_special_tokens=True,
@@ -185,32 +184,62 @@ class TwoTokenizersCollator:
             return_tensors="pt"
         )
 
-        ids_encoder = self.do_random_encoder_folding(ids_encoder)
+        text_field_encoder = self.text_field_encoder
+        same_encdec_text = not self.text_field_encoder in examples[0]
+        if same_encdec_text:
+            text_field_encoder = self.text_field_decoder
+
+        texts_encoder = [example[text_field_encoder] for example in examples]
+        ids_encoder = self.tokenizer_encoder(
+            texts_encoder,
+            add_special_tokens=True,
+            padding=True,  # same as "longest"
+            truncation=False,
+            return_tensors="pt"
+        )
+
+        if not same_encdec_text:
+            ids_encoder = self.do_random_encoder_folding(ids_encoder)
+
+        input_ids_encoder = ids_encoder["input_ids"]
+        attention_mask_encoder = ids_encoder["attention_mask"]
+
+        if self.in_batch_docs and same_encdec_text:
+            input_ids_encoder = build_in_batch_docs(
+                batch=input_ids_encoder, mode='auto', batch_first=True,
+                vocab_size=self.tokenizer_encoder.vocab_size
+            )
+            attention_mask_encoder = (input_ids_encoder != self.tokenizer_encoder.pad_token_id).long()
+
+        if self.encoder_docs_axis and len(input_ids_encoder.shape) == 2:
+            input_ids_encoder = input_ids_encoder.unsqueeze(0)
+            attention_mask_encoder = attention_mask_encoder.unsqueeze(0)
+
+        input_ids_encoder = input_ids_encoder[..., -self.encoder_max_length:]
+        attention_mask_encoder = attention_mask_encoder[..., -self.encoder_max_length:]
 
         return {
             "input_ids": ids_decoder["input_ids"],
-            "input_ids_encoder": ids_encoder["input_ids"],
+            "input_ids_encoder": input_ids_encoder,
             "attention_mask": ids_decoder["attention_mask"],
-            "attention_mask_encoder": ids_encoder["attention_mask"],
+            "attention_mask_encoder": attention_mask_encoder,
 
             "labels": ids_decoder["input_ids"].clone(),
         }
 
 
+def get_collator(dataset_name, tokenizer_encoder, tokenizer_decoder, notes):
+    collator = TwoTokenizersCollator(
+        tokenizer_encoder=tokenizer_encoder,
+        tokenizer_decoder=tokenizer_decoder,
+        text_field_encoder="article",
+        text_field_decoder="text",
+        truncation_encoder=True,
+        truncation_decoder=True,
+        in_batch_docs=True
+    )
 
-def get_collator(dataset_name, tokenizer):
-    collator = None
-    if 'dolma' in dataset_name:
-        collator = PackingOnlineCollator(tokenizer)
-
-    if 'cnndn' in dataset_name:
-        collator = TwoTokenizersCollator(
-            tokenizer_encoder=tokenizer,
-            tokenizer_decoder=tokenizer,
-            text_field_encoder="text",
-            text_field_decoder="highlights",
-            truncation_encoder=True,
-            truncation_decoder=True,
-        )
+    if 'dolma' in dataset_name and not 'newclltr' in notes:
+        collator = PackingOnlineCollator(tokenizer_decoder)
 
     return collator

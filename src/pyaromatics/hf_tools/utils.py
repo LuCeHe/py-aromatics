@@ -35,7 +35,7 @@ def get_hf_key(savekey_dir):
     return token
 
 
-def get_tokenizer(model_id, notes, save_dir=None):
+def get_tokenizer(model_id, notes, save_dir=None, max_seq_length=None):
     if save_dir is None:
         raise ValueError("save_dir must be specified")
 
@@ -71,12 +71,10 @@ def get_tokenizer(model_id, notes, save_dir=None):
     tokenizer.padding_side = "left"
     tokenizer.truncation = True
 
-    # print('here?')
-    # tokenizer.padding = 'max_length'
-    # tokenizer.max_length = 175
-    # tokenizer.pad_to_multiple_of = 8
-    # tokenizer.pad_to_max_length = True
-    # tokenizer.model_max_length = 175
+    if not max_seq_length is None:
+        tokenizer.model_max_length = max_seq_length
+        tokenizer.max_length = max_seq_length
+
     return tokenizer
 
 
