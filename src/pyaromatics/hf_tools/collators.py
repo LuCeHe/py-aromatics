@@ -75,6 +75,8 @@ class PackingOnlineCollator:
         chunks = [all_tokens[i:i + self.max_length] for i in range(0, len(all_tokens), self.max_length)]
 
         # Pad all chunks to max_length
+
+        # print('self.max_length - len(chunk)', self.max_length - len(chunks[0]))
         input_ids = [chunk + [self.tokenizer.pad_token_id] * (self.max_length - len(chunk)) for chunk in chunks]
         attention_mask = [[1] * len(chunk) + [0] * (self.max_length - len(chunk)) for chunk in chunks]
 
