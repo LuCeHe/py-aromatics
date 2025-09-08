@@ -239,7 +239,7 @@ def get_collator(dataset_name, tokenizer_encoder, tokenizer_decoder, notes):
         in_batch_docs=True
     )
 
-    if 'dolma' in dataset_name and not 'newclltr' in notes:
+    if 'dolma' in dataset_name and 'oldclltr' in notes:
         collator = PackingOnlineCollator(tokenizer_decoder)
 
     return collator
