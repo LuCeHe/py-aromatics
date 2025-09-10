@@ -282,6 +282,7 @@ def summarize_logs(
         error_keys=['Aborted', 'error', 'Error', '(core dumped)'],
         exclude_as_errors=['mean_squared_error', 'mean_absolute_error', 'TracebackException'],
         completion_keys=['DONE', 'All done', 'Completed after'],
+        find_in_outs=['manymodels'],
         error_similarity_threshold=.8,
         comments='',
         only_last=False,
@@ -303,6 +304,7 @@ def summarize_logs(
     n_error_examples = 6
     n_completed = 0
     n_failed = 0
+    found_in_outs = {k:[] for k in find_in_outs}
     for d in tqdm(ds):
         path = os.path.join(containing_folder, d)
 
@@ -327,6 +329,12 @@ def summarize_logs(
                         initial_lines.append(line)
                     else:
                         initial_lines[-1] = line
+
+        # check if any of the find_in_outs words are in the initial lines
+        for k in find_in_outs:
+            if k in ''.join(initial_lines):
+                found_in_outs[k].append(d)
+
 
         # Return a list of the lines, breaking at line boundaries.
         doc_lines.extend(initial_lines)
@@ -361,6 +369,7 @@ def summarize_logs(
                     failed = 1
                 else:
                     completed = any([completion_key in line for completion_key in completion_keys] + [completed])
+
         if not completed and not failed:
             errors.append(line[-600:])
             error_d.append(d)
@@ -398,8 +407,10 @@ def summarize_logs(
 
     # remove digits from errors, to make them easier to consider as a one error
     errors = [re.sub("\d+", "X", e) for e in errors]
-    errors = [e if not 'slurmstepd: error:' in e else ''.join(e.partition('slurmstepd: error:')[1:])
-              for e in errors]
+    errors = [
+        e if not 'slurmstepd: error:' in e else ''.join(e.partition('slurmstepd: error:')[1:])
+              for e in errors
+    ]
 
     if len(errors) > 0:
         new_errors = [errors[0]]
@@ -431,6 +442,15 @@ def summarize_logs(
                 d = error_d[idx]
                 f.write(f'\n            e.g. {d}')
             f.write(f'\n')
+
+    if len(find_in_outs)>0:
+        with open(path, 'a') as f:
+            f.write('\n' + '-' * 50)
+            f.write(f'\n Found specific words in outs:\n')
+            for k, v in found_in_outs.items():
+                f.write(f'\n {k}: {len(v)} times\n')
+                for d in v:
+                    f.write(f'            e.g. {d}\n')
 
 
 def save_results(other_dir, results):
