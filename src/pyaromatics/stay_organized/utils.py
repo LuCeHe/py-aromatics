@@ -304,7 +304,7 @@ def summarize_logs(
     n_error_examples = 6
     n_completed = 0
     n_failed = 0
-    found_in_outs = {k:[] for k in find_in_outs}
+    found_in_outs = {k: [] for k in find_in_outs}
     for d in tqdm(ds):
         path = os.path.join(containing_folder, d)
 
@@ -334,7 +334,6 @@ def summarize_logs(
         for k in find_in_outs:
             if k in ''.join(initial_lines):
                 found_in_outs[k].append(d)
-
 
         # Return a list of the lines, breaking at line boundaries.
         doc_lines.extend(initial_lines)
@@ -409,7 +408,7 @@ def summarize_logs(
     errors = [re.sub("\d+", "X", e) for e in errors]
     errors = [
         e if not 'slurmstepd: error:' in e else ''.join(e.partition('slurmstepd: error:')[1:])
-              for e in errors
+        for e in errors
     ]
 
     if len(errors) > 0:
@@ -433,7 +432,7 @@ def summarize_logs(
         f.write('\n' + '-' * 50)
         f.write(f'\n Errors: {len(errors)}/{len(ds)}\n')
         for e, c in zip(es, cs):
-            f.write('\n' + e)
+            f.write('\n   ' + e)
             f.write(f'\n            {c} times')
             # index = errors.index(e)
             indices = [i for i, x in enumerate(errors) if x == e]
@@ -443,10 +442,10 @@ def summarize_logs(
                 f.write(f'\n            e.g. {d}')
             f.write(f'\n')
 
-    if len(find_in_outs)>0:
+    if len(find_in_outs) > 0:
         with open(path, 'a') as f:
             f.write('\n' + '-' * 50)
-            f.write(f'\n Found specific words in outs:\n')
+            f.write(f'\n   Found specific words in outs:\n')
             for k, v in found_in_outs.items():
                 f.write(f'\n {k}: {len(v)} times\n')
                 for d in v:
