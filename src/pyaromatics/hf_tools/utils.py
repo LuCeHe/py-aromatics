@@ -90,13 +90,17 @@ def get_pretrained_model(model_id='gpt2', save_dir=None):
     if not os.path.exists(model_path):
         print('Downloading Model')
         model = AutoModelForCausalLM.from_pretrained(
-            model_id, trust_remote_code=True, device_map="auto", torch_dtype=torch.float16, offload_buffers=True,
+            model_id, trust_remote_code=True, device_map="auto",
+            # torch_dtype=torch.float16,
+            offload_buffers=True,
         )
         model.save_pretrained(model_path)
     else:
         print('Loading Model')
         model = AutoModelForCausalLM.from_pretrained(
-            model_path, device_map="auto", torch_dtype=torch.float16, offload_buffers=True,
+            model_path, device_map="auto",
+            # torch_dtype=torch.float16,
+            offload_buffers=True,
         )
 
     return model
