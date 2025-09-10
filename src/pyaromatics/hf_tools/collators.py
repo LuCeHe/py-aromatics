@@ -231,6 +231,10 @@ class TwoTokenizersCollator:
 
 
 def get_collator(dataset_name, tokenizer_encoder, tokenizer_decoder, notes):
+
+    print('Tokenizer Encoder name:', tokenizer_encoder.name_or_path)
+    print('Tokenizer Decoder name:', tokenizer_decoder.name_or_path)
+
     collator = TwoTokenizersCollator(
         tokenizer_encoder=tokenizer_encoder,
         tokenizer_decoder=tokenizer_decoder,
