@@ -78,7 +78,7 @@ def get_tokenizer(model_id, notes, save_dir=None, max_seq_length=None):
     return tokenizer
 
 
-def get_pretrained_model(model_id='gpt2', save_dir=None):
+def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
     if save_dir is None:
         raise ValueError("save_dir must be specified")
 
@@ -103,4 +103,6 @@ def get_pretrained_model(model_id='gpt2', save_dir=None):
             offload_buffers=True,
         )
 
+    if return_path:
+        return model_path
     return model
