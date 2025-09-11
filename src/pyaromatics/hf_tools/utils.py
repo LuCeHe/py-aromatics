@@ -87,6 +87,9 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
 
     model_path = os.path.join(save_dir, model_id.replace('/', '-') + '-model')
 
+    if return_path:
+        return model_path
+
     if not os.path.exists(model_path):
         print('Downloading Model')
         model = AutoModelForCausalLM.from_pretrained(
@@ -103,6 +106,4 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
             offload_buffers=True,
         )
 
-    if return_path:
-        return model_path
     return model
