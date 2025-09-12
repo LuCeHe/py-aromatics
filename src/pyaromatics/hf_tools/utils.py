@@ -90,20 +90,15 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
     if return_path:
         return model_path
 
+    more_kwargs = {'device_map': "auto", 'offload_buffers': True}
+    if 'gemma' in model_id.lower():
+        more_kwargs = {'attn_implementation': 'eager'}
     if not os.path.exists(model_path):
         print('Downloading Model')
-        model = AutoModelForCausalLM.from_pretrained(
-            model_id, trust_remote_code=True, device_map="auto",
-            # torch_dtype=torch.float16,
-            offload_buffers=True,
-        )
+        model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True, **more_kwargs)
         model.save_pretrained(model_path)
     else:
         print('Loading Model')
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path, device_map="auto",
-            # torch_dtype=torch.float16,
-            offload_buffers=True,
-        )
+        model = AutoModelForCausalLM.from_pretrained(model_path, **more_kwargs)
 
     return model
