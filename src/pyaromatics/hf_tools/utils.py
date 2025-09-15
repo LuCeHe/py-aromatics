@@ -82,8 +82,7 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
     if save_dir is None:
         raise ValueError("save_dir must be specified")
 
-    import torch
-    from transformers import AutoModelForCausalLM
+    from transformers import AutoModelForCausalLM, AutoModelForMaskedLM
 
     model_path = os.path.join(save_dir, model_id.replace('/', '-') + '-model')
 
@@ -93,12 +92,21 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
     more_kwargs = {'device_map': "auto", 'offload_buffers': True}
     if 'gemma' in model_id.lower():
         more_kwargs = {'attn_implementation': 'eager'}
+
+
+
     if not os.path.exists(model_path):
-        print('Downloading Model')
-        model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True, **more_kwargs)
+        print('Downloading Model -', model_id)
+        if 'bert' in model_id.lower():
+            model = AutoModelForMaskedLM.from_pretrained(model_id, output_hidden_states=True)
+        else:
+            model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True, **more_kwargs)
         model.save_pretrained(model_path)
     else:
-        print('Loading Model')
-        model = AutoModelForCausalLM.from_pretrained(model_path, **more_kwargs)
+        print('Loading Model -', model_id)
+        if 'bert' in model_id.lower():
+            model = AutoModelForMaskedLM.from_pretrained(model_path, output_hidden_states=True)
+        else:
+            model = AutoModelForCausalLM.from_pretrained(model_path, **more_kwargs)
 
     return model
