@@ -93,20 +93,23 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
     if 'gemma' in model_id.lower():
         more_kwargs = {'attn_implementation': 'eager'}
 
-
-
-    if not os.path.exists(model_path):
-        print('Downloading Model -', model_id)
-        if 'bert' in model_id.lower():
-            model = AutoModelForMaskedLM.from_pretrained(model_id, output_hidden_states=True)
-        else:
-            model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True, **more_kwargs)
-        model.save_pretrained(model_path)
+    if 'bert' in model_id.lower():
+        AutoM = lambda x, trust_remote=False: AutoModelForMaskedLM.from_pretrained(
+            x, output_hidden_states=True, trust_remote_code=trust_remote
+        )
     else:
+        AutoM = lambda x, trust_remote=False: AutoModelForCausalLM.from_pretrained(
+            x, trust_remote_code=trust_remote, **more_kwargs
+        )
+
+    trust_remote = True
+    if os.path.exists(model_path):
         print('Loading Model -', model_id)
-        if 'bert' in model_id.lower():
-            model = AutoModelForMaskedLM.from_pretrained(model_path, output_hidden_states=True)
-        else:
-            model = AutoModelForCausalLM.from_pretrained(model_path, **more_kwargs)
+        model_id = model_path
+        trust_remote = False
+    else:
+        print('Downloading Model -', model_id)
+
+    model = AutoM(model_id, trust_remote=trust_remote)
 
     return model
