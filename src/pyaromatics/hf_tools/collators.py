@@ -7,6 +7,7 @@ from transformers.data.data_collator import DataCollatorMixin
 from trl.trainer.utils import pad
 
 from bridge_official.neural_models.in_batch_docs import build_in_batch_docs
+from pyaromatics.stay_organized.utils import str2val
 
 
 class DataCollatorForOnlineLanguageModeling(DataCollatorMixin):
@@ -114,6 +115,19 @@ def time_fold_tensor(x, n_folds, pad_id):
     return x
 
 
+def get_masked_indices(tensor, tokenizer, mlm_probability=0.15):
+    # Create a mask for 15% of the tokens
+    probability_matrix = torch.full(tensor.shape, mlm_probability)
+    special_tokens_mask = [
+        tokenizer.get_special_tokens_mask(val, already_has_special_tokens=True) for val in
+        tensor.tolist()
+    ]
+    special_tokens_mask = torch.tensor(special_tokens_mask, dtype=torch.bool)
+    probability_matrix.masked_fill_(special_tokens_mask, value=0.0)
+    masked_indices = torch.bernoulli(probability_matrix).bool()
+    return masked_indices
+
+
 class TwoTokenizersCollator:
     def __init__(
             self,
@@ -124,8 +138,10 @@ class TwoTokenizersCollator:
             truncation_encoder=False,
             truncation_decoder=False,
             random_encoder_folding=True,
+            mlm_probability=False,
             in_batch_docs=False,
-            encoder_docs_axis=True
+            encoder_docs_axis=True,
+            shift_labels=False
     ):
         """
         Data collator that uses two different tokenizers for two different text fields in the dataset.
@@ -137,6 +153,7 @@ class TwoTokenizersCollator:
             truncation_encoder: Whether to truncate the encoder input to the model's maximum length.
             truncation_decoder: Whether to truncate the decoder input to the model's maximum length.
             random_encoder_folding: Whether to randomly fold the encoder input in time dimension for data augmentation.
+            mlm_probability: Whether to apply masked language modeling to the decoder input. P stands for probability.
         """
 
         self.tokenizer_encoder = tokenizer_encoder
@@ -146,10 +163,15 @@ class TwoTokenizersCollator:
         self.truncation_encoder = truncation_encoder
         self.truncation_decoder = truncation_decoder
         self.random_encoder_folding = random_encoder_folding
+        self.mlm_probability = mlm_probability
         self.in_batch_docs = in_batch_docs
         self.encoder_docs_axis = encoder_docs_axis
+        self.shift_labels = shift_labels
 
         self.encoder_max_length = self.tokenizer_encoder.model_max_length
+
+        self.encoder_vocab_size = self.tokenizer_encoder.vocab_size
+        self.decoder_vocab_size = self.tokenizer_decoder.vocab_size
 
     def do_random_encoder_folding(self, encodings):
         if not self.random_encoder_folding:
@@ -172,6 +194,38 @@ class TwoTokenizersCollator:
         )
 
         return encodings
+
+    def do_masked_language_modeling(self, batch):
+        labels = batch["labels"].clone()
+        inputs = batch["input_ids"].clone()
+        input_ids_encoder = batch["input_ids_encoder"]
+
+        # for the decoder --------------------------
+        masked_indices = get_masked_indices(labels, self.tokenizer_decoder, self.mlm_probability)
+
+        # 80% of the times we pass the clean labels
+        if random.random() < 0.8:
+            labels[~masked_indices] = -100  # Only compute loss on masked tokens
+            masked_indices = torch.bernoulli(torch.full(labels.shape, 0.5)).bool() & masked_indices
+
+        # 50% of masked tokens are replaced with random words
+        # The other 50% of masked tokens are left unchanged
+        random_words = torch.randint(len(self.tokenizer_decoder), labels.shape, dtype=torch.long)
+        inputs[masked_indices] = random_words[masked_indices]
+
+        # for the encoder --------------------------
+        original_shape_enc = list(input_ids_encoder.shape)
+        iie_reshaped = input_ids_encoder.view(-1, input_ids_encoder.shape[-1])
+        masked_indices_enc = get_masked_indices(iie_reshaped, self.tokenizer_encoder, self.mlm_probability)
+
+        random_words_enc = torch.randint(len(self.tokenizer_encoder), iie_reshaped.shape, dtype=torch.long)
+        iie_reshaped[masked_indices_enc] = random_words_enc[masked_indices_enc]
+        input_ids_encoder = iie_reshaped.view(*original_shape_enc)
+
+        batch["labels"] = labels
+        batch["input_ids"] = inputs
+        batch["input_ids_encoder"] = input_ids_encoder
+        return batch
 
     def __call__(self, examples: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
 
@@ -218,17 +272,31 @@ class TwoTokenizersCollator:
         input_ids_encoder = input_ids_encoder[..., -self.encoder_max_length:]
         attention_mask_encoder = attention_mask_encoder[..., -self.encoder_max_length:]
 
-        return {
+        output = {
             "input_ids": ids_decoder["input_ids"],
             "input_ids_encoder": input_ids_encoder,
             "attention_mask": ids_decoder["attention_mask"],
             "attention_mask_encoder": attention_mask_encoder,
-
             "labels": ids_decoder["input_ids"].clone(),
         }
 
+        if 0 < self.mlm_probability < 1:
+            output = self.do_masked_language_modeling(output)
 
-def get_collator(dataset_name, tokenizer_encoder, tokenizer_decoder, notes):
+        if self.shift_labels:
+            input_ids = output['input_ids'][..., :-1]
+            labels = output['labels'][..., 1:]
+            output['input_ids'], output['labels'] = input_ids, labels
+
+        return output
+
+
+def get_collator(dataset_name, tokenizer_encoder, tokenizer_decoder, notes, eval=False):
+    mlm_probability = str2val(notes, 'mlmprob', default=0.0, output_type=float)
+    if eval:
+        mlm_probability = 0.0
+
+    shift_labels = 'manualshifting' in notes
 
     collator = TwoTokenizersCollator(
         tokenizer_encoder=tokenizer_encoder,
@@ -237,7 +305,9 @@ def get_collator(dataset_name, tokenizer_encoder, tokenizer_decoder, notes):
         text_field_decoder="text",
         truncation_encoder=True,
         truncation_decoder=True,
-        in_batch_docs=True
+        in_batch_docs=True,
+        mlm_probability=mlm_probability,
+        shift_labels=shift_labels,
     )
 
     if 'dolma' in dataset_name and 'oldclltr' in notes:
