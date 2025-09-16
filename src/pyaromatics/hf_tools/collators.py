@@ -215,6 +215,7 @@ class TwoTokenizersCollator:
 
         # for the encoder --------------------------
         original_shape_enc = list(input_ids_encoder.shape)
+        print('original_shape_enc', original_shape_enc)
         iie_reshaped = input_ids_encoder.view(-1, input_ids_encoder.shape[-1])
         masked_indices_enc = get_masked_indices(iie_reshaped, self.tokenizer_encoder, self.mlm_probability)
 
