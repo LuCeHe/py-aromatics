@@ -112,4 +112,8 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
 
     model = AutoM(model_id, trust_remote=trust_remote)
 
+    if not os.path.exists(model_path):
+        print('Saving Model -', model_path)
+        model.save_pretrained(model_path)
+
     return model
