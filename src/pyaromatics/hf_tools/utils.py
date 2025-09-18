@@ -86,7 +86,7 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
 
     model_path = os.path.join(save_dir, model_id.replace('/', '-') + '-model')
 
-    if return_path:
+    if return_path and os.path.exists(model_path):
         return model_path
 
     more_kwargs = {'device_map': "auto", 'offload_buffers': True}
