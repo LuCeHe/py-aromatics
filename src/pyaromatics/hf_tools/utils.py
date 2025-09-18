@@ -35,7 +35,7 @@ def get_hf_key(savekey_dir):
     return token
 
 
-def get_tokenizer(model_id, notes, save_dir=None, max_seq_length=None):
+def get_tokenizer(model_id, notes='', save_dir=None, max_seq_length=None):
     if save_dir is None:
         raise ValueError("save_dir must be specified")
 
