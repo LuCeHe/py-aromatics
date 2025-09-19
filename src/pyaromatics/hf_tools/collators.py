@@ -141,7 +141,8 @@ class TwoTokenizersCollator:
             mlm_probability=False,
             in_batch_docs=False,
             encoder_docs_axis=True,
-            shift_labels=False
+            shift_labels=False,
+            padding_side='left',
     ):
         """
         Data collator that uses two different tokenizers for two different text fields in the dataset.
@@ -172,6 +173,9 @@ class TwoTokenizersCollator:
 
         self.encoder_vocab_size = self.tokenizer_encoder.vocab_size
         self.decoder_vocab_size = self.tokenizer_decoder.vocab_size
+
+        self.tokenizer_encoder.padding_side = padding_side
+        self.tokenizer_decoder.padding_side = padding_side
 
     def do_random_encoder_folding(self, encodings):
         if not self.random_encoder_folding:
@@ -296,7 +300,11 @@ def get_collator(dataset_name, tokenizer_encoder, tokenizer_decoder, notes, eval
     if eval:
         mlm_probability = 0.0
 
-    shift_labels = 'manualshifting' in notes
+    shift_labels = 'manualshift' in notes
+    if 'trainmanualshift' in notes and eval:
+        shift_labels = False
+
+    padding_side = 'right' if 'rightpad' in notes else 'left'
 
     collator = TwoTokenizersCollator(
         tokenizer_encoder=tokenizer_encoder,
@@ -308,6 +316,7 @@ def get_collator(dataset_name, tokenizer_encoder, tokenizer_decoder, notes, eval
         in_batch_docs=True,
         mlm_probability=mlm_probability,
         shift_labels=shift_labels,
+        padding_side=padding_side,
     )
 
     if 'dolma' in dataset_name and 'oldclltr' in notes:
