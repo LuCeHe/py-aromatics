@@ -78,6 +78,22 @@ def get_tokenizer(model_id, notes='', save_dir=None, max_seq_length=None):
     return tokenizer
 
 
+def ensure_model_local(model_id, model_path):
+    from huggingface_hub import snapshot_download
+
+    if os.path.exists(model_path):
+        print("Model already cached:", model_path)
+        return model_path
+
+    print("Downloading model without loading into memory:", model_id)
+    cache_dir = snapshot_download(
+        repo_id=model_id,
+        local_dir=model_path,
+        local_dir_use_symlinks=False  # copy instead of symlinking
+    )
+    print("Saved model to:", cache_dir)
+    return cache_dir
+
 def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
     if save_dir is None:
         raise ValueError("save_dir must be specified")
@@ -89,6 +105,8 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
     if return_path and os.path.exists(model_path):
         return model_path
 
+    print("Downloading model without loading into memory:", model_id)
+    model_path = ensure_model_local(model_id, model_path)
     more_kwargs = {'device_map': "auto", 'offload_buffers': True}
     if 'gemma' in model_id.lower():
         more_kwargs = {'attn_implementation': 'eager'}
