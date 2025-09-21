@@ -132,17 +132,18 @@ class TwoTokenizersCollator:
     def __init__(
             self,
             tokenizer_encoder,
-            text_field_encoder='text',
-            tokenizer_decoder=None,
-            text_field_decoder=None,
-            truncation_encoder=False,
-            truncation_decoder=False,
-            random_encoder_folding=True,
-            mlm_probability=False,
-            in_batch_docs=False,
-            encoder_docs_axis=True,
-            shift_labels=False,
+            text_field_encoder: str = 'text',
+            tokenizer_decoder: Any = None,
+            text_field_decoder: Union[None, str] = None,
+            truncation_encoder: bool = True,
+            truncation_decoder: bool = True,
+            encoder_folds: Union[bool, str, int] = False,
+            mlm_probability: float = 0.0,
+            in_batch_docs: bool = False,
+            encoder_docs_axis: bool = False,
+            shift_labels: bool = False,
             padding_side='left',
+            truncation_side='right',
     ):
         """
         Data collator that uses two different tokenizers for two different text fields in the dataset.
@@ -153,7 +154,8 @@ class TwoTokenizersCollator:
             text_field_decoder: The field name in the dataset for the decoder input text. If None, uses text_field_encoder.
             truncation_encoder: Whether to truncate the encoder input to the model's maximum length.
             truncation_decoder: Whether to truncate the decoder input to the model's maximum length.
-            random_encoder_folding: Whether to randomly fold the encoder input in time dimension for data augmentation.
+            encoder_folds: Whether to randomly fold the encoder input in time dimension for data augmentation. Can be
+            False, 'random', 'max', 'halfmax' or an integer.
             mlm_probability: Whether to apply masked language modeling to the decoder input. P stands for probability.
         """
 
@@ -163,25 +165,42 @@ class TwoTokenizersCollator:
         self.text_field_decoder = text_field_decoder if text_field_decoder is not None else text_field_encoder
         self.truncation_encoder = truncation_encoder
         self.truncation_decoder = truncation_decoder
-        self.random_encoder_folding = random_encoder_folding
+        self.encoder_folds = encoder_folds
         self.mlm_probability = mlm_probability
         self.in_batch_docs = in_batch_docs
         self.encoder_docs_axis = encoder_docs_axis
         self.shift_labels = shift_labels
 
-        self.encoder_max_length = self.tokenizer_encoder.model_max_length
+        self.max_length_encoder = self.tokenizer_encoder.model_max_length
+        self.tokenizer_encoder.model_max_length = 50_000
 
-        self.encoder_vocab_size = self.tokenizer_encoder.vocab_size
-        self.decoder_vocab_size = self.tokenizer_decoder.vocab_size
+        self.vocab_size_encoder = self.tokenizer_encoder.vocab_size
+        self.vocab_size_decoder = self.tokenizer_decoder.vocab_size
 
         self.tokenizer_encoder.padding_side = padding_side
         self.tokenizer_decoder.padding_side = padding_side
+        self.tokenizer_encoder.truncation_side = truncation_side
+        self.tokenizer_decoder.truncation_side = truncation_side
 
-    def do_random_encoder_folding(self, encodings):
-        if not self.random_encoder_folding:
+    def do_encoder_folds(self, encodings):
+        if self.encoder_folds == False:
             return encodings
         possible_folds = list(range(11))
-        n_folds = random.choice(possible_folds)
+
+        if self.encoder_folds == 'random':
+            n_folds = random.choice(possible_folds)
+
+        elif self.encoder_folds == 'max':
+            n_folds = encodings['input_ids'].shape[1] // self.max_length_encoder
+
+        elif self.encoder_folds == 'halfmax':
+            n_folds = max(1, encodings['input_ids'].shape[1] // (self.max_length_encoder // 2))
+            print("encodings['input_ids'].shape[1]", encodings['input_ids'].shape[1])
+            print('n_folds', n_folds)
+            print('self.max_length_encoder', self.max_length_encoder)
+
+        elif isinstance(self.encoder_folds, int):
+            n_folds = self.encoder_folds
 
         if n_folds == 0:
             encodings['input_ids'] = encodings['input_ids'].unsqueeze(0)
@@ -247,17 +266,22 @@ class TwoTokenizersCollator:
         if same_encdec_text:
             text_field_encoder = self.text_field_decoder
 
-        texts_encoder = [example[text_field_encoder] for example in examples]
+        texts_encoder = [
+            ' '.join(example[text_field_encoder]) if isinstance(example[text_field_encoder], list)
+            else example[text_field_encoder]
+            for example in examples
+        ]
+
         ids_encoder = self.tokenizer_encoder(
             texts_encoder,
             add_special_tokens=True,
             padding=True,  # same as "longest"
-            truncation=False,
+            truncation=self.truncation_encoder,
             return_tensors="pt"
         )
 
         if not same_encdec_text:
-            ids_encoder = self.do_random_encoder_folding(ids_encoder)
+            ids_encoder = self.do_encoder_folds(ids_encoder)
 
         input_ids_encoder = ids_encoder["input_ids"]
         attention_mask_encoder = ids_encoder["attention_mask"]
@@ -273,8 +297,8 @@ class TwoTokenizersCollator:
             input_ids_encoder = input_ids_encoder.unsqueeze(0)
             attention_mask_encoder = attention_mask_encoder.unsqueeze(0)
 
-        input_ids_encoder = input_ids_encoder[..., -self.encoder_max_length:]
-        attention_mask_encoder = attention_mask_encoder[..., -self.encoder_max_length:]
+        input_ids_encoder = input_ids_encoder[..., -self.max_length_encoder:]
+        attention_mask_encoder = attention_mask_encoder[..., -self.max_length_encoder:]
 
         output = {
             "input_ids": ids_decoder["input_ids"],
@@ -295,7 +319,40 @@ class TwoTokenizersCollator:
         return output
 
 
-def get_collator(dataset_name, tokenizer_encoder, tokenizer_decoder, notes, eval=False):
+def test_double_collator():
+    enc_sentences = [
+        "Hello, how are you?",
+        "The quick brown fox jumps over the lazy dog.",
+        "Transformers are great for natural language processing tasks."
+    ]
+    enc_sentences = ["Hello, how are you?sadcascdddddddddddddd Hello, how are you?"]*100
+    dec_sentence = "I am fine, thank you!"
+
+
+    from transformers import AutoTokenizer
+    tokenizer_encoder = AutoTokenizer.from_pretrained("gpt2")
+    tokenizer_decoder = AutoTokenizer.from_pretrained("gpt2")
+    # padding
+    tokenizer_encoder.pad_token = tokenizer_encoder.eos_token
+    tokenizer_decoder.pad_token = tokenizer_decoder.eos_token
+    collator = TwoTokenizersCollator(
+        tokenizer_encoder=tokenizer_encoder,
+        text_field_encoder="passage_list",
+        tokenizer_decoder=tokenizer_decoder,
+        text_field_decoder="old_instruction",
+        encoder_folds='halfmax',
+    )
+
+    examples = [
+        {"passage_list": enc_sentences, "old_instruction": dec_sentence}
+    ]
+
+    output = collator(examples)
+    for k, v in output.items():
+        print(f"{k}: {v.shape}")
+
+
+def get_collator(tokenizer_encoder, tokenizer_decoder, notes='', dataset_name='', eval=False):
     mlm_probability = str2val(notes, 'mlmprob', default=0.0, output_type=float)
     if eval:
         mlm_probability = 0.0
@@ -305,6 +362,7 @@ def get_collator(dataset_name, tokenizer_encoder, tokenizer_decoder, notes, eval
         shift_labels = False
 
     padding_side = 'right' if 'rightpad' in notes else 'left'
+    truncation_side = 'left' if padding_side == 'right' else 'right'
 
     collator = TwoTokenizersCollator(
         tokenizer_encoder=tokenizer_encoder,
@@ -317,9 +375,14 @@ def get_collator(dataset_name, tokenizer_encoder, tokenizer_decoder, notes, eval
         mlm_probability=mlm_probability,
         shift_labels=shift_labels,
         padding_side=padding_side,
+        truncation_side=truncation_side,
     )
 
     if 'dolma' in dataset_name and 'oldclltr' in notes:
         collator = PackingOnlineCollator(tokenizer_decoder)
 
     return collator
+
+
+if __name__ == "__main__":
+    test_double_collator()
