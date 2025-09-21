@@ -195,9 +195,6 @@ class TwoTokenizersCollator:
 
         elif self.encoder_folds == 'halfmax':
             n_folds = max(1, encodings['input_ids'].shape[1] // (self.max_length_encoder // 2))
-            print("encodings['input_ids'].shape[1]", encodings['input_ids'].shape[1])
-            print('n_folds', n_folds)
-            print('self.max_length_encoder', self.max_length_encoder)
 
         elif isinstance(self.encoder_folds, int):
             n_folds = self.encoder_folds
