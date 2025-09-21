@@ -3,58 +3,10 @@ import random
 from typing import Any, Dict, List, Union
 
 import torch
-from transformers.data.data_collator import DataCollatorMixin
-from trl.trainer.utils import pad
 
 from bridge_official.neural_models.in_batch_docs import build_in_batch_docs
 from pyaromatics.stay_organized.utils import str2val
 
-
-class DataCollatorForOnlineLanguageModeling(DataCollatorMixin):
-    """
-    Data collator used for language modeling data. Inputs are dynamically padded to the maximum length of a batch if
-    they are not all of the same length.
-
-    Args:
-        pad_token_id (`int`):
-            Token ID to use for padding.
-        return_tensors (`str`, *optional*, defaults to `"pt"`):
-            Type of Tensor to return. Only `"pt"` is currently supported.
-
-    Examples:
-    ```python
-    >>> from trl import DataCollatorForLanguageModeling
-    >>> collator = DataCollatorForLanguageModeling(pad_token_id=0)
-    >>> examples = [
-    ...     {"input_ids": [1, 2, 3]},
-    ...     {"input_ids": [4, 5]}
-    ... ]
-    >>> collator(examples)
-    {'input_ids': tensor([[   1,   2,   3],
-                          [   4,   5,   0]]),
-     'attention_mask': tensor([[  1,   1,   1],
-                               [  1,   1,   0]]),
-     'labels': tensor([[   1,    2,    3],
-                       [   4,    5, -100]])}
-    ```
-    """
-
-    pad_token_id: int
-    return_tensors: str = "pt"
-
-    def torch_call(self, examples: list[Union[list[int], Any, dict[str, Any]]]) -> dict[str, Any]:
-        # Convert to tensor
-        input_ids = [torch.tensor(example["input_ids"]) for example in examples]
-        attention_mask = [torch.ones_like(input_ids) for input_ids in input_ids]
-        labels = [torch.tensor(example["input_ids"]) for example in examples]
-
-        # Pad
-        output = {}
-        output["input_ids"] = pad(input_ids, padding_value=self.pad_token_id, padding_side="right")
-        output["attention_mask"] = pad(attention_mask, padding_value=0, padding_side="right")
-        output["labels"] = pad(labels, padding_value=-100, padding_side="right")
-
-        return output
 
 
 class PackingOnlineCollator:
