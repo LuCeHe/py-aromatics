@@ -2,6 +2,7 @@ import os, socket, base64, tempfile
 from transformers import AutoModelForCausalLM, AutoModelForMaskedLM
 
 
+
 def connected_to_internet():
     try:
         # Attempt to connect to a well-known server (Google's DNS server)
@@ -128,12 +129,19 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
     if 'gemma' in model_id.lower():
         kwargs['attn_implementation'] = 'eager'
 
-    if 'bert' in model_id.lower():
-        AutoM = lambda x, trust_remote=False: PatchedAutoModelForMaskedLM.from_pretrained(
+    if model_id == 'openbmb/MiniCPM-2B-sft-bf16':
+        from pyaromatics.hf_tools.modeling_minicpm import MiniCPMForCausalLM
+        AutoM = lambda x, trust_remote=False: MiniCPMForCausalLM.from_pretrained(
+            x, trust_remote_code=trust_remote, **kwargs
+        )
+
+
+    elif 'bert' in model_id.lower():
+        AutoM = lambda x, trust_remote=False: AutoModelForMaskedLM.from_pretrained(
             x, output_hidden_states=True, trust_remote_code=trust_remote, **kwargs
         )
     else:
-        AutoM = lambda x, trust_remote=False: PatchedAutoModelForCausalLM.from_pretrained(
+        AutoM = lambda x, trust_remote=False: AutoModelForCausalLM.from_pretrained(
             x, trust_remote_code=trust_remote, **kwargs
         )
 
