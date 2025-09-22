@@ -1,12 +1,11 @@
 import random
-
-from typing import Any, Dict, List, Union
+from transformers import PreTrainedTokenizerBase
+from typing import Optional, Dict, List, Union
 
 import torch
 
 from bridge_official.neural_models.in_batch_docs import build_in_batch_docs
 from pyaromatics.stay_organized.utils import str2val
-
 
 
 class PackingOnlineCollator:
@@ -83,10 +82,10 @@ def get_masked_indices(tensor, tokenizer, mlm_probability=0.15):
 class TwoTokenizersCollator:
     def __init__(
             self,
-            tokenizer_encoder,
+            tokenizer_encoder: PreTrainedTokenizerBase,
             text_field_encoder: str = 'text',
-            tokenizer_decoder: Any = None,
-            text_field_decoder: Union[None, str] = None,
+            tokenizer_decoder: Optional[PreTrainedTokenizerBase] = None,
+            text_field_decoder: Optional[str] = None,
             truncation_encoder: bool = True,
             truncation_decoder: bool = True,
             encoder_folds: Union[bool, str, int] = False,
@@ -94,8 +93,9 @@ class TwoTokenizersCollator:
             in_batch_docs: bool = False,
             encoder_docs_axis: bool = False,
             shift_labels: bool = False,
-            padding_side='left',
-            truncation_side='right',
+            padding_side: str = "left",
+            truncation_side: str = "right",
+            call_max_length_encoder: int = 50_000,
     ):
         """
         Data collator that uses two different tokenizers for two different text fields in the dataset.
@@ -122,9 +122,7 @@ class TwoTokenizersCollator:
         self.in_batch_docs = in_batch_docs
         self.encoder_docs_axis = encoder_docs_axis
         self.shift_labels = shift_labels
-
-        self.max_length_encoder = self.tokenizer_encoder.model_max_length
-        self.tokenizer_encoder.model_max_length = 50_000
+        self.padding_side = padding_side
 
         self.vocab_size_encoder = self.tokenizer_encoder.vocab_size
         self.vocab_size_decoder = self.tokenizer_decoder.vocab_size
@@ -134,19 +132,23 @@ class TwoTokenizersCollator:
         self.tokenizer_encoder.truncation_side = truncation_side
         self.tokenizer_decoder.truncation_side = truncation_side
 
+        self.call_max_length_encoder = call_max_length_encoder
+        self.final_max_length_encoder = tokenizer_encoder.model_max_length
+
     def do_encoder_folds(self, encodings):
         if self.encoder_folds == False:
             return encodings
         possible_folds = list(range(11))
 
+        n_folds = 0
         if self.encoder_folds == 'random':
             n_folds = random.choice(possible_folds)
 
         elif self.encoder_folds == 'max':
-            n_folds = encodings['input_ids'].shape[1] // self.max_length_encoder
+            n_folds = encodings['input_ids'].shape[1] // self.final_max_length_encoder
 
         elif self.encoder_folds == 'halfmax':
-            n_folds = max(1, encodings['input_ids'].shape[1] // (self.max_length_encoder // 2))
+            n_folds = max(1, encodings['input_ids'].shape[1] // (self.final_max_length_encoder // 2))
 
         elif isinstance(self.encoder_folds, int):
             n_folds = self.encoder_folds
@@ -201,6 +203,7 @@ class TwoTokenizersCollator:
 
     def __call__(self, examples: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
 
+
         texts_decoder = [example[self.text_field_decoder] for example in examples]
         ids_decoder = self.tokenizer_decoder(
             texts_decoder,
@@ -212,6 +215,7 @@ class TwoTokenizersCollator:
 
         text_field_encoder = self.text_field_encoder
         same_encdec_text = not self.text_field_encoder in examples[0]
+
         if same_encdec_text:
             text_field_encoder = self.text_field_decoder
 
@@ -221,13 +225,17 @@ class TwoTokenizersCollator:
             for example in examples
         ]
 
+
+        # temporarily adjust for this call
+        self.tokenizer_encoder.model_max_length = self.call_max_length_encoder
         ids_encoder = self.tokenizer_encoder(
             texts_encoder,
             add_special_tokens=True,
-            padding=True,  # same as "longest"
+            padding=True,
             truncation=self.truncation_encoder,
             return_tensors="pt"
         )
+        self.tokenizer_encoder.model_max_length = self.final_max_length_encoder
 
         if not same_encdec_text:
             ids_encoder = self.do_encoder_folds(ids_encoder)
@@ -246,8 +254,12 @@ class TwoTokenizersCollator:
             input_ids_encoder = input_ids_encoder.unsqueeze(0)
             attention_mask_encoder = attention_mask_encoder.unsqueeze(0)
 
-        input_ids_encoder = input_ids_encoder[..., -self.max_length_encoder:]
-        attention_mask_encoder = attention_mask_encoder[..., -self.max_length_encoder:]
+        if self.padding_side == 'left':
+            input_ids_encoder = input_ids_encoder[..., -self.final_max_length_encoder:]
+            attention_mask_encoder = attention_mask_encoder[..., -self.final_max_length_encoder:]
+        else:
+            input_ids_encoder = input_ids_encoder[..., :self.final_max_length_encoder]
+            attention_mask_encoder = attention_mask_encoder[..., :self.final_max_length_encoder]
 
         output = {
             "input_ids": ids_decoder["input_ids"],
@@ -274,9 +286,8 @@ def test_double_collator():
         "The quick brown fox jumps over the lazy dog.",
         "Transformers are great for natural language processing tasks."
     ]
-    enc_sentences = ["Hello, how are you?sadcascdddddddddddddd Hello, how are you?"]*100
+    enc_sentences = ["Hello, how are you?sadcascdddddddddddddd Hello, how are you?"] * 100
     dec_sentence = "I am fine, thank you!"
-
 
     from transformers import AutoTokenizer
     tokenizer_encoder = AutoTokenizer.from_pretrained("gpt2")
@@ -320,8 +331,9 @@ def get_collator(tokenizer_encoder, tokenizer_decoder, notes='', dataset_name=''
         text_field_decoder="text",
         truncation_encoder=True,
         truncation_decoder=True,
-        in_batch_docs=True,
+        encoder_folds='max',
         mlm_probability=mlm_probability,
+        in_batch_docs=True,
         shift_labels=shift_labels,
         padding_side=padding_side,
         truncation_side=truncation_side,
