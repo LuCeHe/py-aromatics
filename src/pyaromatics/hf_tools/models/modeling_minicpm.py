@@ -1196,10 +1196,17 @@ class MiniCPMModel(MiniCPMPreTrainedModel):
 
         past_key_values_length = 0
         if use_cache:
-            use_legacy_cache = not isinstance(past_key_values, Cache)
-            if use_legacy_cache:
+            if isinstance(past_key_values, Cache):
+                use_legacy_cache = False
+                past_key_values_length = past_key_values.get_seq_length(seq_length)
+            elif past_key_values is None:
+                use_legacy_cache = False
+                past_key_values = DynamicCache()
+                past_key_values_length = 0
+            else:
+                use_legacy_cache = True
                 past_key_values = DynamicCache.from_legacy_cache(past_key_values)
-            past_key_values_length = past_key_values.get_seq_length(seq_length)
+                past_key_values_length = past_key_values.get_seq_length(seq_length)
 
         if position_ids is None:
             device = input_ids.device if input_ids is not None else inputs_embeds.device
