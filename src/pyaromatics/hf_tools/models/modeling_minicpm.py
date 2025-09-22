@@ -501,7 +501,7 @@ class MiniCPMAttention(nn.Module):
                     "for auto-regressive decoding with k/v caching, please make sure to initialize the attention class "
                     "with a layer index."
                 )
-            kv_seq_len += past_key_value.get_seq_length(kv_seq_len, self.layer_idx)
+            kv_seq_len += past_key_value.get_seq_length(kv_seq_len)
         cos, sin = self.rotary_emb(value_states.to(torch.float32), seq_len=kv_seq_len)
 
         query_states, key_states = apply_rotary_pos_emb(
@@ -631,7 +631,7 @@ class MiniCPMFlashAttention2(MiniCPMAttention):
 
         kv_seq_len = key_states.shape[-2]
         if past_key_value is not None:
-            kv_seq_len += past_key_value.get_seq_length(kv_seq_len, self.layer_idx)
+            kv_seq_len += past_key_value.get_seq_length(kv_seq_len)
         cos, sin = self.rotary_emb(value_states.to(torch.float32), seq_len=kv_seq_len)
         query_states, key_states = apply_rotary_pos_emb(
             query_states, key_states, cos, sin, position_ids
@@ -865,7 +865,7 @@ class MiniCPMSdpaAttention(MiniCPMAttention):
 
         kv_seq_len = key_states.shape[-2]
         if past_key_value is not None:
-            kv_seq_len += past_key_value.get_seq_length(kv_seq_len, self.layer_idx)
+            kv_seq_len += past_key_value.get_seq_length(kv_seq_len)
         cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
 
         query_states, key_states = apply_rotary_pos_emb(
@@ -1019,7 +1019,6 @@ MINICPM_START_DOCSTRING = r"""
             load the weights associated with the model, only the configuration. Check out the
             [`~PreTrainedModel.from_pretrained`] method to load the model weights.
 """
-
 
 @add_start_docstrings(
     "The bare MiniCPM Model outputting raw hidden-states without any specific head on top.",
@@ -1305,7 +1304,7 @@ class MiniCPMModel(MiniCPMPreTrainedModel):
         )
 
 
-class MiniCPMForCausalLM(MiniCPMPreTrainedModel):
+class MiniCPMForCausalLM(MiniCPMPreTrainedModel, GenerationMixin):
     _tied_weights_keys = ["lm_head.weight"]
 
     def __init__(self, config):
