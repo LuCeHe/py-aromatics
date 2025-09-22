@@ -131,7 +131,7 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
     if os.path.exists(model_path):
         print('Loading Model -', model_id)
         model_id = model_path
-        trust_remote = False
+        trust_remote = True
     else:
         print('Downloading Model -', model_id)
 
