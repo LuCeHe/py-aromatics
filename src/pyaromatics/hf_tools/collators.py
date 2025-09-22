@@ -292,6 +292,7 @@ def test_double_collator():
     from transformers import AutoTokenizer
     tokenizer_encoder = AutoTokenizer.from_pretrained("gpt2")
     tokenizer_decoder = AutoTokenizer.from_pretrained("gpt2")
+
     # padding
     tokenizer_encoder.pad_token = tokenizer_encoder.eos_token
     tokenizer_decoder.pad_token = tokenizer_decoder.eos_token

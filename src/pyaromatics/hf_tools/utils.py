@@ -1,4 +1,4 @@
-import os, socket, base64
+import os, socket, base64, tempfile
 
 
 def connected_to_internet():
@@ -94,7 +94,9 @@ def ensure_model_local(model_id, model_path):
     print("Saved model to:", cache_dir)
     return cache_dir
 
-def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
+
+def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offload_dir=None):
+    print('save_dir', save_dir)
     if save_dir is None:
         raise ValueError("save_dir must be specified")
 
@@ -106,24 +108,30 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False):
         return model_path
 
     model_path = ensure_model_local(model_id, model_path)
-    more_kwargs = {'device_map': "auto", 'offload_buffers': True}
+    kwargs = {
+        'device_map': 'auto',
+        'offload_buffers': True,
+        'offload_state_dict': True,
+        'offload_folder': offload_dir,
+    }
+    print('kwargs', kwargs)
     if 'gemma' in model_id.lower():
-        more_kwargs = {'attn_implementation': 'eager'}
+        kwargs['attn_implementation'] = 'eager'
 
     if 'bert' in model_id.lower():
         AutoM = lambda x, trust_remote=False: AutoModelForMaskedLM.from_pretrained(
-            x, output_hidden_states=True, trust_remote_code=trust_remote
+            x, output_hidden_states=True, trust_remote_code=trust_remote, **kwargs
         )
     else:
         AutoM = lambda x, trust_remote=False: AutoModelForCausalLM.from_pretrained(
-            x, trust_remote_code=trust_remote, **more_kwargs
+            x, trust_remote_code=trust_remote, **kwargs
         )
 
     trust_remote = True
     if os.path.exists(model_path):
         print('Loading Model -', model_id)
         model_id = model_path
-        trust_remote = True
+        trust_remote = False
     else:
         print('Downloading Model -', model_id)
 
