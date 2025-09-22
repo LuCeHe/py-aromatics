@@ -135,11 +135,11 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
             x, trust_remote_code=trust_remote, **kwargs
         )
 
-
     elif 'bert' in model_id.lower():
         AutoM = lambda x, trust_remote=False: AutoModelForMaskedLM.from_pretrained(
             x, output_hidden_states=True, trust_remote_code=trust_remote, **kwargs
         )
+
     else:
         AutoM = lambda x, trust_remote=False: AutoModelForCausalLM.from_pretrained(
             x, trust_remote_code=trust_remote, **kwargs
