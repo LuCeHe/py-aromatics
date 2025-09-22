@@ -56,7 +56,9 @@ from transformers.utils import (
 )
 from transformers.utils.import_utils import is_torch_fx_available
 
-from .configuration_minicpm import MiniCPMConfig
+from pyaromatics.hf_tools.models.configuration_minicpm import MiniCPMConfig
+
+# from .configuration_minicpm import MiniCPMConfig
 
 try:
     from flash_attn import flash_attn_func, flash_attn_varlen_func

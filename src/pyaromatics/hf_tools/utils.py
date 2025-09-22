@@ -130,7 +130,7 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
         kwargs['attn_implementation'] = 'eager'
 
     if model_id == 'openbmb/MiniCPM-2B-sft-bf16':
-        from pyaromatics.hf_tools.modeling_minicpm import MiniCPMForCausalLM
+        from pyaromatics.hf_tools.models.modeling_minicpm import MiniCPMForCausalLM
         AutoM = lambda x, trust_remote=False: MiniCPMForCausalLM.from_pretrained(
             x, trust_remote_code=trust_remote, **kwargs
         )
