@@ -2,7 +2,6 @@ import os, socket, base64, tempfile
 from transformers import AutoModelForCausalLM, AutoModelForMaskedLM
 
 
-
 def connected_to_internet():
     try:
         # Attempt to connect to a well-known server (Google's DNS server)
@@ -102,16 +101,16 @@ class PatchedAutoModelForCausalLM(AutoModelForCausalLM):
         kwargs.pop("num_items_in_batch", None)  # safely ignore it
         return super().forward(*args, **kwargs)
 
+
 class PatchedAutoModelForMaskedLM(AutoModelForMaskedLM):
     def forward(self, *args, **kwargs):
         kwargs.pop("num_items_in_batch", None)  # safely ignore it
         return super().forward(*args, **kwargs)
 
+
 def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offload_dir=None):
-    print('save_dir', save_dir)
     if save_dir is None:
         raise ValueError("save_dir must be specified")
-
 
     model_path = os.path.join(save_dir, model_id.replace('/', '-') + '-model')
 
@@ -125,7 +124,7 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
         'offload_state_dict': True,
         'offload_folder': offload_dir,
     }
-    print('kwargs', kwargs)
+
     if 'gemma' in model_id.lower():
         kwargs['attn_implementation'] = 'eager'
 
