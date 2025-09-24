@@ -239,7 +239,7 @@ class TwoTokenizersCollator:
 
         if not same_encdec_text:
             ids_encoder = self.do_encoder_folds(ids_encoder)
-
+        print('ids_encoder', ids_encoder['input_ids'].shape)
         input_ids_encoder = ids_encoder["input_ids"]
         attention_mask_encoder = ids_encoder["attention_mask"]
 
