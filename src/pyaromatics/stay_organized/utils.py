@@ -514,5 +514,62 @@ def check_internet(host="8.8.8.8", port=53, timeout=3):
         print(f"No internet connection: {ex}")
         return False
 
+
+
+def clean_outs(path=None):
+    out_files = [os.path.join(path, d) for d in os.listdir(path) if d.endswith('.out')]
+
+    for out_file in tqdm(out_files):
+        # open it
+        with open(out_file, 'r') as f:
+            lines = f.readlines()
+
+        # remove lines that start with "output shape: " and with "modulator shape: "
+        lines = [l for l in lines if not ('output shape:' in l or 'modulator shape:' in l)]
+        lines = [l for l in lines if 'Processing chunk starting at' not in l]
+        lines = [l for l in lines if 'Some weights of DebertaV2ForMaskedLM were' not in l]
+        lines = [l for l in lines if 'UserWarning: The sentencepiece' not in l]
+        lines = [l for l in lines if 'Some weights of the model checkpoint at bert-base-uncased were' not in l]
+        lines = [l for l in lines if 'Falling back to the sequential implementation of Mamba' not in l]
+        lines = [l for l in lines if 'You should probably TRAIN this model on a down-stream task' not in l]
+        lines = [l for l in lines if '- This IS expected if you are initializing' not in l]
+        lines = [l for l in lines if '- This IS NOT expected if you are ' not in l]
+        lines = [l for l in lines if 'The tokenizer has new PAD/BOS/EOS tokens t' not in l]
+
+        prev = None
+        cleaned_lines = []
+        for line in lines:
+
+            # Check if line looks like tqdm progress
+            if (all(token in line for token in ["%|", "/", " [", "<"])
+                    and ("it/s" in line or "s/it" in line)
+                    and not 'eval_loss' in line) \
+                    :  # avoid eval_loss progress bars
+                prev = line  # overwrite until the last one
+
+            elif line.strip() == "":
+                continue
+
+            else:
+                # If a non-progress line appears, keep the last progress line (if any)
+                if prev:
+                    cleaned_lines.append(prev)
+                    prev = None
+                cleaned_lines.append(line)
+        # At the very end, flush any remaining progress line
+        if prev:
+            cleaned_lines.append(prev)
+        lines = cleaned_lines
+
+        # write it back
+        # new_out_file = out_file.replace('.out', '_cleaned.out')
+        new_out_file = out_file
+        with open(new_out_file, 'w') as f:
+            f.writelines(lines)
+
+
+
+
+
 if __name__ == '__main__':
     test_is_progress_bar()
