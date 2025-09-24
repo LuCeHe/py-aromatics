@@ -202,7 +202,7 @@ class TwoTokenizersCollator:
         return batch
 
     def __call__(self, examples: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
-
+        print(examples)
 
         texts_decoder = [example[self.text_field_decoder] for example in examples]
         ids_decoder = self.tokenizer_decoder(
