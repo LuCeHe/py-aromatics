@@ -224,7 +224,6 @@ class TwoTokenizersCollator:
             for example in examples
         ]
 
-
         # temporarily adjust for this call
         self.tokenizer_encoder.model_max_length = self.call_max_length_encoder
         ids_encoder = self.tokenizer_encoder(
@@ -258,6 +257,11 @@ class TwoTokenizersCollator:
         else:
             input_ids_encoder = input_ids_encoder[..., :self.final_max_length_encoder]
             attention_mask_encoder = attention_mask_encoder[..., :self.final_max_length_encoder]
+
+        # shuffle docs dimension
+        shuffle_idx = torch.randperm(input_ids_encoder.shape[0])
+        input_ids_encoder = input_ids_encoder[shuffle_idx]
+        attention_mask_encoder = attention_mask_encoder[shuffle_idx]
 
         output = {
             "input_ids": ids_decoder["input_ids"],
