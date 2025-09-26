@@ -528,6 +528,7 @@ repetitive_complaints = [
     'Trying with reduced length:',
     'torch.Size([',
     'Trainer.tokenizer is now deprecated.',
+    'truncating to ',
 ]
 
 
