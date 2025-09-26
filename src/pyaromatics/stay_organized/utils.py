@@ -515,6 +515,20 @@ def check_internet(host="8.8.8.8", port=53, timeout=3):
         return False
 
 
+repetitive_complaints = [
+    'Processing chunk starting at',
+    'Some weights of DebertaV2ForMaskedLM were',
+    'UserWarning: The sentencepiece',
+    'Some weights of the model checkpoint at bert-base-uncased were',
+    'Falling back to the sequential implementation of Mamba',
+    'You should probably TRAIN this model on a down-stream task',
+    '- This IS expected if you are initializing',
+    '- This IS NOT expected if you are ',
+    'The tokenizer has new PAD/BOS/EOS tokens t',
+    'Trying with reduced length:',
+    'torch.Size([',
+]
+
 
 def clean_outs(path=None):
     out_files = [os.path.join(path, d) for d in os.listdir(path) if d.endswith('.out')]
@@ -526,16 +540,17 @@ def clean_outs(path=None):
 
         # remove lines that start with "output shape: " and with "modulator shape: "
         lines = [l for l in lines if not ('output shape:' in l or 'modulator shape:' in l)]
-        lines = [l for l in lines if 'Processing chunk starting at' not in l]
-        lines = [l for l in lines if 'Some weights of DebertaV2ForMaskedLM were' not in l]
-        lines = [l for l in lines if 'UserWarning: The sentencepiece' not in l]
-        lines = [l for l in lines if 'Some weights of the model checkpoint at bert-base-uncased were' not in l]
-        lines = [l for l in lines if 'Falling back to the sequential implementation of Mamba' not in l]
-        lines = [l for l in lines if 'You should probably TRAIN this model on a down-stream task' not in l]
-        lines = [l for l in lines if '- This IS expected if you are initializing' not in l]
-        lines = [l for l in lines if '- This IS NOT expected if you are ' not in l]
-        lines = [l for l in lines if 'The tokenizer has new PAD/BOS/EOS tokens t' not in l]
+        # lines = [l for l in lines if 'Processing chunk starting at' not in l]
 
+        new_lines = ['Repetitive complaints']
+        for complaint_oi in repetitive_complaints:
+            lines_with_complaint = [l for l in lines if complaint_oi in l]
+            n_complaints = len(lines_with_complaint)
+            new_lines += [f'   {n_complaints} times: ' + lines_with_complaint[0]]
+
+            lines = [l for l in lines if not complaint_oi in l]
+
+        lines = new_lines + lines
         prev = None
         cleaned_lines = []
         for line in lines:
@@ -562,13 +577,10 @@ def clean_outs(path=None):
         lines = cleaned_lines
 
         # write it back
-        # new_out_file = out_file.replace('.out', '_cleaned.out')
-        new_out_file = out_file
+        new_out_file = out_file.replace('.out', '_cleaned.out')
+        # new_out_file = out_file
         with open(new_out_file, 'w') as f:
             f.writelines(lines)
-
-
-
 
 
 if __name__ == '__main__':
