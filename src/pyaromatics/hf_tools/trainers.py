@@ -274,6 +274,8 @@ class TimeOOMSafeTrainer(SFTTrainer):
     def training_step(self, *args, **kwargs):
         """Override training step with automatic length reduction on OOM."""
         try:
+            # manually make it fail
+            raise RuntimeError('cuda out of memory')
             return super().training_step(*args, **kwargs)
         except RuntimeError as e:
             if self._is_oom_error(e):
@@ -365,7 +367,7 @@ class TimeOOMSafeTrainer(SFTTrainer):
                 # Truncate inputs
                 reduced_inputs = self._truncate_inputs_docs(inputs, max_docs)
 
-                print(f"⚠️  Trying with reduced length: {max_docs} (original: {original_docs})")
+                print(f"⚠️  Trying with reduced docs: {max_docs} (original: {original_docs})")
 
                 # Clear cache and retry
                 torch.cuda.empty_cache()
@@ -380,7 +382,7 @@ class TimeOOMSafeTrainer(SFTTrainer):
                     raise e
 
         # If we get here, even minimum length failed
-        raise RuntimeError(f"Failed even at minimum length {self.min_sequence_length}. "
+        raise RuntimeError(f"Failed even at minimum docs {self.min_docs}. "
                            f"Consider reducing batch size or model size.")
 
 
