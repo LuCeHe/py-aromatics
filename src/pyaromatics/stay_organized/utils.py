@@ -527,6 +527,7 @@ repetitive_complaints = [
     'The tokenizer has new PAD/BOS/EOS tokens t',
     'Trying with reduced length:',
     'torch.Size([',
+    'Trainer.tokenizer is now deprecated.',
 ]
 
 
@@ -542,7 +543,7 @@ def clean_outs(path=None):
         lines = [l for l in lines if not ('output shape:' in l or 'modulator shape:' in l)]
         # lines = [l for l in lines if 'Processing chunk starting at' not in l]
 
-        new_lines = ['Repetitive complaints']
+        new_lines = ['Repetitive complaints\n']
         for complaint_oi in repetitive_complaints:
             lines_with_complaint = [l for l in lines if complaint_oi in l]
             if len(lines_with_complaint) == 0:
@@ -552,7 +553,7 @@ def clean_outs(path=None):
 
             lines = [l for l in lines if not complaint_oi in l]
 
-        lines = new_lines + lines
+        lines = new_lines + ['\n\n\n'] + lines
         prev = None
         cleaned_lines = []
         for line in lines:
