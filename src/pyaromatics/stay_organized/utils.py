@@ -545,6 +545,8 @@ def clean_outs(path=None):
         new_lines = ['Repetitive complaints']
         for complaint_oi in repetitive_complaints:
             lines_with_complaint = [l for l in lines if complaint_oi in l]
+            if len(lines_with_complaint) == 0:
+                continue
             n_complaints = len(lines_with_complaint)
             new_lines += [f'   {n_complaints} times: ' + lines_with_complaint[0]]
 
