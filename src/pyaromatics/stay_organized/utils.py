@@ -544,17 +544,17 @@ def clean_outs(path=None):
         lines = [l for l in lines if not ('output shape:' in l or 'modulator shape:' in l)]
         # lines = [l for l in lines if 'Processing chunk starting at' not in l]
 
-        new_lines = ['Repetitive complaints\n']
+        new_lines = ['\nRepetitive complaints\n']
         for complaint_oi in repetitive_complaints:
             lines_with_complaint = [l for l in lines if complaint_oi in l]
             if len(lines_with_complaint) == 0:
                 continue
             n_complaints = len(lines_with_complaint)
-            new_lines += [f'   {n_complaints} times: ' + lines_with_complaint[0]]
+            new_lines += [f'   more than {n_complaints} times: ' + lines_with_complaint[0]]
 
             lines = [l for l in lines if not complaint_oi in l]
 
-        lines = new_lines + ['\n\n\n'] + lines
+        lines = new_lines + ['\n'] * 3 + lines
         prev = None
         cleaned_lines = []
         for line in lines:
@@ -581,8 +581,8 @@ def clean_outs(path=None):
         lines = cleaned_lines
 
         # write it back
-        new_out_file = out_file.replace('.out', '_cleaned.out')
-        # new_out_file = out_file
+        # new_out_file = out_file.replace('.out', '_cleaned.out')
+        new_out_file = out_file
         with open(new_out_file, 'w') as f:
             f.writelines(lines)
 
