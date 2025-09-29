@@ -118,12 +118,14 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
         return model_path
 
     model_path = ensure_model_local(model_id, model_path)
-    kwargs = {
-        'device_map': 'auto',
-        'offload_buffers': True,
-        'offload_state_dict': True,
-        'offload_folder': offload_dir,
-    }
+    kwargs = {}
+    if not offload_dir is None:
+        kwargs = {
+            'device_map': 'auto',
+            'offload_buffers': True,
+            'offload_state_dict': True,
+            'offload_folder': offload_dir,
+        }
 
     if 'gemma' in model_id.lower():
         kwargs['attn_implementation'] = 'eager'
