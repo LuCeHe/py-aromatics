@@ -262,7 +262,7 @@ class TimeInterruptTrainer(SFTTrainer):
 
 
 
-class TimeOOMSafeTrainer(SFTTrainer):
+class OOMSaferTrainer(SFTTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.min_sequence_length = 16  # Minimum length to try
@@ -275,7 +275,7 @@ class TimeOOMSafeTrainer(SFTTrainer):
         """Override training step with automatic length reduction on OOM."""
         try:
             # manually make it fail
-            raise RuntimeError('cuda out of memory')
+            # raise RuntimeError('cuda out of memory')
             return super().training_step(*args, **kwargs)
         except RuntimeError as e:
             if self._is_oom_error(e):
@@ -311,7 +311,7 @@ class TimeOOMSafeTrainer(SFTTrainer):
                 max_length = max(max_length, self.min_sequence_length)
 
                 # Truncate inputs
-                reduced_inputs = self._truncate_inputs(inputs, max_length)
+                reduced_inputs = self._truncate_inputs_time(inputs, max_length)
 
                 print(f"⚠️  Trying with reduced length: {max_length} (original: {original_length})")
 
@@ -330,24 +330,6 @@ class TimeOOMSafeTrainer(SFTTrainer):
         # If we get here, even minimum length failed
         raise RuntimeError(f"Failed even at minimum length {self.min_sequence_length}. "
                            f"Consider reducing batch size or model size.")
-
-    def _get_max_sequence_length(self, inputs):
-        """Get the maximum sequence length from input tensors."""
-        max_length = 0
-        for key, value in inputs.items():
-            if isinstance(value, torch.Tensor) and len(value.shape) >= 2:
-                max_length = max(max_length, value.shape[-1])
-        return max_length
-
-
-
-    def _get_max_docs(self, inputs):
-        """Get the maximum sequence length from input tensors."""
-        max_docs = 0
-        for key, value in inputs.items():
-            if isinstance(value, torch.Tensor) and len(value.shape) > 2:
-                max_docs = max(max_docs, value.shape[0])
-        return max_docs
 
 
 
@@ -387,7 +369,7 @@ class TimeOOMSafeTrainer(SFTTrainer):
 
 
 
-    def _truncate_inputs(self, inputs, max_length):
+    def _truncate_inputs_time(self, inputs, max_length):
         print('truncating to', max_length)
         """Truncate all sequence tensors in inputs to max_length with padding-side deduction."""
         truncated = {}
@@ -413,14 +395,11 @@ class TimeOOMSafeTrainer(SFTTrainer):
 
     def _truncate_inputs_docs(self, inputs, max_docs):
         print('truncating to', max_docs)
-        """Truncate all sequence tensors in inputs to max_length with padding-side deduction."""
+        """Truncate all sequence tensors in inputs to max_docs."""
         truncated = {}
 
-        # Deduce padding side at batch level (fallbacks to tokenizer if available)
-        padding_side = self._deduce_padding_side(inputs)
-
         for key, value in inputs.items():
-            print('', key, value.shape if isinstance(value, torch.Tensor) else None)
+            print('    ', key, value.shape if isinstance(value, torch.Tensor) else None)
             if isinstance(value, torch.Tensor) and len(value.shape) > 2:
                 if value.shape[0] > max_docs:
                     truncated[key] = value[:max_docs]
@@ -494,10 +473,27 @@ class TimeOOMSafeTrainer(SFTTrainer):
         return "right"
 
 
+    def _get_max_sequence_length(self, inputs):
+        """Get the maximum sequence length from input tensors."""
+        max_length = 0
+        for key, value in inputs.items():
+            if isinstance(value, torch.Tensor) and len(value.shape) >= 2:
+                max_length = max(max_length, value.shape[-1])
+        return max_length
+
+    def _get_max_docs(self, inputs):
+        """Get the maximum sequence length from input tensors."""
+        max_docs = 0
+        for key, value in inputs.items():
+            if isinstance(value, torch.Tensor) and len(value.shape) > 2:
+                max_docs = max(max_docs, value.shape[0])
+        return max_docs
 
 
 
-class PlusTrainer(TimeInterruptTrainer, TimeOOMSafeTrainer):
+
+
+class PlusTrainer(TimeInterruptTrainer, OOMSaferTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

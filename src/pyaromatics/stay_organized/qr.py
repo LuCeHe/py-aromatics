@@ -102,6 +102,5 @@ def decode_qr_pic(path):
 
 if __name__ == "__main__":
     desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-    qr_path = os.path.join(desktop, "WIN_20250929_11_05_42_Pro.jpg")
-
+    qr_path = os.path.join(desktop, "WIN_20250929_19_23_58_Pro.jpg")
     decode_qr_pic(qr_path)
