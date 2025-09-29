@@ -146,3 +146,37 @@ def get_totp(keepass_password, db_path, entry_title=None, entry_username=None):
         return
 
     return code
+
+
+def get_password_by_title(keepass_password, db_path, entry_title=None, entry_username=None, keyfile_path=None):
+    """
+    Return the password for the first KeePass entry that matches title (and optional username).
+    Returns None on error or if entry not found.
+    """
+    if not db_path:
+        print("No path provided. Exiting.")
+        return None
+
+    try:
+        # open the database (password or None allowed)
+        if keyfile_path:
+            kp = PyKeePass(db_path, password=keepass_password or None, keyfile=keyfile_path)
+        else:
+            kp = PyKeePass(db_path, password=keepass_password or None)
+    except Exception as e:
+        print("Error opening database:", e)
+        return None
+
+    try:
+        # find the first matching entry
+        entry = kp.find_entries(title=entry_title, username=entry_username, first=True)
+    except Exception as e:
+        print("Error searching for entry:", e)
+        return None
+
+    if not entry:
+        print("Entry not found. Check title/username/path.")
+        return None
+
+    # entry.password contains the (decrypted) password if database opened successfully
+    return entry.password
