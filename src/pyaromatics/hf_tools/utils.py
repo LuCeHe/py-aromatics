@@ -118,7 +118,7 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
         return model_path
 
     model_path = ensure_model_local(model_id, model_path)
-    kwargs = {}
+    kwargs = {'device_map': 'auto'}  # , 'torch_dtype': torch.bfloat16}
     if not offload_dir is None:
         kwargs = {
             'device_map': 'auto',
