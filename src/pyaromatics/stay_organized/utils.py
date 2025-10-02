@@ -529,11 +529,14 @@ repetitive_complaints = [
     'torch.Size([',
     'Trainer.tokenizer is now deprecated.',
     'truncating to ',
+    'epetitive complaints',
+    '    more than ',
 ]
 
 
 def clean_outs(path=None):
     out_files = [os.path.join(path, d) for d in os.listdir(path) if d.endswith('.out')]
+    repetitive_path = os.path.join(path, 'repetitive_complaints.txt')
 
     for out_file in tqdm(out_files):
         # open it
@@ -544,17 +547,21 @@ def clean_outs(path=None):
         lines = [l for l in lines if not ('output shape:' in l or 'modulator shape:' in l)]
         # lines = [l for l in lines if 'Processing chunk starting at' not in l]
 
-        new_lines = ['\nRepetitive complaints\n']
+        complaints = ['\n\nRepetitive complaints\n'] + ['      ' + out_file + '\n']
+
         for complaint_oi in repetitive_complaints:
             lines_with_complaint = [l for l in lines if complaint_oi in l]
             if len(lines_with_complaint) == 0:
                 continue
             n_complaints = len(lines_with_complaint)
-            new_lines += [f'   more than {n_complaints} times: ' + lines_with_complaint[0]]
+            complaints += [f'   {n_complaints} times: ' + lines_with_complaint[0] + '\n']
 
             lines = [l for l in lines if not complaint_oi in l]
 
-        lines = new_lines + ['\n'] * 3 + lines
+        with open(repetitive_path, 'a') as f:
+            f.writelines(complaints)
+
+
         prev = None
         cleaned_lines = []
         for line in lines:
@@ -562,8 +569,7 @@ def clean_outs(path=None):
             # Check if line looks like tqdm progress
             if (all(token in line for token in ["%|", "/", " [", "<"])
                     and ("it/s" in line or "s/it" in line)
-                    and not 'eval_loss' in line) \
-                    :  # avoid eval_loss progress bars
+                    and not 'eval_loss' in line):  # avoid eval_loss progress bars
                 prev = line  # overwrite until the last one
 
             elif line.strip() == "":
