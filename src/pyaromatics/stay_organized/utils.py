@@ -529,8 +529,8 @@ repetitive_complaints = [
     'torch.Size([',
     'Trainer.tokenizer is now deprecated.',
     'truncating to ',
-    'epetitive complaints',
-    '    more than ',
+    # 'epetitive complaints',
+    # '    more than ',
 ]
 
 
@@ -547,8 +547,7 @@ def clean_outs(path=None):
         lines = [l for l in lines if not ('output shape:' in l or 'modulator shape:' in l)]
         # lines = [l for l in lines if 'Processing chunk starting at' not in l]
 
-        complaints = ['\n\nRepetitive complaints\n'] + ['      ' + out_file + '\n']
-
+        complaints = ['\n\n      ' + out_file + '\n']
         for complaint_oi in repetitive_complaints:
             lines_with_complaint = [l for l in lines if complaint_oi in l]
             if len(lines_with_complaint) == 0:
