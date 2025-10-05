@@ -493,7 +493,9 @@ class OOMSaferTrainer(SFTTrainer):
 
 
 
-class PlusTrainer(TimeInterruptTrainer, OOMSaferTrainer):
+# class PlusTrainer(TimeInterruptTrainer, OOMSaferTrainer):
+
+class PlusTrainer(TimeInterruptTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
