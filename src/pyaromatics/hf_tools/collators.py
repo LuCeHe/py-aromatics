@@ -263,12 +263,15 @@ class TwoTokenizersCollator:
         input_ids_encoder = input_ids_encoder[shuffle_idx]
         attention_mask_encoder = attention_mask_encoder[shuffle_idx]
 
+        # change pad in labels to -100
+        labels = ids_decoder["input_ids"].clone()
+        labels[ids_decoder["attention_mask"] == 0] = -100
         output = {
             "input_ids": ids_decoder["input_ids"],
             "input_ids_encoder": input_ids_encoder,
             "attention_mask": ids_decoder["attention_mask"],
             "attention_mask_encoder": attention_mask_encoder,
-            "labels": ids_decoder["input_ids"].clone(),
+            "labels": labels
         }
 
         if 0 < self.mlm_probability < 1:
@@ -313,6 +316,70 @@ def test_double_collator():
     output = collator(examples)
     for k, v in output.items():
         print(f"{k}: {v.shape}")
+
+
+
+def test_collator_vs_gpt2_default():
+    import os, time, string, random
+    import wandb
+
+    from pyaromatics.hf_tools.utils import get_tokenizer
+    # from pyaromatics.hf_tools.collators import get_collator
+
+    from crunchy_llm.neuron_utils.helpers_models import evaluation
+    from crunchy_llm.dataset_utils.helpers_datasets import get_dataset
+    from bridge_official.paths import DATADIR, EXPSDIR
+
+    named_tuple = time.localtime()  # get struct_time
+    time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
+    characters = string.ascii_letters + string.digits
+    random_string = ''.join(random.choice(characters) for i in range(5))
+    EXPDIR = os.path.join(EXPSDIR, time_string + random_string + '_testcollator')
+
+
+    run = wandb.init(project='testing_collator', reinit=True, mode="offline")
+
+
+
+    test_dataset_name = 'ptb'
+    seed = 0
+    batch_size = 32
+    max_seq_length = 48
+    notes = 'simple_test_onlytesting_rightpad'
+
+    encoder_name = 'gpt2'
+    eval_split = 'validation'
+
+    from transformers import GPT2LMHeadModel
+    model = GPT2LMHeadModel.from_pretrained(encoder_name)
+    tokenizer = get_tokenizer(encoder_name, notes, save_dir=DATADIR, max_seq_length=max_seq_length)
+
+    my_collator = get_collator(
+        dataset_name=test_dataset_name,
+        tokenizer_encoder=tokenizer,
+        tokenizer_decoder=tokenizer,
+        notes=notes,
+        eval=True,
+    )
+
+    collators = [None, my_collator]
+
+    for collator in collators:
+        print('-' * 50)
+        print('Testing collator', collator)
+        dataset = get_dataset(dataset_name=test_dataset_name, notes=notes)
+        res = evaluation(
+            model, tokenizer, dataset, dataset_name=test_dataset_name, eval_split=eval_split,
+            batch_size=batch_size, seed=seed, output_dir=EXPDIR,
+            notes=notes,
+            collator=collator
+        )
+        print('res', res)
+
+
+    run.finish()
+
+
 
 
 def get_collator(tokenizer_encoder, tokenizer_decoder, notes='', dataset_name='', eval=False):
