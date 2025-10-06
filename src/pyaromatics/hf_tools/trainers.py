@@ -1,6 +1,6 @@
 from typing import List, Any, Optional, Union
 
-import time
+import time, random
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -68,7 +68,7 @@ class TimeInterruptTrainer(SFTTrainer):
                 self.accelerator.prepare(model)
                 if self.is_deepspeed_enabled
                    or (
-                               self.is_fsdp_enabled and self.accelerator.mixed_precision != "fp8" and not self.args.torch_compile)
+                           self.is_fsdp_enabled and self.accelerator.mixed_precision != "fp8" and not self.args.torch_compile)
                 else self.accelerator.prepare_model(model, evaluation_mode=True)
             )
             self.model_preparation_time = round(time.time() - start_time, 4)
@@ -260,30 +260,35 @@ class TimeInterruptTrainer(SFTTrainer):
         return EvalLoopOutput(predictions=all_preds, label_ids=all_labels, metrics=metrics, num_samples=num_samples)
 
 
-
-
 class OOMSaferTrainer(SFTTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.min_sequence_length = 16  # Minimum length to try
-        self.min_docs = 2 # assuming (n_docs, batch_size, seq_len) for the encoder
-        self.length_reduction_factor = 0.75  # Reduce by 25% each time
-        self.docs_or_length = 'docs'  # 'length' or 'docs' to reduce sequence length or number of documents
-        assert self.docs_or_length in ('length', 'docs')
+        # assuming encoder batch shape (docs, batch, length)
+        self.shape_mins = {
+            'docs': 2,
+            'batch': 2,
+            'length': 16,
+        }
+
+        self.reduction_factor = 0.75  # Reduce by 25% each time
+        self.axis_to_oom_resize = 'docs'  # 'length' or 'docs' to reduce sequence length or number of documents
+        assert self.axis_to_oom_resize in ('length', 'docs', 'batch', 'random', 'rotate')
+        if self.axis_to_oom_resize in ['random', 'rotate']:
+            raise NotImplementedError(f"{self.axis_to_oom_resize} not implemented yet")
+
 
     def training_step(self, *args, **kwargs):
         """Override training step with automatic length reduction on OOM."""
         try:
             # manually make it fail
             # raise RuntimeError('cuda out of memory')
-            return super().training_step(*args, **kwargs)
+            output = super().training_step(*args, **kwargs)
+            return output
         except RuntimeError as e:
+            print(e)
             if self._is_oom_error(e):
-                print("🔄 OOM detected, attempting length reduction...")
-                if self.docs_or_length == 'length':
-                    return self._retry_with_reduced_length(*args, **kwargs)
-                else:
-                    return self._retry_with_reduced_docs(*args, **kwargs)
+                print("🔄 OOM detected, attempting reduction...")
+                return self._retry_with_reduced(*args, **kwargs)
 
             else:
                 raise e
@@ -297,29 +302,38 @@ class OOMSaferTrainer(SFTTrainer):
             'out of memory'
         ])
 
-    def _retry_with_reduced_length(self, *args, **kwargs):
+    def _retry_with_reduced(self, *args, **kwargs):
         """Retry training step with progressively reduced sequence length."""
         # Get current max length from inputs
-        model, inputs, num_items_in_batch = args
-        max_length = self._get_max_sequence_length(inputs)
-        original_length = max_length
 
-        while max_length >= self.min_sequence_length:
+        reduce_axis = self.axis_to_oom_resize
+        model, inputs, num_items_in_batch = args
+
+        maxs = self._get_shape_maxs(inputs)
+        mins = self.shape_mins
+        reducible = [ax for ax in ['docs', 'batch', 'length'] if maxs[ax] > mins[ax]]
+        max_axis = maxs[reduce_axis]
+        min_axis = mins[reduce_axis]
+        original_axis = max_axis
+
+        while max_axis >= min_axis:
             try:
                 # Reduce length
-                max_length = int(max_length * self.length_reduction_factor)
-                max_length = max(max_length, self.min_sequence_length)
+                max_axis = int(max_axis * self.reduction_factor)
 
-                # Truncate inputs
-                reduced_inputs = self._truncate_inputs_time(inputs, max_length)
+                print(f"⚠️  Trying with reduced {reduce_axis}: {max_axis} (original: {original_axis})")
 
-                print(f"⚠️  Trying with reduced length: {max_length} (original: {original_length})")
+                if max_axis < min_axis:
+                    break
+
+                reduced_inputs = self._truncate_inputs(inputs, max_axis, reduce_axis=reduce_axis)
 
                 # Clear cache and retry
                 torch.cuda.empty_cache()
 
                 args = (model, reduced_inputs, num_items_in_batch)
-                return super().training_step(*args, **kwargs)
+                output = super().training_step(*args, **kwargs)
+                return output
 
             except RuntimeError as e:
                 if self._is_oom_error(e):
@@ -328,85 +342,43 @@ class OOMSaferTrainer(SFTTrainer):
                     raise e
 
         # If we get here, even minimum length failed
-        raise RuntimeError(f"Failed even at minimum length {self.min_sequence_length}. "
+        raise RuntimeError(f"Failed even at minimum {reduce_axis} axis {min_axis}. "
                            f"Consider reducing batch size or model size.")
 
-
-
-    def _retry_with_reduced_docs(self, *args, **kwargs):
-        """Retry training step with progressively reduced sequence length."""
-        # Get current max length from inputs
-        model, inputs, num_items_in_batch = args
-        max_docs = self._get_max_docs(inputs)
-        original_docs = max_docs
-
-        while max_docs >= self.min_docs:
-            try:
-                # Reduce length
-                max_docs = int(max_docs * self.length_reduction_factor)
-                max_docs = max(max_docs, self.min_sequence_length)
-
-                # Truncate inputs
-                reduced_inputs = self._truncate_inputs_docs(inputs, max_docs)
-
-                print(f"⚠️  Trying with reduced docs: {max_docs} (original: {original_docs})")
-
-                # Clear cache and retry
-                torch.cuda.empty_cache()
-
-                args = (model, reduced_inputs, num_items_in_batch)
-                return super().training_step(*args, **kwargs)
-
-            except RuntimeError as e:
-                if self._is_oom_error(e):
-                    continue  # Try with even smaller length
-                else:
-                    raise e
-
-        # If we get here, even minimum length failed
-        raise RuntimeError(f"Failed even at minimum docs {self.min_docs}. "
-                           f"Consider reducing batch size or model size.")
-
-
-
-    def _truncate_inputs_time(self, inputs, max_length):
-        print('truncating to', max_length)
+    def _truncate_inputs(self, inputs, max_axis, reduce_axis='batch'):
         """Truncate all sequence tensors in inputs to max_length with padding-side deduction."""
         truncated = {}
 
         # Deduce padding side at batch level (fallbacks to tokenizer if available)
-        padding_side = self._deduce_padding_side(inputs)
+        padding_side = None
+        if reduce_axis == 'length':
+            padding_side = self._deduce_padding_side(inputs)
+
+        # slices = [slice(None)] * 3  # [:, :, :, ...] dynamically
+        # slices[axis] = slice(-max_axis, None)  # only modify the desired axis
+        # slices = tuple(slices)
+        # print(slices)
 
         for key, value in inputs.items():
-            print('', key, value.shape if isinstance(value, torch.Tensor) else None)
+            truncated[key] = value
             if isinstance(value, torch.Tensor) and len(value.shape) >= 2:
-                if value.shape[-1] > max_length:
+                print('      ', key, value.shape)
+                if reduce_axis == 'length':
                     if padding_side == "left":
-                        truncated[key] = value[..., -max_length:]
+                        truncated[key] = value[..., -max_axis:]
                     else:
-                        truncated[key] = value[..., :max_length]
-                else:
-                    truncated[key] = value
-            else:
-                truncated[key] = value
+                        truncated[key] = value[..., :max_axis]
 
-        return truncated
+                elif reduce_axis == 'docs' and len(value.shape) > 2:
+                    truncated[key] = value[:max_axis]
 
-
-    def _truncate_inputs_docs(self, inputs, max_docs):
-        print('truncating to', max_docs)
-        """Truncate all sequence tensors in inputs to max_docs."""
-        truncated = {}
-
-        for key, value in inputs.items():
-            print('    ', key, value.shape if isinstance(value, torch.Tensor) else None)
-            if isinstance(value, torch.Tensor) and len(value.shape) > 2:
-                if value.shape[0] > max_docs:
-                    truncated[key] = value[:max_docs]
-                else:
-                    truncated[key] = value
-            else:
-                truncated[key] = value
+                elif reduce_axis == 'batch':
+                    if len(value.shape) > 2:
+                        truncated[key] = value[:, :max_axis]
+                    else:
+                        truncated[key] = value[:max_axis]
+                key_spaces = ' ' * len(key)
+                print('      ', key_spaces, truncated[key].shape)
 
         return truncated
 
@@ -472,31 +444,22 @@ class OOMSaferTrainer(SFTTrainer):
 
         return "right"
 
-
-    def _get_max_sequence_length(self, inputs):
-        """Get the maximum sequence length from input tensors."""
-        max_length = 0
-        for key, value in inputs.items():
-            if isinstance(value, torch.Tensor) and len(value.shape) >= 2:
-                max_length = max(max_length, value.shape[-1])
-        return max_length
-
-    def _get_max_docs(self, inputs):
+    def _get_shape_maxs(self, inputs):
         """Get the maximum sequence length from input tensors."""
         max_docs = 0
+        max_batch_size = 0
+        max_length = 0
+
         for key, value in inputs.items():
             if isinstance(value, torch.Tensor) and len(value.shape) > 2:
                 max_docs = max(max_docs, value.shape[0])
-        return max_docs
+                max_batch_size = max(max_batch_size, value.shape[1])
+                max_length = max(max_length, value.shape[2])
+        # return max_docs, max_batch_size, max_length
+        return {'docs': max_docs, 'batch': max_batch_size, 'length': max_length}
 
 
-
-
-
-# class PlusTrainer(TimeInterruptTrainer, OOMSaferTrainer):
-
-class PlusTrainer(TimeInterruptTrainer):
+# class PlusTrainer(TimeInterruptTrainer):
+class PlusTrainer(TimeInterruptTrainer, OOMSaferTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-
