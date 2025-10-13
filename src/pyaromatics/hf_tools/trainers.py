@@ -316,12 +316,13 @@ class OOMSaferTrainer(SFTTrainer):
         min_axis = mins[reduce_axis]
         original_axis = max_axis
 
+
         while max_axis >= min_axis:
             try:
                 # Reduce length
                 max_axis = int(max_axis * self.reduction_factor)
 
-                print(f"⚠️  Trying with reduced {reduce_axis}: {max_axis} (original: {original_axis})")
+                print(f"\n\n⚠️  Trying with reduced {reduce_axis}: {max_axis} (original: {original_axis})")
 
                 if max_axis < min_axis:
                     break
