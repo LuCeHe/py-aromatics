@@ -311,7 +311,7 @@ class OOMSaferTrainer(SFTTrainer):
 
         maxs = self._get_shape_maxs(inputs)
         mins = self.shape_mins
-        reducible = [ax for ax in ['docs', 'batch', 'length'] if maxs[ax] > mins[ax]]
+        reducible = [ax_name for ax_name in ['docs', 'batch', 'length'] if maxs[ax_name] > mins[ax_name]]
         max_axis = maxs[reduce_axis]
         min_axis = mins[reduce_axis]
         original_axis = max_axis
@@ -322,7 +322,7 @@ class OOMSaferTrainer(SFTTrainer):
                 # Reduce length
                 max_axis = int(max_axis * self.reduction_factor)
 
-                print(f"\n\n⚠️  Trying with reduced {reduce_axis}: {max_axis} (original: {original_axis})")
+                print(f"\n\n⚠️  Trying with reduced {reduce_axis}: {max_axis} (original: {original_axis} of ({maxs})")
 
                 if max_axis < min_axis:
                     break
@@ -342,9 +342,17 @@ class OOMSaferTrainer(SFTTrainer):
                 else:
                     raise e
 
+
+        # if reduce_axis was docs, then try batch, then try length
+        if reduce_axis in ['docs', 'batch']:
+            other_axis = 'batch' if reduce_axis == 'docs' else 'length'
+            if other_axis in reducible:
+                print(f"🔄 Switching to reducing {other_axis} axis.")
+                self.axis_to_oom_resize = other_axis
+                return self._retry_with_reduced(*args, **kwargs)
+
         # If we get here, even minimum length failed
-        raise RuntimeError(f"Failed even at minimum {reduce_axis} axis {min_axis}. "
-                           f"Consider reducing batch size or model size.")
+        raise RuntimeError(f"Failed to run training step even with all axes at minimum: {mins} (original {maxs})")
 
     def _truncate_inputs(self, inputs, max_axis, reduce_axis='batch'):
         """Truncate all sequence tensors in inputs to max_length with padding-side deduction."""
