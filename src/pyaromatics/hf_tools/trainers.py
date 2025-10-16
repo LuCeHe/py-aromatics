@@ -375,8 +375,8 @@ class OOMSaferTrainer(SFTTrainer):
         try:
             # manually make it fail
             # raise RuntimeError('cuda out of memory')
-            output = super().training_step(*args, **kwargs)
-            # output = self.safe_training_step(args, kwargs)
+            # output = super().training_step(*args, **kwargs)
+            output = self.safe_training_step(args, kwargs)
             return output
         except RuntimeError as e:
             print(e)
