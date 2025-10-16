@@ -1,4 +1,4 @@
-import time, GPUtil, psutil, traceback
+import time, GPUtil, psutil, traceback, gc
 
 from typing import Optional
 import numpy as np
@@ -387,10 +387,13 @@ class OOMSaferTrainer(SFTTrainer):
                 reduced_inputs = self._truncate_inputs(reduced_inputs, max_axis, reduce_axis=reduce_axis)
 
                 # Clear cache and retry
+                gc.collect()
                 torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+                time.sleep(0.5)
 
-                new_args = (model, reduced_inputs, num_items_in_batch)
-                output = super().training_step(*new_args, **kwargs)
+                args = (model, reduced_inputs, num_items_in_batch)
+                output = super().training_step(*args, **kwargs)
                 return output
 
             except RuntimeError as e:
