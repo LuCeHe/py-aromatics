@@ -429,7 +429,7 @@ class OOMSaferTrainer(SFTTrainer):
             args = (model, reduced_inputs, num_items_in_batch)
 
             # output = super().training_step(*args, **kwargs)
-            output = self.safe_training_step(*args, **kwargs)
+            output = self.safe_training_step(args, kwargs)
             if not output is None:
                 return output
 
