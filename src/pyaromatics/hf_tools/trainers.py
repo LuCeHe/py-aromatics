@@ -1,4 +1,4 @@
-import time, GPUtil, psutil, traceback, gc, tempfile
+import time, GPUtil, psutil, traceback, gc, tempfile, os
 
 from multiprocessing import get_context
 from typing import Optional
@@ -454,25 +454,26 @@ class OOMSaferTrainer(SFTTrainer):
 
         model, inputs, num_items_in_batch = args
 
-        # 1️⃣ Save the full model (architecture + weights) to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pt") as tmp:
-            torch.save(model, tmp.name)
-            model_path = tmp.name
-
         # 2️⃣ Move inputs to CPU (only small batch, not full model)
         cpu_inputs = {k: v.detach().cpu() if torch.is_tensor(v) else v
                       for k, v in inputs.items()}
 
         output = None
+
+        # 1️⃣ Save the full model (architecture + weights) to a temporary file
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pt")
+        model_path = tmp.name
+        tmp.close()  # close so other process can read it
+
         with ctx.Pool(1) as pool:
             # async_result = pool.apply_async(_run_training_step, (super().training_step, args, kwargs))
             async_result = pool.apply_async(
                 _run_training_step_in_worker,
                 (super().training_step,
-                model_path,
-                cpu_inputs,
-                num_items_in_batch,
-                kwargs
+                 model_path,
+                 cpu_inputs,
+                 num_items_in_batch,
+                 kwargs)
 
             )
 
@@ -487,6 +488,11 @@ class OOMSaferTrainer(SFTTrainer):
                     time.sleep(0.5)
                 else:
                     raise e
+
+            finally:
+                # Ensure the temp file is removed even if worker crashes
+                if os.path.exists(model_path):
+                    os.remove(model_path)
 
         return output
 
