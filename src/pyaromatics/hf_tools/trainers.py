@@ -261,7 +261,7 @@ class TimeInterruptTrainer(SFTTrainer):
 
 
 def check_performance(tensors):
-
+    print('\n\n')
     print('='*80)
 
     print('-' * 50)
@@ -307,6 +307,8 @@ def check_performance(tensors):
     print(f"  Available: {mem.available / (1024 ** 3):.2f} GB")
     print(f"  Used: {mem.used / (1024 ** 3):.2f} GB")
     print(f"  Memory Usage: {mem.percent}%")
+
+    print('\n\n')
 
 
 
