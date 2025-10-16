@@ -1,4 +1,4 @@
-import time, GPUtil, psutil, traceback, gc
+import time, GPUtil, psutil, traceback, gc, tempfile
 
 from multiprocessing import get_context
 from typing import Optional
@@ -315,6 +315,44 @@ def _run_training_step(fn, args, kwargs):
     return fn(*args, **kwargs)
 
 
+def _run_training_step_in_worker(
+        training_step_fn,
+        model_path, cpu_inputs, num_items_in_batch, kwargs):
+    import torch
+    from accelerate import Accelerator
+
+    # Clear cache and retry
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+
+    # 1️⃣ Load the full model (architecture + weights)
+    model = torch.load(model_path, map_location="cpu")  # loaded on CPU first
+
+    # 2️⃣ Move model to GPU
+    # model.to("cuda")
+    accelerator = Accelerator()
+    model = accelerator.prepare_model(model, training=True)
+
+    # 3️⃣ Move inputs to GPU
+    gpu_inputs = {k: v.to("cuda") if torch.is_tensor(v) else v
+                  for k, v in cpu_inputs.items()}
+
+    # 4️⃣ Run one training step (forward + backward)
+    args = (model, gpu_inputs, num_items_in_batch)
+    output = training_step_fn(*args, **kwargs)
+
+    # 5️⃣ Clean up
+    del model
+
+    # Clear cache and retry
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+
+    return output
+
+
 class OOMSaferTrainer(SFTTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -337,8 +375,8 @@ class OOMSaferTrainer(SFTTrainer):
         try:
             # manually make it fail
             # raise RuntimeError('cuda out of memory')
-            # output = super().training_step(*args, **kwargs)
-            output = self.safe_training_step(args, kwargs)
+            output = super().training_step(*args, **kwargs)
+            # output = self.safe_training_step(args, kwargs)
             return output
         except RuntimeError as e:
             print(e)
@@ -414,9 +452,29 @@ class OOMSaferTrainer(SFTTrainer):
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
 
+        model, inputs, num_items_in_batch = args
+
+        # 1️⃣ Save the full model (architecture + weights) to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pt") as tmp:
+            torch.save(model, tmp.name)
+            model_path = tmp.name
+
+        # 2️⃣ Move inputs to CPU (only small batch, not full model)
+        cpu_inputs = {k: v.detach().cpu() if torch.is_tensor(v) else v
+                      for k, v in inputs.items()}
+
         output = None
         with ctx.Pool(1) as pool:
-            async_result = pool.apply_async(_run_training_step, (super().training_step, args, kwargs))
+            # async_result = pool.apply_async(_run_training_step, (super().training_step, args, kwargs))
+            async_result = pool.apply_async(
+                _run_training_step_in_worker,
+                (super().training_step,
+                model_path,
+                cpu_inputs,
+                num_items_in_batch,
+                kwargs
+
+            )
 
             try:
                 output = async_result.get(timeout=None)
