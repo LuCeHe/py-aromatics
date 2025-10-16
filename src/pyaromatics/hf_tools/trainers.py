@@ -338,7 +338,7 @@ class OOMSaferTrainer(SFTTrainer):
             # manually make it fail
             # raise RuntimeError('cuda out of memory')
             # output = super().training_step(*args, **kwargs)
-            output = self.safe_training_step(*args, **kwargs)
+            output = self.safe_training_step(args, kwargs)
             return output
         except RuntimeError as e:
             print(e)
@@ -406,7 +406,7 @@ class OOMSaferTrainer(SFTTrainer):
         # If we get here, even minimum length failed
         raise RuntimeError(f"Failed to run training step even with all axes at minimum: {mins} (original {maxs})")
 
-    def safe_training_step(self, *args, **kwargs):
+    def safe_training_step(self, args, kwargs):
         ctx = get_context("spawn")
 
         # Clear cache and retry
@@ -422,11 +422,11 @@ class OOMSaferTrainer(SFTTrainer):
                 output = async_result.get(timeout=None)
 
             except (RuntimeError, TimeoutError) as e:
-                if self._is_oom_error(e):
-                    reduced_inputs = args[1]
-                    check_performance(tensors=list(reduced_inputs.values()))
-                    time.sleep(0.5)
+                reduced_inputs = args[1]
+                check_performance(tensors=list(reduced_inputs.values()))
 
+                if self._is_oom_error(e):
+                    time.sleep(0.5)
                 else:
                     raise e
 
