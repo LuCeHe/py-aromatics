@@ -1,7 +1,6 @@
-import time, GPUtil, psutil, traceback, gc, tempfile, os
+from typing import List, Any, Optional, Union, GPUtil, psutil, traceback
 
-from multiprocessing import get_context
-from typing import Optional
+import time, random
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -262,8 +261,8 @@ class TimeInterruptTrainer(SFTTrainer):
 
 
 def check_performance(tensors):
-    print('\n\n')
-    print('=' * 80)
+
+    print('='*80)
 
     print('-' * 50)
     traceback.print_exc()
@@ -292,6 +291,8 @@ def check_performance(tensors):
         print(f"  Memory: {gpu.memoryUsed}MB / {gpu.memoryTotal}MB")
         print(f"  Temperature: {gpu.temperature} °C")
 
+
+
     # --- CPU Info ---
     print("\nCPU Info:")
     print(f"  Physical cores: {psutil.cpu_count(logical=False)}")
@@ -307,50 +308,6 @@ def check_performance(tensors):
     print(f"  Used: {mem.used / (1024 ** 3):.2f} GB")
     print(f"  Memory Usage: {mem.percent}%")
 
-    print('\n\n')
-
-
-def _run_training_step(fn, args, kwargs):
-    """Helper to run in subprocess."""
-    return fn(*args, **kwargs)
-
-
-def _run_training_step_in_worker(
-        training_step_fn,
-        model_path, cpu_inputs, num_items_in_batch, kwargs):
-    import torch
-    from accelerate import Accelerator
-
-    # Clear cache and retry
-    gc.collect()
-    torch.cuda.empty_cache()
-    torch.cuda.synchronize()
-
-    # 1️⃣ Load the full model (architecture + weights)
-    model = torch.load(model_path, map_location="cpu")  # loaded on CPU first
-
-    # 2️⃣ Move model to GPU
-    # model.to("cuda")
-    accelerator = Accelerator()
-    model = accelerator.prepare_model(model, training=True)
-
-    # 3️⃣ Move inputs to GPU
-    gpu_inputs = {k: v.to("cuda") if torch.is_tensor(v) else v
-                  for k, v in cpu_inputs.items()}
-
-    # 4️⃣ Run one training step (forward + backward)
-    args = (model, gpu_inputs, num_items_in_batch)
-    output = training_step_fn(*args, **kwargs)
-
-    # 5️⃣ Clean up
-    del model
-
-    # Clear cache and retry
-    gc.collect()
-    torch.cuda.empty_cache()
-    torch.cuda.synchronize()
-
-    return output
 
 
 class OOMSaferTrainer(SFTTrainer):
@@ -369,14 +326,13 @@ class OOMSaferTrainer(SFTTrainer):
         if self.axis_to_oom_resize in ['random', 'rotate']:
             raise NotImplementedError(f"{self.axis_to_oom_resize} not implemented yet")
 
+
     def training_step(self, *args, **kwargs):
-        print('are kwargs consistent?', kwargs)
         """Override training step with automatic length reduction on OOM."""
         try:
             # manually make it fail
             # raise RuntimeError('cuda out of memory')
-            # output = super().training_step(*args, **kwargs)
-            output = self.safe_training_step(args, kwargs)
+            output = super().training_step(*args, **kwargs)
             return output
         except RuntimeError as e:
             print(e)
@@ -410,28 +366,33 @@ class OOMSaferTrainer(SFTTrainer):
         min_axis = mins[reduce_axis]
         original_axis = max_axis
 
-        reduced_inputs = inputs
+
         while max_axis >= min_axis:
-            # Reduce length
-            max_axis = int(max_axis * self.reduction_factor)
+            try:
+                # Reduce length
+                max_axis = int(max_axis * self.reduction_factor)
 
-            new_maxs = self._get_shape_maxs(reduced_inputs)
+                print(f"\n\n⚠️  Trying with reduced {reduce_axis}: {max_axis} (original: {original_axis} of ({maxs})")
 
-            print(f"\n\n⚠️  Trying with reduced {reduce_axis} to {max_axis}")
-            print(f"                   original: {original_axis} of {maxs}")
-            print(f"                   previous: {new_maxs[reduce_axis]} of {new_maxs}")
+                if max_axis < min_axis:
+                    break
 
-            if max_axis < min_axis:
-                break
+                reduced_inputs = self._truncate_inputs(inputs, max_axis, reduce_axis=reduce_axis)
 
-            reduced_inputs = self._truncate_inputs(reduced_inputs, max_axis, reduce_axis=reduce_axis)
+                # Clear cache and retry
+                torch.cuda.empty_cache()
 
-            args = (model, reduced_inputs, num_items_in_batch)
-
-            # output = super().training_step(*args, **kwargs)
-            output = self.safe_training_step(args, kwargs)
-            if not output is None:
+                new_args = (model, reduced_inputs, num_items_in_batch)
+                output = super().training_step(*new_args, **kwargs)
                 return output
+
+            except RuntimeError as e:
+                if self._is_oom_error(e):
+                    check_performance(tensors=list(reduced_inputs.values()))
+                    continue  # Try with even smaller length
+                else:
+                    raise e
+
 
         # if reduce_axis was docs, then try batch, then try length
         if reduce_axis in ['docs', 'batch']:
@@ -443,58 +404,6 @@ class OOMSaferTrainer(SFTTrainer):
 
         # If we get here, even minimum length failed
         raise RuntimeError(f"Failed to run training step even with all axes at minimum: {mins} (original {maxs})")
-
-    def safe_training_step(self, args, kwargs):
-        ctx = get_context("spawn")
-
-        # Clear cache and retry
-        gc.collect()
-        torch.cuda.empty_cache()
-        torch.cuda.synchronize()
-
-        model, inputs, num_items_in_batch = args
-
-        # 2️⃣ Move inputs to CPU (only small batch, not full model)
-        cpu_inputs = {k: v.detach().cpu() if torch.is_tensor(v) else v
-                      for k, v in inputs.items()}
-
-        output = None
-
-        # 1️⃣ Save the full model (architecture + weights) to a temporary file
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pt")
-        model_path = tmp.name
-        tmp.close()  # close so other process can read it
-
-        with ctx.Pool(1) as pool:
-            # async_result = pool.apply_async(_run_training_step, (super().training_step, args, kwargs))
-            async_result = pool.apply_async(
-                _run_training_step_in_worker,
-                (super().training_step,
-                 model_path,
-                 cpu_inputs,
-                 num_items_in_batch,
-                 kwargs)
-
-            )
-
-            try:
-                output = async_result.get(timeout=None)
-
-            except (RuntimeError, TimeoutError) as e:
-                reduced_inputs = args[1]
-                check_performance(tensors=list(reduced_inputs.values()))
-
-                if self._is_oom_error(e):
-                    time.sleep(0.5)
-                else:
-                    raise e
-
-            finally:
-                # Ensure the temp file is removed even if worker crashes
-                if os.path.exists(model_path):
-                    os.remove(model_path)
-
-        return output
 
     def _truncate_inputs(self, inputs, max_axis, reduce_axis='batch'):
         """Truncate all sequence tensors in inputs to max_length with padding-side deduction."""
