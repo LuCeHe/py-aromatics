@@ -1,5 +1,6 @@
 import time, GPUtil, psutil, traceback, gc
 
+from multiprocessing import get_context
 from typing import Optional
 import numpy as np
 import torch
@@ -262,7 +263,7 @@ class TimeInterruptTrainer(SFTTrainer):
 
 def check_performance(tensors):
     print('\n\n')
-    print('='*80)
+    print('=' * 80)
 
     print('-' * 50)
     traceback.print_exc()
@@ -291,8 +292,6 @@ def check_performance(tensors):
         print(f"  Memory: {gpu.memoryUsed}MB / {gpu.memoryTotal}MB")
         print(f"  Temperature: {gpu.temperature} °C")
 
-
-
     # --- CPU Info ---
     print("\nCPU Info:")
     print(f"  Physical cores: {psutil.cpu_count(logical=False)}")
@@ -311,6 +310,10 @@ def check_performance(tensors):
     print('\n\n')
 
 
+def _run_training_step(fn, args, kwargs):
+    """Helper to run in subprocess."""
+    return fn(*args, **kwargs)
+
 
 class OOMSaferTrainer(SFTTrainer):
     def __init__(self, *args, **kwargs):
@@ -328,13 +331,14 @@ class OOMSaferTrainer(SFTTrainer):
         if self.axis_to_oom_resize in ['random', 'rotate']:
             raise NotImplementedError(f"{self.axis_to_oom_resize} not implemented yet")
 
-
     def training_step(self, *args, **kwargs):
+        print('are kwargs consistent?', kwargs)
         """Override training step with automatic length reduction on OOM."""
         try:
             # manually make it fail
             # raise RuntimeError('cuda out of memory')
-            output = super().training_step(*args, **kwargs)
+            # output = super().training_step(*args, **kwargs)
+            output = self.safe_training_step(*args, **kwargs)
             return output
         except RuntimeError as e:
             print(e)
@@ -370,38 +374,26 @@ class OOMSaferTrainer(SFTTrainer):
 
         reduced_inputs = inputs
         while max_axis >= min_axis:
-            try:
-                # Reduce length
-                max_axis = int(max_axis * self.reduction_factor)
+            # Reduce length
+            max_axis = int(max_axis * self.reduction_factor)
 
-                new_maxs = self._get_shape_maxs(reduced_inputs)
+            new_maxs = self._get_shape_maxs(reduced_inputs)
 
-                print(f"\n\n⚠️  Trying with reduced {reduce_axis} to {max_axis}")
-                print(f"                   original: {original_axis} of {maxs}")
-                print(f"                   previous: {new_maxs[reduce_axis]} of {new_maxs}")
+            print(f"\n\n⚠️  Trying with reduced {reduce_axis} to {max_axis}")
+            print(f"                   original: {original_axis} of {maxs}")
+            print(f"                   previous: {new_maxs[reduce_axis]} of {new_maxs}")
 
+            if max_axis < min_axis:
+                break
 
-                if max_axis < min_axis:
-                    break
+            reduced_inputs = self._truncate_inputs(reduced_inputs, max_axis, reduce_axis=reduce_axis)
 
-                reduced_inputs = self._truncate_inputs(reduced_inputs, max_axis, reduce_axis=reduce_axis)
+            args = (model, reduced_inputs, num_items_in_batch)
 
-                # Clear cache and retry
-                gc.collect()
-                torch.cuda.empty_cache()
-                torch.cuda.synchronize()
-                time.sleep(0.5)
-
-                args = (model, reduced_inputs, num_items_in_batch)
-                output = super().training_step(*args, **kwargs)
+            # output = super().training_step(*args, **kwargs)
+            output = self.safe_training_step(*args, **kwargs)
+            if not output is None:
                 return output
-
-            except RuntimeError as e:
-                if self._is_oom_error(e):
-                    check_performance(tensors=list(reduced_inputs.values()))
-                    continue  # Try with even smaller length
-                else:
-                    raise e
 
         # if reduce_axis was docs, then try batch, then try length
         if reduce_axis in ['docs', 'batch']:
@@ -413,6 +405,32 @@ class OOMSaferTrainer(SFTTrainer):
 
         # If we get here, even minimum length failed
         raise RuntimeError(f"Failed to run training step even with all axes at minimum: {mins} (original {maxs})")
+
+    def safe_training_step(self, *args, **kwargs):
+        ctx = get_context("spawn")
+
+        # Clear cache and retry
+        gc.collect()
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+
+        output = None
+        with ctx.Pool(1) as pool:
+            async_result = pool.apply_async(_run_training_step, (super().training_step, args, kwargs))
+
+            try:
+                output = async_result.get(timeout=None)
+
+            except (RuntimeError, TimeoutError) as e:
+                if self._is_oom_error(e):
+                    reduced_inputs = args[1]
+                    check_performance(tensors=list(reduced_inputs.values()))
+                    time.sleep(0.5)
+
+                else:
+                    raise e
+
+        return output
 
     def _truncate_inputs(self, inputs, max_axis, reduce_axis='batch'):
         """Truncate all sequence tensors in inputs to max_length with padding-side deduction."""
