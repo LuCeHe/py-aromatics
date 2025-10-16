@@ -368,18 +368,23 @@ class OOMSaferTrainer(SFTTrainer):
         min_axis = mins[reduce_axis]
         original_axis = max_axis
 
-
+        reduced_inputs = inputs
         while max_axis >= min_axis:
             try:
                 # Reduce length
                 max_axis = int(max_axis * self.reduction_factor)
 
-                print(f"\n\n⚠️  Trying with reduced {reduce_axis}: {max_axis} (original: {original_axis} of ({maxs})")
+                new_maxs = self._get_shape_maxs(reduced_inputs)
+
+                print(f"\n\n⚠️  Trying with reduced {reduce_axis} to {max_axis}")
+                print(f"                   original: {original_axis} of {maxs}")
+                print(f"                   previous: {new_maxs[reduce_axis]} of {new_maxs}")
+
 
                 if max_axis < min_axis:
                     break
 
-                reduced_inputs = self._truncate_inputs(inputs, max_axis, reduce_axis=reduce_axis)
+                reduced_inputs = self._truncate_inputs(reduced_inputs, max_axis, reduce_axis=reduce_axis)
 
                 # Clear cache and retry
                 torch.cuda.empty_cache()
@@ -394,7 +399,6 @@ class OOMSaferTrainer(SFTTrainer):
                     continue  # Try with even smaller length
                 else:
                     raise e
-
 
         # if reduce_axis was docs, then try batch, then try length
         if reduce_axis in ['docs', 'batch']:
