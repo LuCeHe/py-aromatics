@@ -1,6 +1,6 @@
-from typing import List, Any, Optional, Union, GPUtil, psutil, traceback
+import time, GPUtil, psutil, traceback
 
-import time, random
+from typing import Optional
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
