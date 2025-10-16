@@ -1,4 +1,4 @@
-from typing import List, Any, Optional, Union
+from typing import List, Any, Optional, Union, GPUtil, psutil, traceback
 
 import time, random
 import numpy as np
@@ -260,6 +260,56 @@ class TimeInterruptTrainer(SFTTrainer):
         return EvalLoopOutput(predictions=all_preds, label_ids=all_labels, metrics=metrics, num_samples=num_samples)
 
 
+def check_performance(tensors):
+
+    print('='*80)
+
+    print('-' * 50)
+    traceback.print_exc()
+    print('-' * 50)
+
+    print('Performance Check:')
+    print('\nTensor Info:')
+    for i, tensor in enumerate(tensors):
+        if tensor is None:
+            continue
+        print(f'Tensor {i}: dtype={tensor.dtype}, device={tensor.device}, shape={tensor.shape}, '
+              f'memory={tensor.element_size() * tensor.nelement() / 1024 ** 2:.2f} MB')
+
+    print("\nGPU Info:")
+    if torch.cuda.is_available():
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+        print(f"Memory Allocated: {torch.cuda.memory_allocated(0) / 1024 ** 2:.2f} MB")
+        print(f"Memory Cached: {torch.cuda.memory_reserved(0) / 1024 ** 2:.2f} MB")
+    else:
+        print("No GPU available")
+
+    GPUs = GPUtil.getGPUs()
+    for gpu in GPUs:
+        print(f"GPU {gpu.id}: {gpu.name}")
+        print(f"  Load: {gpu.load * 100:.1f}%")
+        print(f"  Memory: {gpu.memoryUsed}MB / {gpu.memoryTotal}MB")
+        print(f"  Temperature: {gpu.temperature} °C")
+
+
+
+    # --- CPU Info ---
+    print("\nCPU Info:")
+    print(f"  Physical cores: {psutil.cpu_count(logical=False)}")
+    print(f"  Total cores: {psutil.cpu_count(logical=True)}")
+    print(f"  CPU usage per core: {psutil.cpu_percent(percpu=True, interval=1)}")
+    print(f"  Total CPU usage: {psutil.cpu_percent()}%")
+
+    # --- Memory Info ---
+    mem = psutil.virtual_memory()
+    print("\nMemory Info:")
+    print(f"  Total: {mem.total / (1024 ** 3):.2f} GB")
+    print(f"  Available: {mem.available / (1024 ** 3):.2f} GB")
+    print(f"  Used: {mem.used / (1024 ** 3):.2f} GB")
+    print(f"  Memory Usage: {mem.percent}%")
+
+
+
 class OOMSaferTrainer(SFTTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -332,12 +382,13 @@ class OOMSaferTrainer(SFTTrainer):
                 # Clear cache and retry
                 torch.cuda.empty_cache()
 
-                args = (model, reduced_inputs, num_items_in_batch)
-                output = super().training_step(*args, **kwargs)
+                new_args = (model, reduced_inputs, num_items_in_batch)
+                output = super().training_step(*new_args, **kwargs)
                 return output
 
             except RuntimeError as e:
                 if self._is_oom_error(e):
+                    check_performance(tensors=list(reduced_inputs.values()))
                     continue  # Try with even smaller length
                 else:
                     raise e
