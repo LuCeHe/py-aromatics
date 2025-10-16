@@ -383,7 +383,10 @@ def test_collator_vs_gpt2_default():
 
 
 def get_collator(tokenizer_encoder, tokenizer_decoder, notes='', dataset_name='', eval=False):
-    mlm_probability = str2val(notes, 'mlmprob', default=0.0, output_type=float)
+    if 'mlmprob:random' in notes:
+        mlm_probability = random.uniform(0.0, 1.0)
+    else:
+        mlm_probability = str2val(notes, 'mlmprob', default=0.0, output_type=float)
     if eval:
         mlm_probability = 0.0
 

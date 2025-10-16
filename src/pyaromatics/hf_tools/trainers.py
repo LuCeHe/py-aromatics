@@ -1,4 +1,5 @@
-from typing import List, Any, Optional, Union, GPUtil, psutil, traceback
+from typing import Optional
+import GPUtil, psutil, traceback
 
 import time, random
 import numpy as np
@@ -377,13 +378,13 @@ class OOMSaferTrainer(SFTTrainer):
                 if max_axis < min_axis:
                     break
 
-                reduced_inputs = self._truncate_inputs(inputs, max_axis, reduce_axis=reduce_axis)
+                reduced_inputs = self._truncate_inputs(reduced_inputs, max_axis, reduce_axis=reduce_axis)
 
                 # Clear cache and retry
                 torch.cuda.empty_cache()
 
-                new_args = (model, reduced_inputs, num_items_in_batch)
-                output = super().training_step(*new_args, **kwargs)
+                args = (model, reduced_inputs, num_items_in_batch)
+                output = super().training_step(*args, **kwargs)
                 return output
 
             except RuntimeError as e:
