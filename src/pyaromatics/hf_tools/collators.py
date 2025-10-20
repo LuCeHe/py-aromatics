@@ -96,6 +96,7 @@ class TwoTokenizersCollator:
             padding_side: str = "left",
             truncation_side: str = "right",
             call_max_length_encoder: int = 50_000,
+            max_docs: Optional[int] = None,
     ):
         """
         Data collator that uses two different tokenizers for two different text fields in the dataset.
@@ -134,6 +135,7 @@ class TwoTokenizersCollator:
 
         self.call_max_length_encoder = call_max_length_encoder
         self.final_max_length_encoder = tokenizer_encoder.model_max_length
+        self.max_docs = max_docs
 
     def do_encoder_folds(self, encodings):
         if self.encoder_folds == False:
@@ -268,9 +270,9 @@ class TwoTokenizersCollator:
         labels[ids_decoder["attention_mask"] == 0] = -100
         output = {
             "input_ids": ids_decoder["input_ids"],
-            "input_ids_encoder": input_ids_encoder,
             "attention_mask": ids_decoder["attention_mask"],
-            "attention_mask_encoder": attention_mask_encoder,
+            "input_ids_encoder": input_ids_encoder[:self.max_docs],
+            "attention_mask_encoder": attention_mask_encoder[:self.max_docs],
             "labels": labels
         }
 
@@ -282,6 +284,8 @@ class TwoTokenizersCollator:
             labels = output['labels'][..., 1:]
             output['input_ids'], output['labels'] = input_ids, labels
 
+        print('Collator output keys:', output['attention_mask_encoder'].shape, output['input_ids_encoder'].shape)
+        print('self.max_')
         return output
 
 
@@ -318,7 +322,6 @@ def test_double_collator():
         print(f"{k}: {v.shape}")
 
 
-
 def test_collator_vs_gpt2_default():
     import os, time, string, random
     import wandb
@@ -336,10 +339,7 @@ def test_collator_vs_gpt2_default():
     random_string = ''.join(random.choice(characters) for i in range(5))
     EXPDIR = os.path.join(EXPSDIR, time_string + random_string + '_testcollator')
 
-
     run = wandb.init(project='testing_collator', reinit=True, mode="offline")
-
-
 
     test_dataset_name = 'ptb'
     seed = 0
@@ -376,13 +376,10 @@ def test_collator_vs_gpt2_default():
         )
         print('res', res)
 
-
     run.finish()
 
 
-
-
-def get_collator(tokenizer_encoder, tokenizer_decoder, notes='', dataset_name='', eval=False):
+def get_collator(tokenizer_encoder, tokenizer_decoder, notes='', dataset_name='', eval=False, max_docs=None):
     if 'mlmprob:random' in notes:
         mlm_probability = random.uniform(0.0, 1.0)
     else:
@@ -410,6 +407,7 @@ def get_collator(tokenizer_encoder, tokenizer_decoder, notes='', dataset_name=''
         shift_labels=shift_labels,
         padding_side=padding_side,
         truncation_side=truncation_side,
+        max_docs=max_docs,
     )
 
     if 'dolma' in dataset_name and 'oldclltr' in notes:
