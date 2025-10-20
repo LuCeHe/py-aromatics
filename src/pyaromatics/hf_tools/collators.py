@@ -285,7 +285,7 @@ class TwoTokenizersCollator:
             output['input_ids'], output['labels'] = input_ids, labels
 
         print('Collator output keys:', output['attention_mask_encoder'].shape, output['input_ids_encoder'].shape)
-        print('self.max_')
+        print('self.max_docs', self.max_docs)
         return output
 
 
