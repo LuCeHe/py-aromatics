@@ -367,7 +367,7 @@ class OOMSaferTrainer(SFTTrainer):
         min_axis = mins[reduce_axis]
         original_axis = max_axis
 
-
+        reduced_inputs = inputs
         while max_axis >= min_axis:
             try:
                 # Reduce length
