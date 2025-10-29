@@ -135,6 +135,7 @@ def get_totp(keepass_password, db_path, entry_title=None, entry_username=None):
 
     # Identify entry
     entry = find_entry(kp, title=entry_title, username=entry_username)
+    print(entry)
     if not entry:
         print("Entry not found. You can list entries or verify the title/path/username.")
         return
