@@ -8,6 +8,29 @@ from bridge_official.neural_models.in_batch_docs import build_in_batch_docs
 from pyaromatics.stay_organized.utils import str2val
 
 
+
+
+class SimplestLMCollator:
+    def __init__(self, tokenizer, dataset_text_field='text'):
+        self.tokenizer = tokenizer
+        self.max_length = tokenizer.model_max_length
+        self.dataset_text_field = dataset_text_field
+
+    def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
+        texts = [example[self.dataset_text_field] for example in batch]
+        encodings = self.tokenizer(
+            texts,
+            add_special_tokens=True,
+            padding=True,  # same as "longest"
+            truncation=True,
+            return_tensors="pt"
+        )
+        return {
+            "input_ids": encodings.input_ids,
+            "attention_mask": encodings.attention_mask,
+            "labels": encodings.input_ids  # Labels are the same as input_ids for LM
+        }
+
 class PackingOnlineCollator:
     def __init__(self, tokenizer, dataset_text_field='text'):
         self.tokenizer = tokenizer
