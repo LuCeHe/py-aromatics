@@ -1,4 +1,4 @@
-import os, socket, base64, tempfile
+import os, socket, base64, tempfile, re
 from transformers import AutoModelForCausalLM, AutoModelForMaskedLM
 
 
@@ -162,3 +162,21 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
         model.save_pretrained(model_path)
 
     return model
+
+
+
+def count_llm_parameters_noembs(model: AutoModelForCausalLM) -> int:
+    # remove embedding and lm head parameters from the count
+
+    """Count the number of trainable parameters in a model."""
+    # return sum(p.numel() for p in model.parameters())
+    total_params = 0
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            if not re.match(r'^(model\.embed_tokens|lm_head)\.', name):
+                total_params += param.numel()
+            else:
+                print(f"  Skipping parameters in {name}")
+
+    all_params = sum(p.numel() for p in model.parameters())
+    return total_params, all_params
