@@ -56,7 +56,8 @@ def get_tokenizer(model_id, notes='', save_dir=None, max_seq_length=None):
     tokenizer_args = {
         # 'padding': 'max_length', 'max_length': 175,
         # 'pad_to_multiple_of':8,
-        'truncation_side': 'left'
+        'truncation_side': 'left',
+        'trust_remote_code': True,
     }
     if not os.path.exists(tokenizer_path):
         tokenizer = AutoTokenizer.from_pretrained(
