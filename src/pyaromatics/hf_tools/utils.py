@@ -165,7 +165,7 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
 
 
 
-def count_llm_parameters_noembs(model: AutoModelForCausalLM) -> int:
+def count_llm_parameters_noembs(model: AutoModelForCausalLM) -> (int, int):
     # remove embedding and lm head parameters from the count
 
     """Count the number of trainable parameters in a model."""
