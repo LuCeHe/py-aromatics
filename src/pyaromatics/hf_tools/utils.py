@@ -61,7 +61,7 @@ def get_tokenizer(model_id, notes='', save_dir=None, max_seq_length=None):
     }
     if not os.path.exists(tokenizer_path):
         tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_id, trust_remote_code=True, **tokenizer_args,
+            tokenizer_id, **tokenizer_args,
         )
         tokenizer.save_pretrained(tokenizer_path)
     else:
