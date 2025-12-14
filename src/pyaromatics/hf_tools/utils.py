@@ -165,7 +165,7 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
 
 
 
-def count_llm_parameters_noembs(model: AutoModelForCausalLM) -> (int, int):
+def count_llm_parameters_noembs(model: AutoModelForCausalLM, do_print=False) -> (int, int):
     # remove embedding and lm head parameters from the count
 
     """Count the number of trainable parameters in a model."""
@@ -176,7 +176,8 @@ def count_llm_parameters_noembs(model: AutoModelForCausalLM) -> (int, int):
             if not re.match(r'^(model\.embed_tokens|lm_head)\.', name):
                 total_params += param.numel()
             else:
-                print(f"  Skipping parameters in {name}")
+                if do_print:
+                    print(f"  Skipping parameters in {name}")
 
     all_params = sum(p.numel() for p in model.parameters())
     return total_params, all_params
