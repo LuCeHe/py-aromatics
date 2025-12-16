@@ -530,6 +530,7 @@ repetitive_complaints = [
     'Trainer.tokenizer is now deprecated.',
     'truncating to ',
     'sklearn/metrics/_classification',
+    'warnings.warn(',
     # 'epetitive complaints',
     # '    more than ',
 ]
