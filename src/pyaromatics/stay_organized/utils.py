@@ -529,6 +529,7 @@ repetitive_complaints = [
     'torch.Size([',
     'Trainer.tokenizer is now deprecated.',
     'truncating to ',
+    'sklearn/metrics/_classification',
     # 'epetitive complaints',
     # '    more than ',
 ]
