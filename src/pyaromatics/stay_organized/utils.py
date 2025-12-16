@@ -531,6 +531,7 @@ repetitive_complaints = [
     'truncating to ',
     'sklearn/metrics/_classification',
     'warnings.warn(',
+    '_warn_prf(',
     # 'epetitive complaints',
     # '    more than ',
 ]
