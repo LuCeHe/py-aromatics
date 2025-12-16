@@ -4,7 +4,7 @@ from typing import Optional, Dict, List, Union
 
 import torch
 
-from bridge_official.neural_models.in_batch_docs import build_in_batch_docs
+from pyaromatics.hf_tools.in_batch_docs import build_in_batch_docs
 from pyaromatics.stay_organized.utils import str2val
 
 
