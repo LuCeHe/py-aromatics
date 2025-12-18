@@ -63,7 +63,9 @@ def scaled_config(
 
     new_config.num_hidden_layers = num_layers  # Just one layer for analysis
     new_config.num_layers = new_config.num_hidden_layers
-    new_config.layer_types = [new_config.layer_types[0]] * num_layers
+
+    if hasattr(new_config, 'layer_types'):
+        new_config.layer_types = [new_config.layer_types[0]] * num_layers
 
     new_config.num_attention_heads = num_attention_heads
     new_config.intermediate_size = int(original_proportion * hidden_size)
