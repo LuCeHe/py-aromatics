@@ -1,4 +1,5 @@
 import os, socket, base64, tempfile, re
+import torch
 from transformers import AutoModelForCausalLM, AutoModelForMaskedLM
 
 
@@ -109,7 +110,17 @@ class PatchedAutoModelForMaskedLM(AutoModelForMaskedLM):
         return super().forward(*args, **kwargs)
 
 
-def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offload_dir=None):
+def get_pretrained_model(
+        model_id='gpt2', save_dir=None, return_path=False, offload_dir=None,
+        dtype=torch.float32,
+        device_map='auto',
+
+):
+    if offload_dir is None:
+        # tmp dir in save_dir/offloads
+        offload_dir = os.path.join(save_dir, 'offloads')
+        os.makedirs(offload_dir, exist_ok=True)
+
     if save_dir is None:
         raise ValueError("save_dir must be specified")
 
@@ -119,7 +130,7 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
         return model_path
 
     model_path = ensure_model_local(model_id, model_path)
-    kwargs = {'device_map': 'auto'}  # , 'torch_dtype': torch.bfloat16}
+    kwargs = {'device_map': device_map, 'dtype': dtype}
     if not offload_dir is None:
         kwargs = {
             'device_map': 'auto',
@@ -162,7 +173,6 @@ def get_pretrained_model(model_id='gpt2', save_dir=None, return_path=False, offl
         model.save_pretrained(model_path)
 
     return model
-
 
 
 def count_llm_parameters_noembs(model: AutoModelForCausalLM, do_print=False) -> (int, int):
