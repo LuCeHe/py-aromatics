@@ -24,7 +24,6 @@ def get_hf_key(savekey_dir):
     with open(path_key, 'r') as f:
         encoded = f.read()
     token = base64.b64decode(encoded).decode('utf-8')
-    print('Using HF token from', token)
 
     from huggingface_hub import login
 
