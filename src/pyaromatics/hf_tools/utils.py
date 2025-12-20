@@ -29,9 +29,9 @@ def get_hf_key(savekey_dir):
     from huggingface_hub import login
 
     # detect internet connection
-    if connected_to_internet():
-        print('Logging in to HF...')
-        login(token=token)
+    # if connected_to_internet():
+    print('Logging in to HF...')
+    login(token=token)
 
     # set the environment variable
     os.environ['HF_AUTH_TOKEN'] = token
