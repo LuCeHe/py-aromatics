@@ -30,6 +30,7 @@ def get_hf_key(savekey_dir):
 
     # detect internet connection
     if connected_to_internet():
+        print('Logging in to HF...')
         login(token=token)
 
     # set the environment variable
