@@ -1,6 +1,6 @@
 # rule110_hf_dataset.py
 
-import random
+import random, math
 from datasets import Dataset
 
 
@@ -66,10 +66,10 @@ def column_bits_to_token_indices(column_bits, vocab_size):
 
 
 def rule110_generate_tokens(
-    vocab,
-    max_length,
-    steps,
-    init="random"
+        vocab,
+        max_length,
+        steps,
+        init="random"
 ):
     history = generate_rule110(
         width=max_length,
@@ -91,12 +91,12 @@ def rule110_generate_tokens(
 # -------------------------------
 
 def generate_rule110_dataset(
-    vocab,
-    num_samples,
-    max_length,
-    steps,
-    init="random",
-    seed=None
+        vocab,
+        num_samples,
+        max_length,
+        time_depth='random',
+        init="random",
+        seed=None
 ):
     """
     Returns a Hugging Face Dataset with `num_samples` samples.
@@ -108,14 +108,17 @@ def generate_rule110_dataset(
         random.seed(seed)
 
     samples = []
+    steps = time_depth
     for _ in range(num_samples):
+        if time_depth == 'random':
+            steps = random.randint(int(math.log2(len(vocab)) // 2), int(math.log2(len(vocab)) * 2))
         tokens = rule110_generate_tokens(
             vocab=vocab,
-            max_length=max_length,
+            max_length=max_length + 10,
             steps=steps,
             init=init
         )
-        samples.append({"tokens": tokens})
+        samples.append({"input_ids": tokens[5:-5]})
 
     return Dataset.from_list(samples)
 
@@ -126,6 +129,7 @@ def generate_rule110_dataset(
 
 if __name__ == "__main__":
     vocab = [f"tok{i}" for i in range(256)]
+    vocab = [i for i in range(256)]
 
     dataset = generate_rule110_dataset(
         vocab=vocab,
@@ -133,8 +137,9 @@ if __name__ == "__main__":
         max_length=64,
         steps=12,
         init="random",
-        # seed=42
+        seed=2
     )
 
     print(dataset)
-    print(dataset[0])
+    for i in range(5):
+        print(dataset[i])

@@ -99,17 +99,6 @@ def ensure_model_local(model_id, model_path):
     return cache_dir
 
 
-class PatchedAutoModelForCausalLM(AutoModelForCausalLM):
-    def forward(self, *args, **kwargs):
-        kwargs.pop("num_items_in_batch", None)  # safely ignore it
-        return super().forward(*args, **kwargs)
-
-
-class PatchedAutoModelForMaskedLM(AutoModelForMaskedLM):
-    def forward(self, *args, **kwargs):
-        kwargs.pop("num_items_in_batch", None)  # safely ignore it
-        return super().forward(*args, **kwargs)
-
 
 def get_pretrained_model(
         model_id='gpt2', save_dir=None, return_path=False, offload_dir=None,

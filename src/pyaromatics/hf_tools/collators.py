@@ -17,19 +17,32 @@ class SimplestLMCollator:
         self.dataset_text_field = dataset_text_field
 
     def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
-        texts = [example[self.dataset_text_field] for example in batch]
-        encodings = self.tokenizer(
-            texts,
-            add_special_tokens=True,
-            padding=True,  # same as "longest"
-            truncation=True,
-            return_tensors="pt"
-        )
-        return {
-            "input_ids": encodings.input_ids,
-            "attention_mask": encodings.attention_mask,
-            "labels": encodings.input_ids  # Labels are the same as input_ids for LM
-        }
+        if not 'input_ids' in batch[0]:
+            texts = [example[self.dataset_text_field] for example in batch]
+            encodings = self.tokenizer(
+                texts,
+                add_special_tokens=True,
+                padding=True,  # same as "longest"
+                truncation=True,
+                return_tensors="pt"
+            )
+            return {
+                "input_ids": encodings.input_ids,
+                "attention_mask": encodings.attention_mask,
+                "labels": encodings.input_ids  # Labels are the same as input_ids for LM
+            }
+        else:
+            input_ids = torch.nn.utils.rnn.pad_sequence(
+                [torch.tensor(example['input_ids']) for example in batch],
+                batch_first=True,
+                padding_value=self.tokenizer.pad_token_id
+            )
+            attention_mask = (input_ids != self.tokenizer.pad_token_id).long()
+            return {
+                "input_ids": input_ids,
+                "attention_mask": attention_mask,
+                "labels": input_ids.clone()  # Labels are the same as input_ids for LM
+            }
 
 class PackingOnlineCollator:
     def __init__(self, tokenizer, dataset_text_field='text'):
