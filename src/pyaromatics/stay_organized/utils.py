@@ -21,20 +21,25 @@ def large_num_to_reasonable_string(number, decimals=1, bites=False, scientific=F
     if abs(number) >= 1e12:
         val = round(number / 1e12, decimals)
         new_tick_format = '{:}T'.format(val)
+
     elif abs(number) >= 1e9:
         val = round(number / 1e9, decimals)
         if bites:
             new_tick_format = '{:}G'.format(val)
         else:
             new_tick_format = '{:}B'.format(val)
+
     elif abs(number) >= 1e6:
         val = round(number / 1e6, decimals)
         new_tick_format = '{:}M'.format(val)
+
     elif abs(number) >= 1e3:
         val = round(number / 1e3, decimals)
         new_tick_format = '{:}K'.format(val)
+
     elif abs(number) < 1e3:
         new_tick_format = round(number, decimals)
+
     else:
         new_tick_format = number
 
