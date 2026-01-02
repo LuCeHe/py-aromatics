@@ -11,12 +11,15 @@ from pyaromatics.stay_organized.utils import str2val
 
 
 class SimplestLMCollator:
-    def __init__(self, tokenizer, dataset_text_field='text'):
+    def __init__(self, tokenizer, dataset_text_field='text', apply_safe_max_len=False):
         self.tokenizer = tokenizer
         self.max_length = tokenizer.model_max_length
         self.dataset_text_field = dataset_text_field
+        self.apply_safe_max_len = apply_safe_max_len
+        self.safe_max_len = 1024 if apply_safe_max_len else None
 
     def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
+        outputs = {}
         if not 'input_ids' in batch[0]:
             texts = [example[self.dataset_text_field] for example in batch]
             encodings = self.tokenizer(
@@ -26,23 +29,30 @@ class SimplestLMCollator:
                 truncation=True,
                 return_tensors="pt"
             )
-            return {
-                "input_ids": encodings.input_ids,
-                "attention_mask": encodings.attention_mask,
-                "labels": encodings.input_ids  # Labels are the same as input_ids for LM
-            }
+            outputs['input_ids'] = encodings.input_ids
+            outputs['attention_mask'] = encodings.attention_mask
+            outputs['labels'] = outputs['input_ids'].clone()
+
         else:
-            input_ids = torch.nn.utils.rnn.pad_sequence(
+            outputs['input_ids'] = torch.nn.utils.rnn.pad_sequence(
                 [torch.tensor(example['input_ids']) for example in batch],
                 batch_first=True,
                 padding_value=self.tokenizer.pad_token_id
             )
-            attention_mask = (input_ids != self.tokenizer.pad_token_id).long()
-            return {
-                "input_ids": input_ids,
-                "attention_mask": attention_mask,
-                "labels": input_ids.clone()  # Labels are the same as input_ids for LM
-            }
+            outputs['attention_mask'] = (outputs['input_ids'] != self.tokenizer.pad_token_id).long()
+            outputs['labels'] = outputs['input_ids'].clone()
+
+        if self.apply_safe_max_len:
+            new_outputs = {}
+            for k, v in outputs.items():
+                # if left padding
+                if self.tokenizer.padding_side == 'left':
+                    new_outputs[k] = v[..., -self.safe_max_len:]
+                else:
+                    new_outputs[k]  = v[..., :self.safe_max_len]
+            outputs = new_outputs
+
+        return outputs
 
 class PackingOnlineCollator:
     def __init__(self, tokenizer, dataset_text_field='text'):
