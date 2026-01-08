@@ -459,7 +459,7 @@ def summarize_logs(
             # index = errors.index(e)
             indices = [i for i, x in enumerate(errors) if x == e]
             # np.random.shuffle(indices)
-            all_errors = list(set([error_d[i] for i in indices]))
+            all_errors = sorted(list(set([error_d[i] for i in indices])))
             for d in all_errors[-n_error_examples:]:
                 f.write(f'\n            e.g. {d}')
             f.write(f'\n')
