@@ -323,7 +323,7 @@ def summarize_logs(
     error_d = []
     extra_short = 0
     n_lines = 60
-    n_error_examples = 6
+    n_error_examples = 100
     n_completed = 0
     n_failed = 0
     found_in_outs = {k: [] for k in find_in_outs}
@@ -459,8 +459,8 @@ def summarize_logs(
             # index = errors.index(e)
             indices = [i for i, x in enumerate(errors) if x == e]
             # np.random.shuffle(indices)
-            for idx in indices[-n_error_examples:]:
-                d = error_d[idx]
+            all_errors = list(set([error_d[i] for i in indices]))
+            for d in all_errors[-n_error_examples:]:
                 f.write(f'\n            e.g. {d}')
             f.write(f'\n')
 
