@@ -104,6 +104,7 @@ def get_pretrained_model(
         model_id='gpt2', save_dir=None, return_path=False, offload_dir=None,
         dtype=torch.float32,
         device_map='auto',
+        only_download = False
 
 ):
     if offload_dir is None:
@@ -120,6 +121,8 @@ def get_pretrained_model(
         return model_path
 
     model_path = ensure_model_local(model_id, model_path)
+    if only_download:
+        return model_path
     kwargs = {'device_map': device_map, 'dtype': dtype}
     if not offload_dir is None:
         kwargs = {
@@ -163,6 +166,7 @@ def get_pretrained_model(
         model.save_pretrained(model_path)
 
     return model
+
 
 
 def count_llm_parameters_noembs(model: AutoModelForCausalLM, do_print=False) -> (int, int):
