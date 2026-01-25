@@ -121,8 +121,10 @@ def get_pretrained_model(
         return model_path
 
     model_path = ensure_model_local(model_id, model_path)
+
     if only_download:
         return model_path
+
     kwargs = {'device_map': device_map, 'dtype': dtype}
     if not offload_dir is None:
         kwargs = {
