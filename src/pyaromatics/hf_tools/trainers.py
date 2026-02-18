@@ -24,7 +24,7 @@ from transformers.trainer import (
     # smp_forward_backward,
     is_torch_hpu_available,
     is_torch_mlu_available,
-    is_torch_mps_available,
+    # is_torch_mps_available,
     is_torch_musa_available,
     is_torch_npu_available,
     is_torch_xla_available,
