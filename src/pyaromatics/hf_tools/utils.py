@@ -187,3 +187,14 @@ def count_llm_parameters_noembs(model: AutoModelForCausalLM, do_print=False) -> 
 
     all_params = sum(p.numel() for p in model.parameters())
     return total_params, all_params
+
+class PatchedAutoModelForCausalLM(AutoModelForCausalLM):
+    def forward(self, *args, **kwargs):
+        kwargs.pop("num_items_in_batch", None)  # safely ignore it
+        return super().forward(*args, **kwargs)
+
+
+class PatchedAutoModelForMaskedLM(AutoModelForMaskedLM):
+    def forward(self, *args, **kwargs):
+        kwargs.pop("num_items_in_batch", None)  # safely ignore it
+        return super().forward(*args, **kwargs)
