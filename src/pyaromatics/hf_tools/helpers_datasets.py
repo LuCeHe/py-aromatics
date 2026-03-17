@@ -1434,3 +1434,64 @@ if __name__ == '__main__':
                 # print(f'\nCentrality dataset {mfc}')
                 notes = f'centyp:{mfc}'
                 get_thin_dataset(notes=notes, seed=seed)
+
+
+
+def evaluation(
+        model, tokenizer, dataset, dataset_name, eval_split,
+        batch_size=1, seed=42, output_dir=None, notes='',
+        compute_metrics=None, collator=None,
+):
+    from trl import SFTConfig
+    # from thepebbletrail_official.dataset_utils.helpers_datasets import get_metrics
+    from pyaromatics.hf_tools.trainers import PlusTrainer
+
+    config_args = {
+        'output_dir': output_dir,
+        'per_device_train_batch_size': batch_size,
+        'per_device_eval_batch_size': batch_size,
+        'logging_strategy': "no",
+        'seed': seed,
+        'max_steps': len(dataset[eval_split]) // batch_size,
+        'batch_eval_metrics': True,
+        # 'auto_find_batch_size': True,
+        'auto_find_batch_size': False,
+        'dataset_text_field': "text",
+        'max_length': 60_000,
+        'fp16': True,
+    }
+
+    assert config_args['auto_find_batch_size'] is False, "auto_find_batch_size has to be set to False to avoid noise."
+
+    if not collator is None:
+        config_args['dataset_kwargs'] = {}
+        config_args['dataset_kwargs']['skip_prepare_dataset'] = True
+        config_args['remove_unused_columns'] = False
+
+    if 'maxlen' in notes or 'dolma' in dataset_name:
+        config_args['max_length'] = str2val(notes, 'maxlen', default=256, output_type=int)
+
+    if 'packing' in notes:
+        config_args['packing'] = True
+
+    eval_args = SFTConfig(**config_args)
+    if not hasattr(eval_args, "past_index"):
+        eval_args.past_index = -1
+
+    compute_metrics = None
+    model.eval()
+    trainer_kwargs = {
+        'model': model,
+        'processing_class': tokenizer,
+        'args': eval_args,
+        'train_dataset': dataset["train"],
+        'eval_dataset': dataset[eval_split],
+        'compute_metrics': compute_metrics,
+        'data_collator': collator,
+    }
+
+    validator = PlusTrainer(**trainer_kwargs)
+    eval_output = validator.evaluate()
+    # print('eval_output', eval_output)
+    return eval_output
+
