@@ -2,12 +2,12 @@ import os, argparse, sys, socket, random, itertools, gc
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from thepebbletrail_official.paths import DATADIR, HFDSDIR, WORKDIR, CHECKPOINTS
+from bridge_official.paths import DATADIR, HFDSDIR, WORKDIR, CHECKPOINTS
 
-HFDIR = os.path.join(DATADIR, 'hf_cache')
-os.environ['HF_HOME'] = HFDIR
-os.environ['HF_DATASETS_CACHE'] = HFDIR
-os.system(f"export HF_HOME={HFDIR}")
+# HFDIR = os.path.join(DATADIR, 'hf_cache')
+# os.environ['HF_HOME'] = HFDIR
+# os.environ['HF_DATASETS_CACHE'] = HFDIR
+# os.system(f"export HF_HOME={HFDIR}")
 
 from glob import glob
 import numpy as np
