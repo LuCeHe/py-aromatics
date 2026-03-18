@@ -1390,12 +1390,55 @@ def get_open_llm_leaderboard():
             continue
 
 
+def test_dataset_line_stats():
+    """Show line counts and average line length for ptb, wiki103, and llmmix1."""
+    print("\n" + "=" * 60)
+    print("Dataset line statistics (ptb, wiki103, llmmix1)")
+    print("=" * 60)
+
+    for name, loader in [
+        ("ptb", get_dataset_ptb),
+        ("wiki103", get_dataset_wiki103),
+        ("llmmix1", get_lmmix1_dataset),
+    ]:
+        print(f"\n--- {name} ---")
+        ds = loader()
+        total_lines = 0
+        lengths = []
+
+        sample_llmmix1 = name == "llmmix1" and "train" in ds and len(ds["train"]) > 1000
+
+        for split in ds.keys():
+            n = len(ds[split])
+            total_lines += n
+            if sample_llmmix1 and split == "train":
+                indices = random.sample(range(n), 1000)
+                lengths.extend([len(ds[split][i]["text"]) for i in indices])
+            elif not sample_llmmix1:
+                lengths.extend([len(ds[split][i]["text"]) for i in range(n)])
+
+        avg_len = sum(lengths) / len(lengths) if lengths else 0
+        est_chars = total_lines * avg_len
+        print(f"  Total lines: {total_lines:,}")
+        if sample_llmmix1:
+            print(f"  Avg line length (chars): {avg_len:.1f} (estimated from 1000 sampled train lines)")
+        else:
+            print(f"  Avg line length (chars): {avg_len:.1f}")
+        print(f"  Est. dataset size (chars): {est_chars:,.0f}")
+
+    print("\n" + "=" * 60)
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default='dolmas')
     parser.add_argument("--notes", type=str, default='')
     args = parser.parse_args()
+
+    if args.dataset == 'line_stats':
+        test_dataset_line_stats()
+        sys.exit(0)
 
     # dolma_versions = ['v1_6-sample', 'v1_7']
     dolma_versions = {'dolmas': 'v1_6-sample', 'dolmal': 'v1_5-sample', 'dolmax': 'v1_7'}
