@@ -198,3 +198,17 @@ class PatchedAutoModelForMaskedLM(AutoModelForMaskedLM):
     def forward(self, *args, **kwargs):
         kwargs.pop("num_items_in_batch", None)  # safely ignore it
         return super().forward(*args, **kwargs)
+
+
+
+def _tokens_to_numpy(tokens, model):
+    tokens = {
+        k: v.to(device=model.device, dtype=model.dtype) if v.is_floating_point() else v.to(model.device)
+        for k, v in tokens.items()
+    }
+    logits = model(**tokens).logits
+    """Convert logits to numpy, handling BFloat16 which NumPy doesn't support."""
+    logits = logits.to(model.dtype)
+    if logits.dtype == torch.bfloat16:
+        logits = logits.float()
+    return logits.cpu().detach().numpy()
