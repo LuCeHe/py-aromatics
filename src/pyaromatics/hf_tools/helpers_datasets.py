@@ -1538,3 +1538,127 @@ def evaluation(
     # print('eval_output', eval_output)
     return eval_output
 
+
+
+def evaluation_lmeval():
+    results = {}
+    # LM Eval evaluation loop
+    print('\n\n' + '=' * 50)
+    print('Running LM Eval on standard benchmarks')
+    print('=' * 50)
+    try:
+
+        from lm_eval import simple_evaluate
+        from lm_eval.api.registry import get_model as get_lm_eval_model
+
+        # Ensure we use the HF cache directory for datasets
+        # This helps with offline loading if datasets were previously downloaded
+        if 'HF_DATASETS_CACHE' not in os.environ:
+            from thepebbletrail_official.paths import HFCACHE
+            os.environ['HF_DATASETS_CACHE'] = HFCACHE
+            os.environ['HF_HOME'] = HFCACHE
+        print(f'Using HF cache directory: {os.environ.get("HF_DATASETS_CACHE", "default")}')
+
+        # Define tasks: wikitext, LAMBADA, knowledge/QA + reading comprehension
+        tasks = [
+            # "wikitext",  # wikitext 2 perplexity (lower is better)
+            # "lambada_openai",  # LAMBADA
+            # "boolq",  # BoolQ
+            # "piqa",  # PIQA
+            # "hellaswag",  # HellaSwag
+            # "winogrande",  # Winogrande
+            # "arc_easy",  # ARC-e
+            # "arc_challenge",  # ARC-c
+            # "openbookqa",  # OBQA
+        ]
+
+        if 'qaretrieval' in notes:
+            tasks += [
+                # QA / reading comprehension (lm_eval 0.4.x task keys: squad_completion, squadv2)
+                # "squad_completion", works # SQuAD-style completion (was "squad" in older harness)
+                "squadv2", # SQuAD v2.0 (was "squad2" in older harness)
+                # "triviaqa", works # TriviaQA
+                # "nq_open", works # Natural Questions (open-domain)
+                # "drop", works # DROP (discrete reasoning)
+            ]
+
+        print(f'Evaluating on tasks: {tasks}')
+
+        # Wrap model for lm_eval (registry works across lm_eval versions)
+        try:
+            hf_model_cls = get_lm_eval_model("hf")
+        except Exception:
+            from lm_eval.models.huggingface import HFLM
+            hf_model_cls = HFLM
+        # Batched forward passes for loglikelihood / scoring (MC tasks). Default HFLM batch_size=1 is slow.
+        # generate_until still does autoregressive decoding; batching helps less there but can still batch prompts.
+        eval_batch = max(1, int(args.batch_size))
+        eval_model = hf_model_cls(
+            pretrained=model,
+            tokenizer=tokenizer,
+            batch_size=eval_batch,
+            max_batch_size=min(64, max(eval_batch, 8)),
+        )
+
+        limit = 2 if 'onlytesting' in notes else None
+        lm_eval_results = simple_evaluate(eval_model, tasks=tasks, limit=limit)
+
+        highlights = {}
+        for task, res in lm_eval_results['results'].items():
+            print(f'Processing results for {task}...')
+            print(f'  Available metrics: {list(res.keys())}')
+            task_highlights = None
+            if 'perplexity,none' in res:
+                task_highlights = {'perplexity': res['perplexity,none']}
+            elif 'acc,none' in res:
+                task_highlights = {'accuracy': res['acc,none']}
+            elif 'word_perplexity,none' in res:
+                task_highlights = {
+                    'word_perplexity': res['word_perplexity,none'],
+                    'byte_perplexity': res.get('byte_perplexity,none', 'N/A')
+                }
+            else:
+                # QA tasks: exact_match, f1, em (metric keys may use ,none suffix)
+                qa_metrics = {}
+                for em_key in ['exact_match,none', 'exact_match', 'em,none', 'em', 'exact_match,remove_whitespace']:
+                    if em_key in res:
+                        qa_metrics['exact_match'] = res[em_key]
+                        break
+                for f1_key in ['f1,none', 'f1']:
+                    if f1_key in res:
+                        qa_metrics['f1'] = res[f1_key]
+                        break
+                if qa_metrics:
+                    task_highlights = qa_metrics
+            # Fallback: capture any numeric metrics we didn't match (e.g. task-specific keys)
+            if task_highlights is None and res:
+                fallback = {k: v for k, v in res.items()
+                            if isinstance(v, (int, float, np.number))}
+                if fallback:
+                    task_highlights = fallback
+            if task_highlights is not None:
+                highlights[task] = task_highlights
+
+        # remove all keys except results from lm_eval_results
+        lm_eval_results = {'results': lm_eval_results['results']}
+        results['lm_eval_results'] = lm_eval_results
+
+        for task, res in highlights.items():
+            for metric, value in res.items():
+                print(f'  {task} - {metric}: {value}')
+                results[f'{task}_{metric}'] = value
+
+        print('\nLM Eval Results:')
+        print('=' * 50)
+        print(json.dumps(highlights, indent=2, cls=NumpyEncoder))
+        print('=' * 50)
+
+    except Exception as e:
+        error_str = str(e)
+        print(f'\nError during lm_eval: {e}')
+        import traceback
+        traceback.print_exc()
+
+        results['lm_eval_error'] = str(e)
+
+    return results
