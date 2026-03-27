@@ -82,6 +82,45 @@ def get_tokenizer(model_id, notes='', save_dir=None, max_seq_length=None):
     return tokenizer
 
 
+def get_synthetic_id_tokenizer(vocab_size=8192, model_max_length=None, save_dir=None):
+    """
+    HF-compatible tokenizer whose vocabulary is exactly the integers ``0 .. vocab_size-1``
+    as string keys (WordLevel). Used for MQAR-style datasets that ship ``input_ids`` /
+    ``labels`` without natural-language tokenization.
+
+    ``len(tokenizer) == vocab_size`` so ``config.vocab_size`` can match Zoology (e.g. 8192).
+    Padding uses token id 0 (``"0"``); MQAR generators should avoid leaving raw 0 in
+    sequences when this is the pad id (Zoology replaces padding with random ids).
+    """
+    import os
+    from tokenizers import Tokenizer, models, pre_tokenizers
+    from transformers import PreTrainedTokenizerFast
+
+    if save_dir is not None:
+        tok_path = os.path.join(save_dir, f"synthetic-id-v{vocab_size}-tokenizer")
+        if os.path.exists(tok_path):
+            tok = PreTrainedTokenizerFast.from_pretrained(tok_path)
+            if model_max_length is not None:
+                tok.model_max_length = model_max_length
+            tok.padding_side = "right"
+            return tok
+
+    vocab = {str(i): i for i in range(vocab_size)}
+    backend = Tokenizer(models.WordLevel(vocab=vocab, unk_token="0"))
+    backend.pre_tokenizer = pre_tokenizers.Whitespace()
+    tok = PreTrainedTokenizerFast(tokenizer_object=backend)
+    tok.pad_token = "0"
+    tok.eos_token = "0"
+    tok.bos_token = "0"
+    tok.unk_token = "0"
+    tok.model_max_length = model_max_length if model_max_length is not None else 2**20
+    tok.padding_side = "right"
+    if save_dir is not None:
+        os.makedirs(tok_path, exist_ok=True)
+        tok.save_pretrained(tok_path)
+    return tok
+
+
 def ensure_model_local(model_id, model_path):
     from huggingface_hub import snapshot_download
 

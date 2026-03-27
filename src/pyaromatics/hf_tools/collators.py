@@ -40,7 +40,14 @@ class SimplestLMCollator:
                 padding_value=self.tokenizer.pad_token_id
             )
             outputs['attention_mask'] = (outputs['input_ids'] != self.tokenizer.pad_token_id).long()
-            outputs['labels'] = outputs['input_ids'].clone()
+            if 'labels' in batch[0]:
+                outputs['labels'] = torch.nn.utils.rnn.pad_sequence(
+                    [torch.tensor(example['labels']) for example in batch],
+                    batch_first=True,
+                    padding_value=-100
+                )
+            else:
+                outputs['labels'] = outputs['input_ids'].clone()
 
         if self.apply_safe_max_len:
             new_outputs = {}

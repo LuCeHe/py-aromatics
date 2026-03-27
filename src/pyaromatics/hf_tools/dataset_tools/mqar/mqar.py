@@ -9,10 +9,11 @@ https://github.com/HazyResearch/zoology (no runtime dependency on zoology).
 import argparse
 import json
 import os
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 from datasets import Dataset, DatasetDict
+from tqdm import tqdm
 
 
 def multiquery_ar_numpy(
@@ -24,9 +25,14 @@ def multiquery_ar_numpy(
     num_kv_pairs: int = 8,
     num_passes: int = 1,
     random_non_queries: bool = True,
+    rng: Optional[np.random.RandomState] = None,
 ) -> Tuple[Any, Any, Dict[str, Any]]:
     """
     Generate MQAR inputs and labels (integer token ids).
+
+    If ``rng`` is provided, it is used for all draws (and ``seed`` is ignored); this
+    allows chunked generation that matches one full batch when the RNG state is
+    advanced in the same order as row-major ``apply_along_axis``.
 
     Returns
     -------
@@ -38,8 +44,9 @@ def multiquery_ar_numpy(
     assert vocab_size > input_seq_len
     assert num_kv_pairs * 2 * num_passes + num_kv_pairs * 2 <= input_seq_len
 
-    # Match zoology: single numpy seed drives key/value/gap sampling (see multiquery_ar.py).
-    np.random.seed(seed)
+    # Match zoology: numpy RNG drives key/value/gap sampling (see multiquery_ar.py).
+    if rng is None:
+        rng = np.random.RandomState(seed)
 
     context_size = num_kv_pairs * 2 * num_passes
 
@@ -49,12 +56,16 @@ def multiquery_ar_numpy(
 
     keys_unshuffled = np.tile(key_choices, (num_examples, 1))
     keys = np.apply_along_axis(
-        np.random.choice, 1, keys_unshuffled, replace=False, size=num_kv_pairs
+        lambda row: rng.choice(row, replace=False, size=num_kv_pairs),
+        1,
+        keys_unshuffled,
     )
 
     values_unshuffled = np.tile(value_choices, (num_examples, 1))
     values = np.apply_along_axis(
-        np.random.choice, 1, values_unshuffled, replace=False, size=num_kv_pairs
+        lambda row: rng.choice(row, replace=False, size=num_kv_pairs),
+        1,
+        values_unshuffled,
     )
 
     kvs = np.zeros((num_examples, context_size), dtype=np.int64)
@@ -68,7 +79,9 @@ def multiquery_ar_numpy(
 
     x = np.stack([np.arange(space, dtype=int)] * num_examples)
     gaps = np.apply_along_axis(
-        np.random.choice, axis=1, arr=x, replace=False, p=p, size=num_kv_pairs
+        lambda row: rng.choice(row, replace=False, p=p, size=num_kv_pairs),
+        axis=1,
+        arr=x,
     )
 
     queries = np.zeros((num_examples, input_seq_len - context_size + 1), dtype=np.int64)
@@ -88,7 +101,7 @@ def multiquery_ar_numpy(
         n_replace = int(mask.sum())
         if n_replace:
             # Zoology uses torch.randint here; numpy draws are equivalent for training.
-            inputs[mask] = np.random.randint(0, vocab_size, size=n_replace, dtype=np.int64)
+            inputs[mask] = rng.randint(0, vocab_size, size=n_replace, dtype=np.int64)
 
     meta: Dict[str, Any] = {
         "num_kv_pairs": num_kv_pairs,
@@ -107,22 +120,86 @@ def generate_mqar_hf_dataset(
     num_kv_pairs: int = 8,
     num_passes: int = 1,
     random_non_queries: bool = True,
+    chunk_size: Optional[int] = 4_096,
+    show_progress: bool = True,
+    split_desc: str = "",
 ) -> Dataset:
     """Build a :class:`datasets.Dataset` with ``input_ids`` and ``labels`` columns."""
-    inputs, labels, _meta = multiquery_ar_numpy(
-        vocab_size=vocab_size,
-        num_examples=num_samples,
-        input_seq_len=input_seq_len,
-        seed=seed,
-        power_a=power_a,
-        num_kv_pairs=num_kv_pairs,
-        num_passes=num_passes,
-        random_non_queries=random_non_queries,
+    desc = f"MQAR {split_desc}".strip() if split_desc else "MQAR"
+
+    use_chunks = (
+        chunk_size is not None
+        and chunk_size > 0
+        and num_samples > chunk_size
     )
+    if use_chunks:
+        rng = np.random.RandomState(seed)
+        inputs_parts = []
+        labels_parts = []
+        n_chunks = (num_samples + chunk_size - 1) // chunk_size
+        it = range(0, num_samples, chunk_size)
+        if show_progress:
+            it = tqdm(
+                it,
+                total=n_chunks,
+                desc=f"{desc} (numpy)",
+                unit="chunk",
+                leave=True,
+            )
+        for start in it:
+            bs = min(chunk_size, num_samples - start)
+            inp, lab, _ = multiquery_ar_numpy(
+                vocab_size=vocab_size,
+                num_examples=bs,
+                input_seq_len=input_seq_len,
+                seed=seed,
+                power_a=power_a,
+                num_kv_pairs=num_kv_pairs,
+                num_passes=num_passes,
+                random_non_queries=random_non_queries,
+                rng=rng,
+            )
+            inputs_parts.append(inp)
+            labels_parts.append(lab)
+        inputs = np.concatenate(inputs_parts, axis=0)
+        labels = np.concatenate(labels_parts, axis=0)
+    else:
+        inputs, labels, _ = multiquery_ar_numpy(
+            vocab_size=vocab_size,
+            num_examples=num_samples,
+            input_seq_len=input_seq_len,
+            seed=seed,
+            power_a=power_a,
+            num_kv_pairs=num_kv_pairs,
+            num_passes=num_passes,
+            random_non_queries=random_non_queries,
+        )
+
+    list_step = 8_192
+    if show_progress and num_samples > list_step:
+        input_rows = []
+        label_rows = []
+        it = range(0, num_samples, list_step)
+        n_list = (num_samples + list_step - 1) // list_step
+        it = tqdm(
+            it,
+            total=n_list,
+            desc=f"{desc} (to HF)",
+            unit="chunk",
+            leave=True,
+        )
+        for start in it:
+            end = min(start + list_step, num_samples)
+            input_rows.extend(inputs[start:end].tolist())
+            label_rows.extend(labels[start:end].tolist())
+    else:
+        input_rows = inputs.tolist()
+        label_rows = labels.tolist()
+
     return Dataset.from_dict(
         {
-            "input_ids": inputs.tolist(),
-            "labels": labels.tolist(),
+            "input_ids": input_rows,
+            "labels": label_rows,
         }
     )
 
@@ -130,8 +207,10 @@ def generate_mqar_hf_dataset(
 def build_mqar_dataset_dict(
     train_samples: int = 100_000,
     eval_samples: int = 3_000,
+    test_samples: int = 3_000,
     train_seed: int = 42,
     eval_seed: int = 9_001,
+    test_seed: int = 42_001,
     vocab_size: int = 8_192,
     input_seq_len: int = 64,
     power_a: float = 0.01,
@@ -140,34 +219,39 @@ def build_mqar_dataset_dict(
     random_non_queries: bool = True,
     train_split_name: str = "train",
     eval_split_name: str = "validation",
+    test_split_name: str = "test",
+    chunk_size: Optional[int] = 4_096,
+    show_progress: bool = True,
 ) -> DatasetDict:
     """
-    Train/eval splits with disjoint RNG seeds (same convention as Zoology's
-    ``prepare_data``: different seeds for train vs test segments).
+    Train / validation / test splits with disjoint RNG seeds (same convention as
+    Zoology's ``prepare_data``: different seeds per segment).
     """
-    train_ds = generate_mqar_hf_dataset(
-        vocab_size=vocab_size,
-        num_samples=train_samples,
-        input_seq_len=input_seq_len,
-        seed=train_seed,
-        power_a=power_a,
-        num_kv_pairs=num_kv_pairs,
-        num_passes=num_passes,
-        random_non_queries=random_non_queries,
-    )
-    eval_ds = generate_mqar_hf_dataset(
-        vocab_size=vocab_size,
-        num_samples=eval_samples,
-        input_seq_len=input_seq_len,
-        seed=eval_seed,
-        power_a=power_a,
-        num_kv_pairs=num_kv_pairs,
-        num_passes=num_passes,
-        random_non_queries=random_non_queries,
-    )
-    return DatasetDict(
-        {train_split_name: train_ds, eval_split_name: eval_ds}
-    )
+    split_specs = [
+        (train_split_name, train_samples, train_seed),
+        (eval_split_name, eval_samples, eval_seed),
+        (test_split_name, test_samples, test_seed),
+    ]
+    iterator = split_specs
+    if show_progress:
+        iterator = tqdm(split_specs, desc="MQAR splits", unit="split", total=3)
+
+    splits: Dict[str, Dataset] = {}
+    for name, n, sd in iterator:
+        splits[name] = generate_mqar_hf_dataset(
+            vocab_size=vocab_size,
+            num_samples=n,
+            input_seq_len=input_seq_len,
+            seed=sd,
+            power_a=power_a,
+            num_kv_pairs=num_kv_pairs,
+            num_passes=num_passes,
+            random_non_queries=random_non_queries,
+            chunk_size=chunk_size,
+            show_progress=show_progress,
+            split_desc=name,
+        )
+    return DatasetDict(splits)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -176,9 +260,11 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--train-samples", type=int, default=100_000, help="Training examples"
     )
-    p.add_argument("--eval-samples", type=int, default=3_000, help="Eval examples")
+    p.add_argument("--eval-samples", type=int, default=3_000, help="Validation examples")
+    p.add_argument("--test-samples", type=int, default=3_000, help="Test examples")
     p.add_argument("--train-seed", type=int, default=42)
     p.add_argument("--eval-seed", type=int, default=9_001)
+    p.add_argument("--test-seed", type=int, default=42_001)
     p.add_argument("--vocab-size", type=int, default=8_192)
     p.add_argument("--input-seq-len", type=int, default=64)
     p.add_argument("--power-a", type=float, default=0.1)
@@ -193,7 +279,13 @@ def _parse_args() -> argparse.Namespace:
         "--eval-split-name",
         type=str,
         default="validation",
-        help="Name of the eval split (default: validation)",
+        help="Name of the validation split (default: validation)",
+    )
+    p.add_argument(
+        "--test-split-name",
+        type=str,
+        default="test",
+        help="Name of the test split (default: test)",
     )
     p.add_argument(
         "--train-split-name",
@@ -213,6 +305,17 @@ def _parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         help="Optional path to write generation config JSON next to the dataset",
+    )
+    p.add_argument(
+        "--no-progress",
+        action="store_true",
+        help="Disable tqdm progress bars during generation",
+    )
+    p.add_argument(
+        "--chunk-size",
+        type=int,
+        default=4_096,
+        help="Max rows per numpy chunk for large splits (0 = one shot, no chunk bar)",
     )
     return p.parse_args()
 
@@ -234,11 +337,14 @@ def main() -> None:
         "source": "https://github.com/HazyResearch/zoology/blob/main/zoology/data/multiquery_ar.py",
     }
 
+    chunk_size = None if args.chunk_size <= 0 else args.chunk_size
     dsd = build_mqar_dataset_dict(
         train_samples=args.train_samples,
         eval_samples=args.eval_samples,
+        test_samples=args.test_samples,
         train_seed=args.train_seed,
         eval_seed=args.eval_seed,
+        test_seed=args.test_seed,
         vocab_size=args.vocab_size,
         input_seq_len=args.input_seq_len,
         power_a=args.power_a,
@@ -247,6 +353,9 @@ def main() -> None:
         random_non_queries=config["random_non_queries"],
         train_split_name=args.train_split_name,
         eval_split_name=args.eval_split_name,
+        test_split_name=args.test_split_name,
+        chunk_size=chunk_size,
+        show_progress=not args.no_progress,
     )
 
     print(dsd)

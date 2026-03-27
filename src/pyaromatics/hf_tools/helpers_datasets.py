@@ -1,4 +1,4 @@
-import os, argparse, sys, socket, random, itertools, gc, json
+import os, argparse, sys, socket, random, itertools, gc, json, re, hashlib
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
@@ -31,6 +31,7 @@ from pyaromatics.hf_tools.utils import get_pretrained_model
 from pyaromatics.hf_tools.utils import get_tokenizer as hf_get_tokenizer
 from pyaromatics.stay_organized.utils import str2val
 from pyaromatics.hf_tools.dataset_tools.rule110.rule110 import generate_rule110_dataset
+from pyaromatics.hf_tools.dataset_tools.mqar.mqar import build_mqar_dataset_dict
 from pyaromatics.stay_organized.utils import NumpyEncoder
 
 winogrande_subsets = [
@@ -108,6 +109,9 @@ def get_dataset_unsafe(
     elif dataset_name == 'rule110':
         dataset = get_rule110(model_id=model_id, notes=notes, seed=seed)
 
+    elif re.match(r'^mqar\d+$', dataset_name):
+        dataset = get_mqar_dataset(dataset_name, seed=seed, notes=notes, cachedir=cachedir)
+
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized.")
 
@@ -150,6 +154,83 @@ def get_dataset_unsafe(
                 print(f'    {k}: {text}')
 
     return dataset
+
+
+def _mqar_cache_dir(cachedir):
+    if cachedir is not None:
+        return cachedir
+    env = os.environ.get("HF_DATASETS_CACHE")
+    if env:
+        return os.path.join(env, "pyaromatics_mqar")
+    return os.path.join(os.path.expanduser("~"), ".cache", "pyaromatics", "hf_datasets")
+
+
+def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
+    """
+    Synthetic MQAR (Zoology-style) data. Names ``mqar64``, ``mqar128``, … set
+    ``input_seq_len`` to the trailing integer. Optional ``notes`` flags (split by
+    ``_``): ``trainsamples:N``, ``evalsamples:N``, ``testsamples:N`` (default test
+    3000), ``vocabsize:N``, ``numkvpairs:N``, ``numpasses:N``, ``powera:F``,
+    ``trainseed:N``, ``evalseed:N``, ``testseed:N``.
+
+    The first time a configuration is requested, the ``DatasetDict`` is written under
+    ``cachedir`` (or ``HF_DATASETS_CACHE/pyaromatics_mqar`` / ``~/.cache/pyaromatics/hf_datasets``)
+    and reloaded from disk on later calls.
+    """
+    m = re.match(r'^mqar(\d+)$', dataset_name)
+    if not m:
+        raise ValueError(f"Expected mqar<seq_len>, e.g. mqar64; got {dataset_name!r}")
+    input_seq_len = int(m.group(1))
+    train_samples = str2val(notes, 'trainsamples', default=100_000, output_type=int)
+    eval_samples = str2val(notes, 'evalsamples', default=3_000, output_type=int)
+    test_samples = str2val(notes, 'testsamples', default=3_000, output_type=int)
+    vocab_size = str2val(notes, 'vocabsize', default=8_192, output_type=int)
+    num_kv_pairs = str2val(notes, 'numkvpairs', default=8, output_type=int)
+    num_passes = str2val(notes, 'numpasses', default=1, output_type=int)
+    power_a = str2val(notes, 'powera', default=0.01, output_type=float)
+    train_seed = str2val(notes, 'trainseed', default=seed, output_type=int)
+    eval_seed = str2val(notes, 'evalseed', default=9_001, output_type=int)
+    test_seed = str2val(notes, 'testseed', default=42_001, output_type=int)
+
+    cache_key = {
+        "dataset_name": dataset_name,
+        "train_samples": train_samples,
+        "eval_samples": eval_samples,
+        "test_samples": test_samples,
+        "train_seed": train_seed,
+        "eval_seed": eval_seed,
+        "test_seed": test_seed,
+        "vocab_size": vocab_size,
+        "input_seq_len": input_seq_len,
+        "power_a": power_a,
+        "num_kv_pairs": num_kv_pairs,
+        "num_passes": num_passes,
+        "random_non_queries": True,
+    }
+    digest = hashlib.sha256(
+        json.dumps(cache_key, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()[:16]
+    root = _mqar_cache_dir(cachedir)
+    data_path = os.path.join(root, "mqar", f"{dataset_name}_{digest}")
+
+    if not os.path.exists(data_path):
+        os.makedirs(os.path.dirname(data_path), exist_ok=True)
+        dsd = build_mqar_dataset_dict(
+            train_samples=train_samples,
+            eval_samples=eval_samples,
+            test_samples=test_samples,
+            train_seed=train_seed,
+            eval_seed=eval_seed,
+            test_seed=test_seed,
+            vocab_size=vocab_size,
+            input_seq_len=input_seq_len,
+            power_a=power_a,
+            num_kv_pairs=num_kv_pairs,
+            num_passes=num_passes,
+            random_non_queries=True,
+        )
+        dsd.save_to_disk(data_path)
+    return DatasetDict.load_from_disk(data_path)
 
 
 def get_rule110(model_id=None, notes='', seed=42, cachedir=None):
@@ -1219,14 +1300,14 @@ def evaluation_lmeval(
         # Define tasks: wikitext, LAMBADA, knowledge/QA + reading comprehension
         tasks = [
             # "wikitext",  # wikitext 2 perplexity (lower is better)
-            # "lambada_openai",  # LAMBADA
-            # "boolq",  # BoolQ
-            # "piqa",  # PIQA
-            # "hellaswag",  # HellaSwag
-            # "winogrande",  # Winogrande
-            # "arc_easy",  # ARC-e
-            # "arc_challenge",  # ARC-c
-            # "openbookqa",  # OBQA
+            "lambada_openai",  # LAMBADA
+            "boolq",  # BoolQ
+            "piqa",  # PIQA
+            "hellaswag",  # HellaSwag
+            "winogrande",  # Winogrande
+            "arc_easy",  # ARC-e
+            "arc_challenge",  # ARC-c
+            "openbookqa",  # OBQA
         ]
 
         if 'qaretrieval' in notes:
