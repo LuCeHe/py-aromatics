@@ -1232,11 +1232,11 @@ def evaluation_lmeval(
         if 'qaretrieval' in notes:
             tasks += [
                 # QA / reading comprehension (lm_eval 0.4.x task keys: squad_completion, squadv2)
-                "squad_completion", works # SQuAD-style completion (was "squad" in older harness)
+                "squad_completion",  # SQuAD-style completion (was "squad" in older harness)
                 "squadv2",  # SQuAD v2.0 (was "squad2" in older harness)
-                "triviaqa", works # TriviaQA
-                "nq_open", works # Natural Questions (open-domain)
-                "drop", works # DROP (discrete reasoning)
+                "triviaqa",  # TriviaQA
+                "nq_open",  # Natural Questions (open-domain)
+                "drop",  # DROP (discrete reasoning)
             ]
 
         print(f'Evaluating on tasks: {tasks}')
