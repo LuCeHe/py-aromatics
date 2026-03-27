@@ -7,12 +7,13 @@ https://github.com/HazyResearch/zoology (no runtime dependency on zoology).
 """
 
 import argparse
+import gc
 import json
 import os
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
-from datasets import Dataset, DatasetDict
+from datasets import Dataset, DatasetDict, concatenate_datasets
 from tqdm import tqdm
 
 
@@ -120,7 +121,7 @@ def generate_mqar_hf_dataset(
     num_kv_pairs: int = 8,
     num_passes: int = 1,
     random_non_queries: bool = True,
-    chunk_size: Optional[int] = 4_096,
+    chunk_size: Optional[int] = 2_048,
     show_progress: bool = True,
     split_desc: str = "",
 ) -> Dataset:
@@ -134,15 +135,14 @@ def generate_mqar_hf_dataset(
     )
     if use_chunks:
         rng = np.random.RandomState(seed)
-        inputs_parts = []
-        labels_parts = []
+        ds_parts = []
         n_chunks = (num_samples + chunk_size - 1) // chunk_size
         it = range(0, num_samples, chunk_size)
         if show_progress:
             it = tqdm(
                 it,
                 total=n_chunks,
-                desc=f"{desc} (numpy)",
+                desc=f"{desc} (chunks)",
                 unit="chunk",
                 leave=True,
             )
@@ -159,47 +159,32 @@ def generate_mqar_hf_dataset(
                 random_non_queries=random_non_queries,
                 rng=rng,
             )
-            inputs_parts.append(inp)
-            labels_parts.append(lab)
-        inputs = np.concatenate(inputs_parts, axis=0)
-        labels = np.concatenate(labels_parts, axis=0)
-    else:
-        inputs, labels, _ = multiquery_ar_numpy(
-            vocab_size=vocab_size,
-            num_examples=num_samples,
-            input_seq_len=input_seq_len,
-            seed=seed,
-            power_a=power_a,
-            num_kv_pairs=num_kv_pairs,
-            num_passes=num_passes,
-            random_non_queries=random_non_queries,
-        )
+            ds_parts.append(
+                Dataset.from_dict(
+                    {
+                        "input_ids": inp.tolist(),
+                        "labels": lab.tolist(),
+                    }
+                )
+            )
+            del inp, lab
+            gc.collect()
+        return concatenate_datasets(ds_parts)
 
-    list_step = 8_192
-    if show_progress and num_samples > list_step:
-        input_rows = []
-        label_rows = []
-        it = range(0, num_samples, list_step)
-        n_list = (num_samples + list_step - 1) // list_step
-        it = tqdm(
-            it,
-            total=n_list,
-            desc=f"{desc} (to HF)",
-            unit="chunk",
-            leave=True,
-        )
-        for start in it:
-            end = min(start + list_step, num_samples)
-            input_rows.extend(inputs[start:end].tolist())
-            label_rows.extend(labels[start:end].tolist())
-    else:
-        input_rows = inputs.tolist()
-        label_rows = labels.tolist()
-
+    inputs, labels, _ = multiquery_ar_numpy(
+        vocab_size=vocab_size,
+        num_examples=num_samples,
+        input_seq_len=input_seq_len,
+        seed=seed,
+        power_a=power_a,
+        num_kv_pairs=num_kv_pairs,
+        num_passes=num_passes,
+        random_non_queries=random_non_queries,
+    )
     return Dataset.from_dict(
         {
-            "input_ids": input_rows,
-            "labels": label_rows,
+            "input_ids": inputs.tolist(),
+            "labels": labels.tolist(),
         }
     )
 
@@ -220,7 +205,7 @@ def build_mqar_dataset_dict(
     train_split_name: str = "train",
     eval_split_name: str = "validation",
     test_split_name: str = "test",
-    chunk_size: Optional[int] = 4_096,
+    chunk_size: Optional[int] = 2_048,
     show_progress: bool = True,
 ) -> DatasetDict:
     """
@@ -314,8 +299,8 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--chunk-size",
         type=int,
-        default=4_096,
-        help="Max rows per numpy chunk for large splits (0 = one shot, no chunk bar)",
+        default=2_048,
+        help="Max rows per chunk for large splits (0 = one shot). Smaller uses less RAM.",
     )
     return p.parse_args()
 

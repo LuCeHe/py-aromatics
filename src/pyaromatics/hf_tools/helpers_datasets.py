@@ -171,7 +171,8 @@ def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
     ``input_seq_len`` to the trailing integer. Optional ``notes`` flags (split by
     ``_``): ``trainsamples:N``, ``evalsamples:N``, ``testsamples:N`` (default test
     3000), ``vocabsize:N``, ``numkvpairs:N``, ``numpasses:N``, ``powera:F``,
-    ``trainseed:N``, ``evalseed:N``, ``testseed:N``.
+    ``trainseed:N``, ``evalseed:N``, ``testseed:N``, ``mqarchunk:N`` (rows per
+    chunk when building HF data; smaller uses less RAM, default 2048).
 
     The first time a configuration is requested, the ``DatasetDict`` is written under
     ``cachedir`` (or ``HF_DATASETS_CACHE/pyaromatics_mqar`` / ``~/.cache/pyaromatics/hf_datasets``)
@@ -191,6 +192,9 @@ def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
     train_seed = str2val(notes, 'trainseed', default=seed, output_type=int)
     eval_seed = str2val(notes, 'evalseed', default=9_001, output_type=int)
     test_seed = str2val(notes, 'testseed', default=42_001, output_type=int)
+    chunk_size = str2val(notes, 'mqarchunk', default=2_048, output_type=int)
+    if chunk_size <= 0:
+        chunk_size = 2_048
 
     cache_key = {
         "dataset_name": dataset_name,
@@ -206,6 +210,7 @@ def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
         "num_kv_pairs": num_kv_pairs,
         "num_passes": num_passes,
         "random_non_queries": True,
+        "chunk_size": chunk_size,
     }
     digest = hashlib.sha256(
         json.dumps(cache_key, sort_keys=True, separators=(",", ":")).encode()
@@ -228,6 +233,7 @@ def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
             num_kv_pairs=num_kv_pairs,
             num_passes=num_passes,
             random_non_queries=True,
+            chunk_size=chunk_size,
         )
         dsd.save_to_disk(data_path)
     return DatasetDict.load_from_disk(data_path)
@@ -1220,6 +1226,58 @@ def test_dataset_line_stats():
     print("\n" + "=" * 60)
 
 
+def _mqar_token_f1_macro(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Macro-averaged F1 over token classes (one-vs-rest per class)."""
+    y_true = y_true.astype(np.int64, copy=False)
+    y_pred = y_pred.astype(np.int64, copy=False)
+    if y_true.size == 0:
+        return 0.0
+    labels = np.unique(np.concatenate([y_true, y_pred]))
+    f1s = []
+    for c in labels:
+        tp = int(np.sum((y_true == c) & (y_pred == c)))
+        fp = int(np.sum((y_true != c) & (y_pred == c)))
+        fn = int(np.sum((y_true == c) & (y_pred != c)))
+        prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        if prec + rec == 0:
+            f1s.append(0.0)
+        else:
+            f1s.append(2.0 * prec * rec / (prec + rec))
+    return float(np.mean(f1s)) if f1s else 0.0
+
+
+def compute_mqar_metrics(eval_pred):
+    """
+    HuggingFace ``compute_metrics`` for MQAR-style causal LM eval: next-token accuracy on
+    positions where ``labels[:, 1:] != -100``. Expects full accumulated ``predictions`` (logits)
+    and ``label_ids`` from ``Trainer.evaluate`` (use ``batch_eval_metrics=False``).
+
+    Also reports macro-averaged token F1 (``mqar_f1``) over predicted vs gold token ids on
+    masked positions.
+
+    Returned keys are prefixed with ``eval_`` by the trainer (e.g. ``eval_mqar_accuracy``).
+    """
+    logits = eval_pred.predictions
+    labels = eval_pred.label_ids
+    if logits is None or labels is None:
+        return {}
+    if isinstance(logits, (tuple, list)):
+        logits = logits[0]
+    logits = np.asarray(logits)
+    labels = np.asarray(labels)
+    preds = np.argmax(logits[:, :-1, :], axis=-1)
+    shift_labels = labels[:, 1:]
+    mask = shift_labels != -100
+    correct = np.sum((preds == shift_labels) & mask)
+    total = np.sum(mask)
+    acc = float(correct) / float(total) if total > 0 else 0.0
+    y_true = shift_labels[mask].ravel()
+    y_hat = preds[mask].ravel()
+    f1 = _mqar_token_f1_macro(y_true, y_hat)
+    return {"mqar_accuracy": acc, "mqar_f1": f1}
+
+
 def evaluation(
         model, tokenizer, dataset, dataset_name, eval_split,
         batch_size=1, seed=42, output_dir=None, notes='',
@@ -1229,6 +1287,8 @@ def evaluation(
     # from thepebbletrail_official.dataset_utils.helpers_datasets import get_metrics
     from pyaromatics.hf_tools.trainers import PlusTrainer
 
+    m_mqar = re.match(r"^mqar(\d+)$", dataset_name, re.I)
+
     config_args = {
         'output_dir': output_dir,
         'per_device_train_batch_size': batch_size,
@@ -1236,7 +1296,9 @@ def evaluation(
         'logging_strategy': "no",
         'seed': seed,
         'max_steps': len(dataset[eval_split]) // batch_size,
-        'batch_eval_metrics': True,
+        # MQAR uses compute_metrics on full accumulated logits; batch mode only runs
+        # per-batch metrics and does not aggregate logits for accuracy.
+        'batch_eval_metrics': False if m_mqar and compute_metrics is None else True,
         # 'auto_find_batch_size': True,
         'auto_find_batch_size': False,
         'dataset_text_field': "text",
@@ -1251,7 +1313,9 @@ def evaluation(
         config_args['dataset_kwargs']['skip_prepare_dataset'] = True
         config_args['remove_unused_columns'] = False
 
-    if 'maxlen' in notes or 'dolma' in dataset_name:
+    if m_mqar:
+        config_args["max_length"] = int(m_mqar.group(1))
+    elif 'maxlen' in notes or 'dolma' in dataset_name:
         config_args['max_length'] = str2val(notes, 'maxlen', default=256, output_type=int)
 
     if 'packing' in notes:
@@ -1261,7 +1325,10 @@ def evaluation(
     if not hasattr(eval_args, "past_index"):
         eval_args.past_index = -1
 
-    compute_metrics = None
+    metrics_fn = compute_metrics
+    if m_mqar and metrics_fn is None:
+        metrics_fn = compute_mqar_metrics
+
     model.eval()
     trainer_kwargs = {
         'model': model,
@@ -1269,7 +1336,7 @@ def evaluation(
         'args': eval_args,
         'train_dataset': dataset["train"],
         'eval_dataset': dataset[eval_split],
-        'compute_metrics': compute_metrics,
+        'compute_metrics': metrics_fn,
         'data_collator': collator,
     }
 
