@@ -189,7 +189,7 @@ def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
     num_kv_pairs = str2val(notes, 'numkvpairs', default=8, output_type=int)
     num_passes = str2val(notes, 'numpasses', default=1, output_type=int)
     power_a = str2val(notes, 'powera', default=0.01, output_type=float)
-    train_seed = str2val(notes, 'trainseed', default=seed, output_type=int)
+    train_seed = str2val(notes, 'trainseed', default=901, output_type=int)
     eval_seed = str2val(notes, 'evalseed', default=9_001, output_type=int)
     test_seed = str2val(notes, 'testseed', default=42_001, output_type=int)
     chunk_size = str2val(notes, 'mqarchunk', default=2_048, output_type=int)
