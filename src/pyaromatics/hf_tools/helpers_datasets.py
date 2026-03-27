@@ -1,8 +1,9 @@
-import os, argparse, sys, socket, random, itertools, gc
+import os, argparse, sys, socket, random, itertools, gc, json
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from bridge_official.paths import DATADIR, HFDSDIR, WORKDIR, CHECKPOINTS
+# from bridge_official.paths import DATADIR, cachedir, WORKDIR, CHECKPOINTS
+
 
 # HFDIR = os.path.join(DATADIR, 'hf_cache')
 # os.environ['HF_HOME'] = HFDIR
@@ -21,12 +22,16 @@ from transformers import AutoConfig, Qwen3Config
 import datasets
 from datasets import Dataset, DatasetDict, load_dataset, concatenate_datasets, IterableDataset, load_from_disk, \
     Features, Value
+from lm_eval import simple_evaluate
+from lm_eval.api.registry import get_model as get_lm_eval_model
+from lm_eval.models.huggingface import HFLM
 
 from pyaromatics.hf_tools.utils import get_hf_key
 from pyaromatics.hf_tools.utils import get_pretrained_model
 from pyaromatics.hf_tools.utils import get_tokenizer as hf_get_tokenizer
 from pyaromatics.stay_organized.utils import str2val
-from pyaromatics.hf_tools.datasets.rule110.rule110 import generate_rule110_dataset
+from pyaromatics.hf_tools.dataset_tools.rule110.rule110 import generate_rule110_dataset
+from pyaromatics.stay_organized.utils import NumpyEncoder
 
 winogrande_subsets = [
     'winogrande_xs', 'winogrande_s', 'winogrande_m', 'winogrande_l', 'winogrande_xl', 'winogrande_debiased'
@@ -38,7 +43,10 @@ MAX_TOTAL_CHARS = 2_000_000  # safe for 8 GPUs
 SAVE_EVERY = 3_000
 
 
-def get_dataset(dataset_name, seed=42, lengths=None, notes='', retries=3, n_samples=-1, no_print=False, model_id=None):
+def get_dataset(
+        dataset_name, cachedir=None, seed=42, lengths=None, notes='', retries=3, n_samples=-1, no_print=False,
+        model_id=None
+):
     n_samples = str2val(notes, 'nsamples', default=n_samples, output_type=int)
     # for i in range(retries):
     #     try:
@@ -48,45 +56,41 @@ def get_dataset(dataset_name, seed=42, lengths=None, notes='', retries=3, n_samp
     #         print(f"Error in get_dataset_unsafe: {e}")
     #         print(f"Retrying {i + 1}/{retries}...")
     return get_dataset_unsafe(dataset_name, seed=seed, lengths=lengths, notes=notes, n_samples=n_samples,
-                              no_print=no_print, model_id=model_id)
+                              no_print=no_print, model_id=model_id, cachedir=cachedir)
 
 
-def get_dataset_unsafe(dataset_name, seed=42, lengths=None, notes='', n_samples=-1, no_print=False, model_id=None):
+def get_dataset_unsafe(
+        dataset_name, seed=42, lengths=None, notes='', n_samples=-1, no_print=False, model_id=None,
+        cachedir=None
+):
     # get_hf_key(WORKDIR)
 
-    if 'centyp' in notes:
-        guided_subsampling_seed = seed % 4
-        if seed >= 4:
-            print('Warning: guided_subsampling_seed for centrality_ptb is seed%4=', guided_subsampling_seed)
-
-        dataset = get_thin_dataset(dataset_name=dataset_name, notes=notes, seed=guided_subsampling_seed)
-
-    elif 'clrs_' in dataset_name:
+    if 'clrs_' in dataset_name:
         dataset = get_dataset_clrs(dataset_name, seed=seed, lengths=lengths, notes=notes)
 
     elif dataset_name == 'ptb':
-        dataset = get_dataset_ptb(notes=notes, extra_evaluation_datasets=False)
+        dataset = get_dataset_ptb(notes=notes, extra_evaluation_datasets=False, cachedir=cachedir)
 
     elif dataset_name == 'wiki103':
-        dataset = get_dataset_wiki103()
+        dataset = get_dataset_wiki103(cachedir=cachedir)
 
     elif dataset_name == 'llmmix1':
-        dataset = get_lmmix1_dataset(notes=notes)
+        dataset = get_lmmix1_dataset(notes=notes, cachedir=cachedir)
 
     elif dataset_name == 'dolma':
-        dataset = get_dataset_dolma_and_tests(seed=seed, notes=notes)
+        dataset = get_dataset_dolma_and_tests(seed=seed, notes=notes, cachedir=cachedir)
 
     elif dataset_name == 'dolmas':
-        dataset = get_dataset_dolma_and_tests(seed=seed, notes=notes, version='v1_6-sample')
+        dataset = get_dataset_dolma_and_tests(seed=seed, notes=notes, version='v1_6-sample', cachedir=cachedir)
 
     elif dataset_name == 'dolmal':
-        dataset = get_dataset_dolma_and_tests(seed=seed, notes=notes, version='v1_5-sample')
+        dataset = get_dataset_dolma_and_tests(seed=seed, notes=notes, version='v1_5-sample', cachedir=cachedir)
 
     elif dataset_name == 'dolmax':
-        dataset = get_dataset_dolma_and_tests(seed=seed, notes=notes, version='v1_7')
+        dataset = get_dataset_dolma_and_tests(seed=seed, notes=notes, version='v1_7', cachedir=cachedir)
 
     elif dataset_name == 'fineweb':
-        dataset = get_fineweb(notes=notes)
+        dataset = get_fineweb(notes=notes, cachedir=cachedir)
 
     elif dataset_name == 'pile':
         dataset = load_dataset("EleutherAI/pile")
@@ -148,7 +152,7 @@ def get_dataset_unsafe(dataset_name, seed=42, lengths=None, notes='', n_samples=
     return dataset
 
 
-def get_rule110(model_id=None, notes='', seed=42):
+def get_rule110(model_id=None, notes='', seed=42, cachedir=None):
     from thepebbletrail_official.neuron_utils.helpers_models import model_ids
     if model_id in model_ids.keys():
         model_id = model_ids[model_id]
@@ -179,8 +183,8 @@ def get_rule110(model_id=None, notes='', seed=42):
     return dataset
 
 
-def get_xlsum():
-    data_path = os.path.join(HFDSDIR, 'xlsum')
+def get_xlsum(cachedir=None):
+    data_path = os.path.join(cachedir, 'xlsum')
     if not os.path.exists(data_path):
         languages = [
             "amharic", "arabic", "azerbaijani", "bengali", "burmese", "chinese_simplified", "chinese_traditional",
@@ -212,8 +216,8 @@ def get_xlsum():
     return dataset
 
 
-def get_mlsum():
-    data_path = os.path.join(HFDSDIR, 'mlsum')
+def get_mlsum(cachedir=None):
+    data_path = os.path.join(cachedir, 'mlsum')
     if not os.path.exists(data_path):
 
         # load all languages
@@ -241,8 +245,8 @@ def get_mlsum():
     return dataset
 
 
-def get_dataset_lambada(notes=None):
-    data_path = os.path.join(HFDSDIR, 'lambada')
+def get_dataset_lambada(notes=None, cachedir=None):
+    data_path = os.path.join(cachedir, 'lambada')
     if not os.path.exists(data_path):
         dataset = load_dataset("cimec/lambada", trust_remote_code=True)
         dataset.save_to_disk(data_path)
@@ -252,8 +256,8 @@ def get_dataset_lambada(notes=None):
     return dataset
 
 
-def get_dataset_piqa(notes=''):
-    data_path = os.path.join(HFDSDIR, 'piqa')
+def get_dataset_piqa(notes='', cachedir=None):
+    data_path = os.path.join(cachedir, 'piqa')
     if not os.path.exists(data_path):
         dataset = load_dataset("ybisk/piqa", trust_remote_code=True)
 
@@ -280,8 +284,8 @@ def get_dataset_piqa(notes=''):
     return dataset
 
 
-def get_dataset_hellaswag(notes=''):
-    data_path = os.path.join(HFDSDIR, 'hellaswag')
+def get_dataset_hellaswag(notes='', cachedir=None):
+    data_path = os.path.join(cachedir, 'hellaswag')
     if not os.path.exists(data_path):
         dataset = load_dataset("Rowan/hellaswag", trust_remote_code=True)
 
@@ -309,9 +313,9 @@ def get_dataset_hellaswag(notes=''):
     return dataset
 
 
-def get_dataset_arcs(notes='', subset: str = 'ARC-Challenge'):
+def get_dataset_arcs(notes='', subset: str = 'ARC-Challenge', cachedir=None):
     assert subset in arc_subsets
-    data_path = os.path.join(HFDSDIR, subset)
+    data_path = os.path.join(cachedir, subset)
     if not os.path.exists(data_path):
         dataset = load_dataset("allenai/ai2_arc", subset, trust_remote_code=True)
 
@@ -334,9 +338,9 @@ def get_dataset_arcs(notes='', subset: str = 'ARC-Challenge'):
     return dataset
 
 
-def get_dataset_winogrande(notes='', subset: str = 'winogrande_xs'):
+def get_dataset_winogrande(notes='', subset: str = 'winogrande_xs', cachedir=None):
     assert subset in winogrande_subsets
-    data_path = os.path.join(HFDSDIR, subset)
+    data_path = os.path.join(cachedir, subset)
     if not os.path.exists(data_path):
         dataset = load_dataset("allenai/winogrande", subset, trust_remote_code=True)
 
@@ -360,8 +364,8 @@ def get_dataset_winogrande(notes='', subset: str = 'winogrande_xs'):
     return dataset
 
 
-def get_dataset_openbookqa(notes=''):
-    data_path = os.path.join(HFDSDIR, 'openbookqa')
+def get_dataset_openbookqa(notes='', cachedir=None):
+    data_path = os.path.join(cachedir, 'openbookqa')
     if not os.path.exists(data_path):
         dataset = load_dataset("allenai/openbookqa", trust_remote_code=True)
 
@@ -384,8 +388,8 @@ def get_dataset_openbookqa(notes=''):
     return dataset
 
 
-def get_dataset_ptb(notes='', extra_evaluation_datasets=False):
-    data_path = os.path.join(HFDSDIR, 'ptb')
+def get_dataset_ptb(notes='', extra_evaluation_datasets=False, cachedir=None):
+    data_path = os.path.join(cachedir, 'ptb')
     if not os.path.exists(data_path):
         try:
             dataset = load_dataset("ptb-text-only/ptb_text_only", trust_remote_code=True)
@@ -413,10 +417,8 @@ def get_dataset_ptb(notes='', extra_evaluation_datasets=False):
     return dataset
 
 
-
-
-def get_dataset_wiki103():
-    data_path = os.path.join(HFDSDIR, 'wiki103')
+def get_dataset_wiki103(cachedir=None):
+    data_path = os.path.join(cachedir, 'wiki103')
     if not os.path.exists(data_path):
         # Salesforce/wikitext
         dataset = load_dataset("wikitext", "wikitext-103-raw-v1")
@@ -430,13 +432,14 @@ def get_dataset_wiki103():
     dataset = datasets.load_from_disk(data_path)
     return dataset
 
+
 def get_dataset_clrs(
         dataset_name, train_samples=1000, seed=42, val_samples=1000, test_samples=1000,
-        lengths=None, notes=''
+        lengths=None, notes='', cachedir=None
 ):
     from thepebbletrail_official.dataset_utils.clrs._src.clrs_text.huggingface_generators import clrs_generator
     from thepebbletrail_official.dataset_utils.clrs._src.specs import CLRS_30_ALGS
-    CLRSDIR = os.path.join(DATADIR, 'clrs_datasets')
+    CLRSDIR = os.path.join(cachedir, 'clrs_datasets')
     if 'clrs_' not in dataset_name:
         raise ValueError(f"Dataset {dataset_name} not recognized.")
 
@@ -521,44 +524,8 @@ def get_dataset_clrs(
     return ds
 
 
-def test_get_dataset():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default='ptb')
-    args = parser.parse_args()
-
-    if args.dataset == 'clrs_all':
-        lengths = [4]  # [256, 1024, 4096, 16384]
-    elif args.dataset == 'clrs_insertion_sort':
-        lengths = [4096, 16384]
-    else:
-        lengths = [16, 64, 256, 1024, 4096, 16384]
-
-    lengths = None
-    ds = get_dataset(args.dataset, seed=1, lengths=lengths)
-    print(ds)
-    print(ds.keys())
-
-    # tasks = []
-    for i in range(min(10, len(ds['train']))):
-        print(ds['train'][i])
-        # task = ds['train'][i]['text'].split(':')[0].split(' - ')[1]
-        # tasks.append(task)
-
-    # print(set(tasks))
-    # print(len(set(tasks)))
-
-
-# DOLMADATADIR = os.path.join(HFDIR, 'dolma')
-# DOLMAGITDIR = os.path.join(WORKDIR, 'dolma')
-# dolma_lines = f"""
-# cd {WORKDIR}; git clone https://huggingface.co/datasets/allenai/dolma
-# DATA_DIR={DOLMADATADIR}; mkdir -p "${{DATA_DIR}}"
-# DATA_DIR={DOLMADATADIR}; PARALLEL_DOWNLOADS="4"; DOLMA_VERSION="v1_6-sample"; cat "{DOLMAGITDIR}/urls/${{DOLMA_VERSION}}.txt" | xargs -n 1 -P "${{PARALLEL_DOWNLOADS}}" wget -q -P "$DATA_DIR"
-# """
-
-
-def get_dataset_dolma(notes='', version='v1_6-sample'):
-    data_path = os.path.join(HFDSDIR, 'dolma_' + version)
+def get_dataset_dolma(notes='', version='v1_6-sample', cachedir=None):
+    data_path = os.path.join(cachedir, 'dolma_' + version)
     print(data_path)
 
     if not os.path.exists(data_path):
@@ -580,8 +547,8 @@ def get_dataset_dolma(notes='', version='v1_6-sample'):
     return dataset
 
 
-def get_fineweb(notes='', method='normal'):
-    data_path = os.path.join(HFDSDIR, 'fineweb')
+def get_fineweb(notes='', method='normal', cachedir=None):
+    data_path = os.path.join(cachedir, 'fineweb')
     print(data_path)
     if not os.path.exists(data_path):
         # count cpus and multiply by the number of cores per cpu
@@ -598,8 +565,8 @@ def get_fineweb(notes='', method='normal'):
     return dataset
 
 
-def get_dataset_dolma_and_tests(seed=0, notes='', version='v1_6-sample'):
-    dataset = get_dataset_dolma(notes=notes, version=version)
+def get_dataset_dolma_and_tests(seed=0, notes='', version='v1_6-sample', cachedir=None):
+    dataset = get_dataset_dolma(notes=notes, version=version, cachedir=cachedir)
     print(dataset)
 
     # test_names = [
@@ -798,263 +765,6 @@ centrality_types = [
 ]
 
 
-def get_thin_dataset(dataset_name='ptb', notes='mean', seed=0):
-    centrality_type = str2val(notes, 'centyp', default='mean', output_type=str)
-    assert centrality_type in centrality_types, f'Centrality type {centrality_type} not recognized.'
-    print(f'\nGetting {centrality_type} centrality reduced {dataset_name} dataset, seed {seed}...')
-    max_seq_length = 512
-    batch_size = 32
-
-    data_samples = -1 if not 'DESKTOP' in socket.gethostname() else 200
-    data_reduction_factor = 21
-
-    reduced_dataset_path = os.path.join(
-        DATADIR, 'coreset_themis',
-        f'reduced_dataset_{dataset_name}_{data_reduction_factor}x_{centrality_type}_seed{seed}'
-    )
-    if not os.path.exists(reduced_dataset_path):
-        os.makedirs(os.path.dirname(reduced_dataset_path), exist_ok=True)
-        ds = create_thin_dataset(
-            dataset_name=dataset_name,
-            data_samples=data_samples,
-            data_reduction_factor=data_reduction_factor,
-            max_seq_length=max_seq_length,
-            batch_size=batch_size,
-            centrality_type=centrality_type,
-            seed=seed,
-        )
-        ds.save_to_disk(reduced_dataset_path)
-
-    reduced_dataset = DatasetDict.load_from_disk(reduced_dataset_path)
-    return reduced_dataset
-
-
-def create_thin_dataset(
-        dataset_name='ptb',
-        data_samples=200,
-        data_reduction_factor=21,
-        max_seq_length=512,
-        batch_size=32,
-        centrality_type='mean',
-        seed=42
-):
-    dataset = get_dataset(dataset_name=dataset_name, seed=seed, notes='', no_print=True)
-
-    # set seeds
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    random.seed(seed)
-
-    if data_samples > 0:
-        dataset['train'] = dataset['train'].select(range(data_samples))
-
-    docs = [d['text'] for d in dataset['train']]
-
-    model_names = ['openai-community/gpt2']
-    model_names = [
-        'state-spaces/mamba-130m-hf',
-        'openai-community/gpt2',
-        'tfidf',
-    ]
-
-    mfc_final = centrality_type.replace('anti+', '')
-    assert mfc_final in metrics_for_centrality, f'Metric for centrality {mfc_final} not recognized.'
-
-    all_samples = {}
-    for model_name in model_names:
-
-        representation_dir = os.path.join(
-            DATADIR,
-            'coreset_themis',
-            f'representation_{dataset_name}_{model_name.replace("/", "_")}'
-        )
-        os.makedirs(representation_dir, exist_ok=True)
-
-        if len(os.listdir(representation_dir)) == 0:
-            if model_name == 'tfidf':
-                from sklearn.feature_extraction.text import TfidfVectorizer
-
-                vectorizer = TfidfVectorizer(max_features=1024)
-                X = vectorizer.fit_transform(docs)
-
-                reps_path = os.path.join(representation_dir, f'reps_tfidf.npy')
-                np.save(reps_path, X.toarray())
-
-            else:
-                offload_dir = CHECKPOINTS + '/' + model_name.replace('/', '_') + '_offload'
-                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-                model = get_pretrained_model(model_name, save_dir=DATADIR, offload_dir=offload_dir).to(device)
-                tokenizer = hf_get_tokenizer(model_name, save_dir=DATADIR, max_seq_length=max_seq_length)
-
-                for i in tqdm(range(0, len(docs), batch_size), desc="Computing representations"):
-                    batch_docs = docs[i:i + batch_size]
-                    inputs = tokenizer(
-                        batch_docs, return_tensors='pt', padding=True, truncation=True, max_length=max_seq_length
-                    ).to(device)
-                    with torch.no_grad():
-                        outputs = model(**inputs, output_hidden_states=True)
-
-                        hidden_states = outputs.hidden_states  # a tuple of layer outputs
-                        last_hidden_state = hidden_states[-1]
-
-                    feature_analysis = summarize_sequence_features(last_hidden_state, inputs['attention_mask'])
-                    for mfc, v in feature_analysis.items():
-                        reps_path = os.path.join(representation_dir, f'reps_{mfc}_{i}.npy')
-                        np.save(reps_path, v.cpu().numpy())
-
-        pbar = tqdm(metrics_for_centrality, desc="Computing centrality")
-        for mfc in pbar:
-            pbar.set_description(f"Computing centrality: {mfc}")
-            centrality_path = os.path.join(representation_dir, f'centrality_{mfc}.npy')
-            if not os.path.exists(centrality_path):
-                # load them all and concatenate them
-                reps = []
-                for i in tqdm(range(0, len(docs), batch_size), desc="Loading reps from disk"):
-                    reps_path = os.path.join(representation_dir, f'reps_{mfc}_{i}.npy')
-                    batch_reps = np.load(reps_path)
-                    reps.extend(batch_reps)
-
-                reps = np.array(reps)
-
-                # normalize
-                norms = np.linalg.norm(reps, axis=1, keepdims=True)
-                reps = reps / norms
-
-                centrality = reps2centrality(reps)
-                np.save(centrality_path, centrality)
-
-        centrality_path = os.path.join(representation_dir, f'centrality_{mfc_final}.npy')
-        centrality = np.load(centrality_path)
-        centrality = centrality / np.sum(centrality)
-
-        n_nans = np.sum(np.isnan(centrality))
-        if n_nans > 0:
-            print(
-                f'Found {n_nans}/{len(centrality)} NaNs in centrality using {centrality_type}, replacing with uniform values.')
-            centrality = np.nan_to_num(centrality, nan=1.0 / len(centrality))
-            centrality = centrality / np.sum(centrality)
-
-        if 'anti+' in centrality_type:
-            anti_centrality = 1.0 - centrality
-            centrality = centrality ** 2 + anti_centrality ** 2
-            centrality = centrality / np.sum(centrality)
-
-        # Draw without replacement
-        data_samples_target = len(dataset['train']) // data_reduction_factor
-        k = data_samples_target // len(model_names)
-        samples = np.random.choice(len(centrality), size=k, replace=False, p=centrality)
-        all_samples[model_name] = samples.tolist()
-
-    # create a hf dataset with those samples and save it
-    final_samples = []
-    for samples in all_samples.values():
-        final_samples.extend(samples)
-    final_samples = list(set(final_samples))
-    final_samples = sorted(final_samples)
-
-    reduced_trainset = dataset['train'].select(final_samples)
-    reduced_dataset = DatasetDict({
-        'train': reduced_trainset,
-        'validation': dataset['validation'],
-        'test': dataset['test']
-    })
-    return reduced_dataset
-
-
-def reps2centrality(reps):
-    N, d = reps.shape
-    batch_size = 1024
-
-    # Memory-mapped array for the accumulated row sums (only O(N) storage)
-    dotdat_path = os.path.join(DATADIR, 'row_sums.dat')
-    row_sums = np.memmap(dotdat_path, dtype='float64', mode='w+', shape=(N, 1))
-    row_sums[:] = 0  # initialize
-
-    total_sum = 0.0
-
-    for i in tqdm(range(0, N, batch_size), desc="Computing centrality in tiles"):
-        batch_i = reps[i:i + batch_size]
-
-        # temporary buffer for this block’s row sums
-        tile_row_sums = np.zeros((batch_i.shape[0],), dtype=np.float64)
-
-        for j in range(0, N, batch_size):
-            batch_j = reps[j:j + batch_size]
-
-            sub_D = 1 / (1 + np.exp(-(batch_i @ batch_j.T)))
-
-            # accumulate local row sums
-            tile_row_sums += np.sum(sub_D, axis=1)
-            total_sum += np.sum(sub_D)
-
-        # write back to disk
-        row_sums[i:i + batch_size, 0] = tile_row_sums
-        row_sums.flush()
-
-    # normalize in place
-    centrality = np.array(row_sums[:, 0] / total_sum, dtype=np.float32)
-
-    # remove dotdat_path
-    if os.path.exists(dotdat_path):
-        os.remove(dotdat_path)
-    return centrality
-
-
-def summarize_sequence_features(x, attention_mask):
-    """
-    x: (batch, time, width)
-    attention_mask: (batch, time)  1=valid, 0=padding
-    returns: dict of pooled features (batch, feature_dim)
-    """
-    # Ensure mask is float for weighting
-    mask = attention_mask.float()
-    mask_sum = mask.sum(dim=1, keepdim=True).clamp(min=1e-8)
-
-    # ----- Mean & Std -----
-    mean = (x * mask.unsqueeze(-1)).sum(dim=1) / mask_sum
-    var = ((x - mean.unsqueeze(1)) ** 2 * mask.unsqueeze(-1)).sum(dim=1) / mask_sum
-    std = torch.sqrt(var + 1e-8)
-
-    # ----- Temporal differences (Δx) -----
-    x_shift = F.pad(x[:, 1:], (0, 0, 0, 1))  # shift right
-    diff = (x - x_shift)[:, 1:]  # valid diffs
-    mask_diff = mask[:, 1:] * mask[:, :-1]  # only valid steps
-
-    mean_dx = (diff * mask_diff.unsqueeze(-1)).sum(dim=1) / mask_diff.sum(dim=1, keepdim=True).clamp(min=1e-8)
-    std_dx = torch.sqrt(((diff - mean_dx.unsqueeze(1)) ** 2 * mask_diff.unsqueeze(-1)).sum(dim=1) /
-                        mask_diff.sum(dim=1, keepdim=True).clamp(min=1e-8))
-
-    # ----- Autocorrelation (lag 1) -----
-    # Normalize x per sequence for cosine similarity
-    x_norm = F.normalize(x, dim=-1)
-    # autocorr = (x_norm[:, 1:] * x_norm[:, :-1]).sum(-1) * mask_diff
-    unsq_mask_diff = mask_diff.unsqueeze(-1)
-    autocorr = (x_norm[:, 1:] * x_norm[:, :-1]) * unsq_mask_diff
-    autocorr = autocorr.sum(1) / unsq_mask_diff.sum(1).clamp(min=1e-8)
-    # autocorr = autocorr.unsqueeze(-1)
-
-    # ----- Fourier transform energy -----
-    # Compute per sequence along time, mask padding as zeros
-    x_masked = x * mask.unsqueeze(-1)
-    fft = torch.fft.rfft(x_masked, dim=1)
-    power = (fft.real ** 2 + fft.imag ** 2)  # mean over width
-
-    # low- vs high-frequency ratio as 2D summary
-    mid = power.size(1) // 4
-    low_energy = power[:, :mid].sum(1)
-    high_energy = power[:, mid:].sum(1)
-    fourier_ratio = (high_energy / (low_energy + 1e-8))
-
-    return {
-        "mean": mean,
-        "std": std,
-        "mean_dx": mean_dx,
-        "std_dx": std_dx,
-        "autocorr": autocorr,
-        "rfourier": fourier_ratio,
-    }
-
-
 def format_qa(x):
     prompt = x["instruction"]
     if x["input"]:
@@ -1113,8 +823,8 @@ def load_sharded_dataset(path):
     return concatenate_datasets([load_from_disk(s) for s in shards])
 
 
-def get_lmmix1_dataset(notes=""):
-    data_path = os.path.join(HFDSDIR, "lmmix1")
+def get_lmmix1_dataset(notes="", cachedir=None):
+    data_path = os.path.join(cachedir, "lmmix1")
     if not os.path.exists(data_path):
 
         SEED = 42
@@ -1191,7 +901,7 @@ def get_lmmix1_dataset(notes=""):
             for name, ds in datasets_dict.items()
         }
 
-        base_path = os.path.join(HFDSDIR, "lmmix1_parts")
+        base_path = os.path.join(cachedir, "lmmix1_parts")
         os.makedirs(base_path, exist_ok=True)
 
         for name, ds in datasets_dict.items():
@@ -1288,7 +998,7 @@ def get_lmmix1_dataset(notes=""):
     return dataset
 
 
-def get_open_llm_leaderboard():
+def get_open_llm_leaderboard(cachedir):
     from transformers import AutoConfig, AutoModelForCausalLM
     from thepebbletrail_official.dataset_utils.model_expressivity import get_expressivities
     from thepebbletrail_official.neuron_utils.helpers_models import model_ids
@@ -1318,7 +1028,7 @@ def get_open_llm_leaderboard():
     print(df.head().to_string())
 
     results_path = os.path.join(
-        DATADIR, 'open-llm-leaderboard',
+        cachedir, 'open-llm-leaderboard',
         f'expressivity_results_b{batch_size}_ins{initializations}_ts{time_steps}.txt'
     )
 
@@ -1429,57 +1139,6 @@ def test_dataset_line_stats():
     print("\n" + "=" * 60)
 
 
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default='dolmas')
-    parser.add_argument("--notes", type=str, default='')
-    args = parser.parse_args()
-
-    if args.dataset == 'line_stats':
-        test_dataset_line_stats()
-        sys.exit(0)
-
-    # dolma_versions = ['v1_6-sample', 'v1_7']
-    dolma_versions = {'dolmas': 'v1_6-sample', 'dolmal': 'v1_5-sample', 'dolmax': 'v1_7'}
-
-    if args.notes.replace('down', '') in list(dolma_versions.keys()):
-
-        version_flag = args.notes.replace('down', '')
-        v = dolma_versions[version_flag]
-
-        num_proc = os.cpu_count() * 4 - 1
-        lines = [
-            '',
-            '',
-            f'DATA_DIR="{HFDIR}"',
-            f'PARALLEL_DOWNLOADS="{num_proc}"',
-            f'DOLMA_VERSION="{v}"',
-            'cd; source ~/.bashrc',
-            'cw; git clone https://huggingface.co/datasets/allenai/dolma',
-            'cw; mkdir -p "${DATA_DIR}"/',
-            'cw; cat "dolma/urls/${DOLMA_VERSION}.txt" | xargs -n 1 -P "${PARALLEL_DOWNLOADS}" wget -q -P "$DATA_DIR"',
-            '',
-            '',
-        ]
-        line = '\n'.join(lines)
-        print(line)
-        os.system(line)
-
-
-    else:
-        # pass
-        # dataset = get_dataset(dataset_name=args.dataset)
-        seeds = list(range(4))
-        # seeds = [0]
-        for seed in seeds:
-            for mfc in centrality_types:
-                # print(f'\nCentrality dataset {mfc}')
-                notes = f'centyp:{mfc}'
-                get_thin_dataset(notes=notes, seed=seed)
-
-
-
 def evaluation(
         model, tokenizer, dataset, dataset_name, eval_split,
         batch_size=1, seed=42, output_dir=None, notes='',
@@ -1539,24 +1198,22 @@ def evaluation(
     return eval_output
 
 
-
-def evaluation_lmeval():
+def evaluation_lmeval(
+        model, tokenizer, notes='',
+        cachepath=None
+):
     results = {}
     # LM Eval evaluation loop
     print('\n\n' + '=' * 50)
     print('Running LM Eval on standard benchmarks')
     print('=' * 50)
     try:
-
-        from lm_eval import simple_evaluate
-        from lm_eval.api.registry import get_model as get_lm_eval_model
-
         # Ensure we use the HF cache directory for datasets
         # This helps with offline loading if datasets were previously downloaded
-        if 'HF_DATASETS_CACHE' not in os.environ:
-            from thepebbletrail_official.paths import HFCACHE
-            os.environ['HF_DATASETS_CACHE'] = HFCACHE
-            os.environ['HF_HOME'] = HFCACHE
+        if 'HF_DATASETS_CACHE' not in os.environ and cachepath:
+            os.environ['HF_DATASETS_CACHE'] = cachepath
+            os.environ['HF_HOME'] = cachepath
+
         print(f'Using HF cache directory: {os.environ.get("HF_DATASETS_CACHE", "default")}')
 
         # Define tasks: wikitext, LAMBADA, knowledge/QA + reading comprehension
@@ -1576,7 +1233,7 @@ def evaluation_lmeval():
             tasks += [
                 # QA / reading comprehension (lm_eval 0.4.x task keys: squad_completion, squadv2)
                 # "squad_completion", works # SQuAD-style completion (was "squad" in older harness)
-                "squadv2", # SQuAD v2.0 (was "squad2" in older harness)
+                "squadv2",  # SQuAD v2.0 (was "squad2" in older harness)
                 # "triviaqa", works # TriviaQA
                 # "nq_open", works # Natural Questions (open-domain)
                 # "drop", works # DROP (discrete reasoning)
@@ -1588,16 +1245,14 @@ def evaluation_lmeval():
         try:
             hf_model_cls = get_lm_eval_model("hf")
         except Exception:
-            from lm_eval.models.huggingface import HFLM
             hf_model_cls = HFLM
         # Batched forward passes for loglikelihood / scoring (MC tasks). Default HFLM batch_size=1 is slow.
         # generate_until still does autoregressive decoding; batching helps less there but can still batch prompts.
-        eval_batch = max(1, int(args.batch_size))
         eval_model = hf_model_cls(
             pretrained=model,
             tokenizer=tokenizer,
-            batch_size=eval_batch,
-            max_batch_size=min(64, max(eval_batch, 8)),
+            batch_size=8,
+            max_batch_size=64,
         )
 
         limit = 2 if 'onlytesting' in notes else None
