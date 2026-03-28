@@ -66,6 +66,9 @@ def get_dataset_unsafe(
 ):
     # get_hf_key(WORKDIR)
 
+    eval_steps = 20_000
+    eval_strategy = 'epoch'# if not 'mqar' in dataset_name.lower() else 'steps'
+
     if 'clrs_' in dataset_name:
         dataset = get_dataset_clrs(dataset_name, seed=seed, lengths=lengths, notes=notes)
 
@@ -111,7 +114,8 @@ def get_dataset_unsafe(
 
     elif re.match(r'^mqar\d+$', dataset_name):
         dataset = get_mqar_dataset(dataset_name, seed=seed, notes=notes, cachedir=cachedir)
-
+        eval_steps = 200
+        eval_strategy = 'steps'
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized.")
 
@@ -153,7 +157,11 @@ def get_dataset_unsafe(
                 text = text.replace('\n', ' ').replace('  ', ' ')
                 print(f'    {k}: {text}')
 
-    return dataset
+    data_config = {
+        "eval_strategy": eval_strategy,
+        "eval_steps": eval_steps,
+    }
+    return dataset, data_config
 
 def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
     """
