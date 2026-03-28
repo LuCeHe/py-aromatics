@@ -155,16 +155,6 @@ def get_dataset_unsafe(
 
     return dataset
 
-
-# def _mqar_cache_dir(cachedir):
-#     if cachedir is not None:
-#         return cachedir
-#     env = os.environ.get("HF_DATASETS_CACHE")
-#     if env:
-#         return os.path.join(env, "pyaromatics_mqar")
-#     return os.path.join(os.path.expanduser("~"), ".cache", "pyaromatics", "hf_datasets")
-
-
 def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
     """
     Synthetic MQAR (Zoology-style) data. Names ``mqar64``, ``mqar128``, … set
