@@ -219,6 +219,7 @@ def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
     data_path = os.path.join(root, "mqar", f"{dataset_name}_{digest}")
 
     if not os.path.exists(data_path):
+        print('Building MQAR dataset with config', cache_key)
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
         dsd = build_mqar_dataset_dict(
             train_samples=train_samples,

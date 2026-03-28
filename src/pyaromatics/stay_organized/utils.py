@@ -304,7 +304,7 @@ def summarize_logs(
         error_keys=['Aborted', 'error', 'Error', '(core dumped)'],
         exclude_as_errors=['mean_squared_error', 'mean_absolute_error', 'TracebackException'],
         completion_keys=['DONE', 'All done', 'Completed after'],
-        find_in_outs=['manymodels'],
+        find_in_outs=['manymodels', 'pnormgathergrad'],
         error_similarity_threshold=.8,
         comments='',
         only_last=False,
