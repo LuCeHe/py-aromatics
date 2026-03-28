@@ -67,7 +67,7 @@ def get_dataset_unsafe(
     # get_hf_key(WORKDIR)
 
     eval_steps = 20_000
-    eval_strategy = 'epoch'# if not 'mqar' in dataset_name.lower() else 'steps'
+    eval_strategy = 'epoch'
 
     if 'clrs_' in dataset_name:
         dataset = get_dataset_clrs(dataset_name, seed=seed, lengths=lengths, notes=notes)
