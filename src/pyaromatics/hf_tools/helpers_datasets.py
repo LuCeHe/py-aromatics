@@ -156,13 +156,13 @@ def get_dataset_unsafe(
     return dataset
 
 
-def _mqar_cache_dir(cachedir):
-    if cachedir is not None:
-        return cachedir
-    env = os.environ.get("HF_DATASETS_CACHE")
-    if env:
-        return os.path.join(env, "pyaromatics_mqar")
-    return os.path.join(os.path.expanduser("~"), ".cache", "pyaromatics", "hf_datasets")
+# def _mqar_cache_dir(cachedir):
+#     if cachedir is not None:
+#         return cachedir
+#     env = os.environ.get("HF_DATASETS_CACHE")
+#     if env:
+#         return os.path.join(env, "pyaromatics_mqar")
+#     return os.path.join(os.path.expanduser("~"), ".cache", "pyaromatics", "hf_datasets")
 
 
 def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
@@ -215,8 +215,8 @@ def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
     digest = hashlib.sha256(
         json.dumps(cache_key, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()[:16]
-    root = _mqar_cache_dir(cachedir)
-    data_path = os.path.join(root, "mqar", f"{dataset_name}_{digest}")
+    # root = _mqar_cache_dir(cachedir)
+    data_path = os.path.join(cachedir, "mqar", f"{dataset_name}_{digest}")
 
     if not os.path.exists(data_path):
         print('Building MQAR dataset with config', cache_key)
