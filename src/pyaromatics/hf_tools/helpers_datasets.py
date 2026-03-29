@@ -72,6 +72,8 @@ def get_dataset_unsafe(
     eval_strategy = 'epoch'
     neftune= None if 'foldable' in notes else 5
     label_smoothing_factor = 0.1
+    early_stopping_patience= 4
+    lr_scheduler_type= 'linear'
 
     if 'clrs_' in dataset_name:
         dataset = get_dataset_clrs(dataset_name, seed=seed, lengths=lengths, notes=notes)
@@ -122,6 +124,8 @@ def get_dataset_unsafe(
         eval_strategy = 'epoch'
         neftune = None
         label_smoothing_factor = 0.0
+        early_stopping_patience = 20
+        lr_scheduler_type = 'constant'
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized.")
 
@@ -169,6 +173,8 @@ def get_dataset_unsafe(
         "eval_steps": eval_steps,
         "neftune": neftune,
         "label_smoothing_factor": label_smoothing_factor,
+        "early_stopping_patience": early_stopping_patience,
+        "lr_scheduler_type": lr_scheduler_type,
     }
     print(dataset)
     return dataset, data_config
