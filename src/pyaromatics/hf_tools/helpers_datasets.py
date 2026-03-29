@@ -188,13 +188,6 @@ def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
     eval_samples = str2val(notes, 'evalsamples', default=3_000, output_type=int)
     test_samples = str2val(notes, 'testsamples', default=3_000, output_type=int)
     vocab_size = str2val(notes, 'vocabsize', default=8_192, output_type=int)
-    # Cap eval/test size for long sequences so a single forward pass tensor set stays bounded
-    # (train is unaffected; override with evalsamples:/testsamples: in notes if needed).
-    _max_logits_bytes = 2 * 1024 ** 3  # ~2 GiB upper bound on logits buffer per eval run (legacy full-eval)
-    _bytes_per_pos = max(1, input_seq_len) * max(1, vocab_size) * 4
-    _cap = max(128, min(3_000, _max_logits_bytes // _bytes_per_pos))
-    eval_samples = min(eval_samples, int(_cap))
-    test_samples = min(test_samples, int(_cap))
     num_kv_pairs = str2val(notes, 'numkvpairs', default=8, output_type=int)
     num_passes = str2val(notes, 'numpasses', default=1, output_type=int)
     power_a = str2val(notes, 'powera', default=0.1, output_type=float)
