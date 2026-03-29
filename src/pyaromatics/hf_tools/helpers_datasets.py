@@ -11,6 +11,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 # os.system(f"export HF_HOME={HFDIR}")
 
 from glob import glob
+from typing import Tuple
+
 import numpy as np
 from tqdm import tqdm
 
@@ -186,6 +188,13 @@ def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
     eval_samples = str2val(notes, 'evalsamples', default=3_000, output_type=int)
     test_samples = str2val(notes, 'testsamples', default=3_000, output_type=int)
     vocab_size = str2val(notes, 'vocabsize', default=8_192, output_type=int)
+    # Cap eval/test size for long sequences so a single forward pass tensor set stays bounded
+    # (train is unaffected; override with evalsamples:/testsamples: in notes if needed).
+    _max_logits_bytes = 2 * 1024 ** 3  # ~2 GiB upper bound on logits buffer per eval run (legacy full-eval)
+    _bytes_per_pos = max(1, input_seq_len) * max(1, vocab_size) * 4
+    _cap = max(128, min(3_000, _max_logits_bytes // _bytes_per_pos))
+    eval_samples = min(eval_samples, int(_cap))
+    test_samples = min(test_samples, int(_cap))
     num_kv_pairs = str2val(notes, 'numkvpairs', default=8, output_type=int)
     num_passes = str2val(notes, 'numpasses', default=1, output_type=int)
     power_a = str2val(notes, 'powera', default=0.1, output_type=float)
@@ -1255,27 +1264,47 @@ def _mqar_topk_accuracy(
     k: int = 5,
 ) -> float:
     """Fraction of masked positions where the gold token rank (by logit) is in the top-k."""
+    hits, total = _mqar_topk_hits_and_total(logits_shift, shift_labels, mask, k=k)
+    return float(hits) / float(total) if total > 0 else 0.0
+
+
+def _mqar_topk_hits_and_total(
+    logits_shift: np.ndarray,
+    shift_labels: np.ndarray,
+    mask: np.ndarray,
+    k: int = 5,
+) -> Tuple[int, int]:
+    """Number of masked positions where gold is in top-k, and total masked count."""
     logits_m = logits_shift[mask]
     labels_m = shift_labels[mask]
     if labels_m.size == 0:
-        return 0.0
+        return 0, 0
     n_cls = logits_m.shape[-1]
     kk = min(int(k), int(n_cls))
     topk_idx = np.argpartition(logits_m, -kk, axis=-1)[:, -kk:]
-    hits = np.any(topk_idx == labels_m[:, np.newaxis], axis=-1)
-    return float(np.mean(hits))
+    hits = int(np.sum(np.any(topk_idx == labels_m[:, np.newaxis], axis=-1)))
+    return hits, int(labels_m.size)
+
+
+def _mqar_stats_from_logits_labels(logits: np.ndarray, labels: np.ndarray):
+    """Single-batch (or full) logits/labels → correct, total, top5_hits, y_true, y_hat (1d)."""
+    logits_shift = logits[:, :-1, :]
+    preds = np.argmax(logits_shift, axis=-1)
+    shift_labels = labels[:, 1:]
+    mask = shift_labels != -100
+    correct = int(np.sum((preds == shift_labels) & mask))
+    total = int(np.sum(mask))
+    top5_hits, _ = _mqar_topk_hits_and_total(logits_shift, shift_labels, mask, k=5)
+    y_true = shift_labels[mask].ravel()
+    y_hat = preds[mask].ravel()
+    return correct, total, top5_hits, y_true, y_hat
 
 
 def compute_mqar_metrics(eval_pred):
     """
-    HuggingFace ``compute_metrics`` for MQAR-style causal LM eval: next-token accuracy on
-    positions where ``labels[:, 1:] != -100``. Expects full accumulated ``predictions`` (logits)
-    and ``label_ids`` from ``Trainer.evaluate`` (use ``batch_eval_metrics=False``).
-
-    Also reports macro-averaged token F1 (``mqar_f1``) over predicted vs gold token ids on
-    masked positions, and top-5 accuracy (``mqar_top5_accuracy``) on the same positions.
-
-    Returned keys are prefixed with ``eval_`` by the trainer (e.g. ``eval_mqar_accuracy``).
+    Full-eval path (``Trainer.evaluate`` with ``batch_eval_metrics=False``): metrics from
+    **all** logits at once. **OOMs** on long sequences × large eval sets — prefer
+    :func:`make_mqar_compute_metrics` with ``batch_eval_metrics=True``.
     """
     logits = eval_pred.predictions
     labels = eval_pred.label_ids
@@ -1285,18 +1314,63 @@ def compute_mqar_metrics(eval_pred):
         logits = logits[0]
     logits = np.asarray(logits)
     labels = np.asarray(labels)
-    logits_shift = logits[:, :-1, :]
-    preds = np.argmax(logits_shift, axis=-1)
-    shift_labels = labels[:, 1:]
-    mask = shift_labels != -100
-    correct = np.sum((preds == shift_labels) & mask)
-    total = np.sum(mask)
+    correct, total, top5_hits, y_true, y_hat = _mqar_stats_from_logits_labels(logits, labels)
     acc = float(correct) / float(total) if total > 0 else 0.0
-    acc_top5 = _mqar_topk_accuracy(logits_shift, shift_labels, mask, k=5)
-    y_true = shift_labels[mask].ravel()
-    y_hat = preds[mask].ravel()
+    acc_top5 = float(top5_hits) / float(total) if total > 0 else 0.0
     f1 = _mqar_token_f1_macro(y_true, y_hat)
     return {"mqar_accuracy": acc, "mqar_top5_accuracy": acc_top5, "mqar_f1": f1}
+
+
+def make_mqar_compute_metrics():
+    """
+    Build ``compute_metrics`` for MQAR with ``batch_eval_metrics=True`` so the Trainer does
+    **not** concatenate all eval logits (avoids multi‑GB RAM and OOM on mqar256 / mqar512).
+
+    Signature must be ``(eval_pred, compute_result=False)`` per HuggingFace Trainer.
+    """
+    state = {
+        "correct": 0,
+        "top5_hits": 0,
+        "total": 0,
+        "y_true_parts": [],
+        "y_hat_parts": [],
+    }
+
+    def compute_metrics(eval_pred, compute_result=False):
+        logits = eval_pred.predictions
+        labels = eval_pred.label_ids
+        if logits is None or labels is None:
+            return {} if compute_result else {}
+        if isinstance(logits, (tuple, list)):
+            logits = logits[0]
+        logits = np.asarray(logits)
+        labels = np.asarray(labels)
+        correct, total, top5_hits, y_true, y_hat = _mqar_stats_from_logits_labels(logits, labels)
+        state["correct"] += correct
+        state["top5_hits"] += top5_hits
+        state["total"] += total
+        if y_true.size:
+            state["y_true_parts"].append(y_true)
+            state["y_hat_parts"].append(y_hat)
+        if compute_result:
+            t = state["total"]
+            acc = float(state["correct"]) / float(t) if t else 0.0
+            acc5 = float(state["top5_hits"]) / float(t) if t else 0.0
+            if state["y_true_parts"]:
+                yt = np.concatenate(state["y_true_parts"])
+                yh = np.concatenate(state["y_hat_parts"])
+                f1 = _mqar_token_f1_macro(yt, yh)
+            else:
+                f1 = 0.0
+            state["correct"] = 0
+            state["top5_hits"] = 0
+            state["total"] = 0
+            state["y_true_parts"].clear()
+            state["y_hat_parts"].clear()
+            return {"mqar_accuracy": acc, "mqar_top5_accuracy": acc5, "mqar_f1": f1}
+        return {}
+
+    return compute_metrics
 
 
 def evaluation(
@@ -1317,9 +1391,9 @@ def evaluation(
         'logging_strategy': "no",
         'seed': seed,
         'max_steps': len(dataset[eval_split]) // batch_size,
-        # MQAR uses compute_metrics on full accumulated logits; batch mode only runs
-        # per-batch metrics and does not aggregate logits for accuracy.
-        'batch_eval_metrics': False if m_mqar and compute_metrics is None else True,
+        # MQAR: batch_eval_metrics=True + make_mqar_compute_metrics() avoids concatenating
+        # all eval logits (O(seq × vocab × n_examples)) — prevents OOM on mqar256/512.
+        'batch_eval_metrics': True,
         # 'auto_find_batch_size': True,
         'auto_find_batch_size': False,
         'dataset_text_field': "text",
@@ -1348,7 +1422,7 @@ def evaluation(
 
     metrics_fn = compute_metrics
     if m_mqar and metrics_fn is None:
-        metrics_fn = compute_mqar_metrics
+        metrics_fn = make_mqar_compute_metrics()
 
     model.eval()
     trainer_kwargs = {
