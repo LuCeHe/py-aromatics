@@ -1321,7 +1321,7 @@ def evaluation(
         # per-batch metrics and does not aggregate logits for accuracy.
         'batch_eval_metrics': False if m_mqar and compute_metrics is None else True,
         # 'auto_find_batch_size': True,
-        'auto_find_batch_size': False,
+        'auto_find_batch_size': True,
         'dataset_text_field': "text",
         'max_length': 60_000,
         'fp16': True,
