@@ -114,8 +114,8 @@ def get_dataset_unsafe(
 
     elif re.match(r'^mqar\d+$', dataset_name):
         dataset = get_mqar_dataset(dataset_name, seed=seed, notes=notes, cachedir=cachedir)
-        eval_steps = 200
-        eval_strategy = 'steps'
+        eval_steps = 1
+        eval_strategy = 'epoch'
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized.")
 
@@ -146,14 +146,15 @@ def get_dataset_unsafe(
             dataset[k] = v.select(range(max_samples))
 
     if not no_print:
-        for i in range(min(10, len(dataset['train']))):
+        for i in range(min(4, len(dataset['train']))):
             print('sample', i)
             sample = dataset['train'][i]
             for k, v in sample.items():
 
                 if isinstance(v, list):
                     v = 'list - ' + str(v)
-                text = v if len(v) < 100 else v[:100] + '...'
+                # text = v if len(v) < 100 else v[:100] + '...'
+                text = v
                 text = text.replace('\n', ' ').replace('  ', ' ')
                 print(f'    {k}: {text}')
 
@@ -161,6 +162,7 @@ def get_dataset_unsafe(
         "eval_strategy": eval_strategy,
         "eval_steps": eval_steps,
     }
+    print(dataset)
     return dataset, data_config
 
 def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
@@ -1246,6 +1248,24 @@ def _mqar_token_f1_macro(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return float(np.mean(f1s)) if f1s else 0.0
 
 
+def _mqar_topk_accuracy(
+    logits_shift: np.ndarray,
+    shift_labels: np.ndarray,
+    mask: np.ndarray,
+    k: int = 5,
+) -> float:
+    """Fraction of masked positions where the gold token rank (by logit) is in the top-k."""
+    logits_m = logits_shift[mask]
+    labels_m = shift_labels[mask]
+    if labels_m.size == 0:
+        return 0.0
+    n_cls = logits_m.shape[-1]
+    kk = min(int(k), int(n_cls))
+    topk_idx = np.argpartition(logits_m, -kk, axis=-1)[:, -kk:]
+    hits = np.any(topk_idx == labels_m[:, np.newaxis], axis=-1)
+    return float(np.mean(hits))
+
+
 def compute_mqar_metrics(eval_pred):
     """
     HuggingFace ``compute_metrics`` for MQAR-style causal LM eval: next-token accuracy on
@@ -1253,7 +1273,7 @@ def compute_mqar_metrics(eval_pred):
     and ``label_ids`` from ``Trainer.evaluate`` (use ``batch_eval_metrics=False``).
 
     Also reports macro-averaged token F1 (``mqar_f1``) over predicted vs gold token ids on
-    masked positions.
+    masked positions, and top-5 accuracy (``mqar_top5_accuracy``) on the same positions.
 
     Returned keys are prefixed with ``eval_`` by the trainer (e.g. ``eval_mqar_accuracy``).
     """
@@ -1265,16 +1285,18 @@ def compute_mqar_metrics(eval_pred):
         logits = logits[0]
     logits = np.asarray(logits)
     labels = np.asarray(labels)
-    preds = np.argmax(logits[:, :-1, :], axis=-1)
+    logits_shift = logits[:, :-1, :]
+    preds = np.argmax(logits_shift, axis=-1)
     shift_labels = labels[:, 1:]
     mask = shift_labels != -100
     correct = np.sum((preds == shift_labels) & mask)
     total = np.sum(mask)
     acc = float(correct) / float(total) if total > 0 else 0.0
+    acc_top5 = _mqar_topk_accuracy(logits_shift, shift_labels, mask, k=5)
     y_true = shift_labels[mask].ravel()
     y_hat = preds[mask].ravel()
     f1 = _mqar_token_f1_macro(y_true, y_hat)
-    return {"mqar_accuracy": acc, "mqar_f1": f1}
+    return {"mqar_accuracy": acc, "mqar_top5_accuracy": acc_top5, "mqar_f1": f1}
 
 
 def evaluation(

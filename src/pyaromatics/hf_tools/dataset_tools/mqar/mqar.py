@@ -43,7 +43,12 @@ def multiquery_ar_numpy(
     """
     assert input_seq_len % 2 == 0, "input_seq_len must be even"
     assert vocab_size > input_seq_len
-    assert num_kv_pairs * 2 * num_passes + num_kv_pairs * 2 <= input_seq_len
+    min_len = num_kv_pairs * 2 * num_passes + num_kv_pairs * 2  # == 2 * num_kv_pairs * (num_passes + 1)
+    assert min_len <= input_seq_len, (
+        f"MQAR needs input_seq_len >= {min_len} for num_kv_pairs={num_kv_pairs}, "
+        f"num_passes={num_passes} (got input_seq_len={input_seq_len}). "
+        f"Either use a longer name (e.g. mqar64) or lower numkvpairs / numpasses in notes."
+    )
 
     # Match zoology: numpy RNG drives key/value/gap sampling (see multiquery_ar.py).
     if rng is None:
