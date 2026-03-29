@@ -70,6 +70,8 @@ def get_dataset_unsafe(
 
     eval_steps = 20_000
     eval_strategy = 'epoch'
+    neftune= None if 'foldable' in notes else 5
+    label_smoothing_factor = 0.1
 
     if 'clrs_' in dataset_name:
         dataset = get_dataset_clrs(dataset_name, seed=seed, lengths=lengths, notes=notes)
@@ -118,6 +120,8 @@ def get_dataset_unsafe(
         dataset = get_mqar_dataset(dataset_name, seed=seed, notes=notes, cachedir=cachedir)
         eval_steps = 1
         eval_strategy = 'epoch'
+        neftune = None
+        label_smoothing_factor = 0.0
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized.")
 
@@ -163,6 +167,8 @@ def get_dataset_unsafe(
     data_config = {
         "eval_strategy": eval_strategy,
         "eval_steps": eval_steps,
+        "neftune": neftune,
+        "label_smoothing_factor": label_smoothing_factor,
     }
     print(dataset)
     return dataset, data_config
