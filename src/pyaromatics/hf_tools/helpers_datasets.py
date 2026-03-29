@@ -1279,6 +1279,24 @@ def _mqar_topk_hits_and_total(
     return hits, int(labels_m.size)
 
 
+def _eval_tensors_to_numpy_cpu(logits, labels):
+    """
+    ``Trainer`` / ``PlusTrainer`` may pass CUDA tensors (especially with ``batch_eval_metrics``).
+    Metrics use NumPy on CPU (argpartition, etc.).
+    """
+    if isinstance(logits, (tuple, list)) and len(logits) > 0:
+        logits = logits[0]
+    if isinstance(logits, torch.Tensor):
+        logits = logits.detach().float().cpu().numpy()
+    else:
+        logits = np.asarray(logits)
+    if isinstance(labels, torch.Tensor):
+        labels = labels.detach().cpu().numpy()
+    else:
+        labels = np.asarray(labels)
+    return logits, labels
+
+
 def _mqar_stats_from_logits_labels(logits: np.ndarray, labels: np.ndarray):
     """Single-batch (or full) logits/labels → correct, total, top5_hits, y_true, y_hat (1d)."""
     logits_shift = logits[:, :-1, :]
@@ -1303,10 +1321,7 @@ def compute_mqar_metrics(eval_pred):
     labels = eval_pred.label_ids
     if logits is None or labels is None:
         return {}
-    if isinstance(logits, (tuple, list)):
-        logits = logits[0]
-    logits = np.asarray(logits)
-    labels = np.asarray(labels)
+    logits, labels = _eval_tensors_to_numpy_cpu(logits, labels)
     correct, total, top5_hits, y_true, y_hat = _mqar_stats_from_logits_labels(logits, labels)
     acc = float(correct) / float(total) if total > 0 else 0.0
     acc_top5 = float(top5_hits) / float(total) if total > 0 else 0.0
@@ -1334,10 +1349,7 @@ def make_mqar_compute_metrics():
         labels = eval_pred.label_ids
         if logits is None or labels is None:
             return {} if compute_result else {}
-        if isinstance(logits, (tuple, list)):
-            logits = logits[0]
-        logits = np.asarray(logits)
-        labels = np.asarray(labels)
+        logits, labels = _eval_tensors_to_numpy_cpu(logits, labels)
         correct, total, top5_hits, y_true, y_hat = _mqar_stats_from_logits_labels(logits, labels)
         state["correct"] += correct
         state["top5_hits"] += top5_hits
