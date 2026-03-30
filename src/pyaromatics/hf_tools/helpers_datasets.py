@@ -168,6 +168,17 @@ def get_dataset_unsafe(
                 text = text.replace('\n', ' ').replace('  ', ' ')
                 print(f'    {k}: {text}')
 
+
+    max_seq_length = None
+    m_mqar = re.match(r"^mqar(\d+)$", dataset_name.lower())
+    if m_mqar:
+        max_seq_length = int(m_mqar.group(1))
+
+    if "maxlen" in notes or "dolma" in dataset_name:
+        _default = max_seq_length if max_seq_length is not None else 256
+        max_seq_length = str2val(notes, "maxlen", default=_default, output_type=int)
+
+
     data_config = {
         "eval_strategy": eval_strategy,
         "eval_steps": eval_steps,
@@ -175,8 +186,10 @@ def get_dataset_unsafe(
         "label_smoothing_factor": label_smoothing_factor,
         "early_stopping_patience": early_stopping_patience,
         "lr_scheduler_type": lr_scheduler_type,
+        "max_seq_length": max_seq_length,
     }
     print(dataset)
+    print(json.dumps(data_config, indent=4, cls=NumpyEncoder))
     return dataset, data_config
 
 def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
