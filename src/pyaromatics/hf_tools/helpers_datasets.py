@@ -70,10 +70,10 @@ def get_dataset_unsafe(
 
     eval_steps = 20_000
     eval_strategy = 'epoch'
-    neftune= None if 'foldable' in notes else 5
+    neftune = None if 'foldable' in notes else 5
     label_smoothing_factor = 0.1
-    early_stopping_patience= 4
-    lr_scheduler_type= 'linear'
+    early_stopping_patience = 4
+    lr_scheduler_type = 'linear'
 
     if 'clrs_' in dataset_name:
         dataset = get_dataset_clrs(dataset_name, seed=seed, lengths=lengths, notes=notes)
@@ -168,7 +168,6 @@ def get_dataset_unsafe(
                 text = text.replace('\n', ' ').replace('  ', ' ')
                 print(f'    {k}: {text}')
 
-
     max_seq_length = None
     m_mqar = re.match(r"^mqar(\d+)$", dataset_name.lower())
     if m_mqar:
@@ -177,7 +176,6 @@ def get_dataset_unsafe(
     if "maxlen" in notes or "dolma" in dataset_name:
         _default = max_seq_length if max_seq_length is not None else 256
         max_seq_length = str2val(notes, "maxlen", default=_default, output_type=int)
-
 
     data_config = {
         "eval_strategy": eval_strategy,
@@ -191,6 +189,7 @@ def get_dataset_unsafe(
     print(dataset)
     print(json.dumps(data_config, indent=4, cls=NumpyEncoder))
     return dataset, data_config
+
 
 def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
     """
@@ -1276,10 +1275,10 @@ def _mqar_token_f1_macro(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 
 
 def _mqar_topk_accuracy(
-    logits_shift: np.ndarray,
-    shift_labels: np.ndarray,
-    mask: np.ndarray,
-    k: int = 5,
+        logits_shift: np.ndarray,
+        shift_labels: np.ndarray,
+        mask: np.ndarray,
+        k: int = 5,
 ) -> float:
     """Fraction of masked positions where the gold token rank (by logit) is in the top-k."""
     hits, total = _mqar_topk_hits_and_total(logits_shift, shift_labels, mask, k=k)
@@ -1287,10 +1286,10 @@ def _mqar_topk_accuracy(
 
 
 def _mqar_topk_hits_and_total(
-    logits_shift: np.ndarray,
-    shift_labels: np.ndarray,
-    mask: np.ndarray,
-    k: int = 5,
+        logits_shift: np.ndarray,
+        shift_labels: np.ndarray,
+        mask: np.ndarray,
+        k: int = 5,
 ) -> Tuple[int, int]:
     """Number of masked positions where gold is in top-k, and total masked count."""
     logits_m = logits_shift[mask]
