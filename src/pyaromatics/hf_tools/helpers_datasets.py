@@ -124,7 +124,7 @@ def get_dataset_unsafe(
         eval_strategy = 'epoch'
         neftune = None
         label_smoothing_factor = 0.0
-        early_stopping_patience = 20
+        early_stopping_patience = 60
         lr_scheduler_type = 'constant'
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized.")
