@@ -119,7 +119,7 @@ def get_dataset_unsafe(
         dataset = get_mlsum()
 
     elif dataset_name == 'rule110':
-        dataset = get_rule110(model_id=model_id, notes=notes, seed=seed)
+        dataset = get_rule110(model_id=model_id, notes=notes, seed=seed, cachedir=cachedir)
 
     elif re.match(r'^mqar\d+$', dataset_name):
         dataset = get_mqar_dataset(dataset_name, seed=seed, notes=notes, cachedir=cachedir)
