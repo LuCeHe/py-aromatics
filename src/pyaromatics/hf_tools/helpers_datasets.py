@@ -283,8 +283,6 @@ use_trl_aligned_labels=True,
     dsd = DatasetDict.load_from_disk(data_path)
 
     if use_trl_aligned_labels:
-
-
         def _batched_trl_align(batch):
             arr = np.asarray(batch["labels"], dtype=np.int64)
             return {"labels": mqar_labels_zoology_to_trl_aligned(arr).tolist()}
@@ -302,10 +300,10 @@ def get_rule110(model_id=None, notes='', seed=42, cachedir=None):
     if model_id in model_ids.keys():
         model_id = model_ids[model_id]
 
-    tokenizer = hf_get_tokenizer(model_id, save_dir=DATADIR, notes=notes)
+    tokenizer = hf_get_tokenizer(model_id, save_dir=cachedir, notes=notes)
     vocab_size = tokenizer.vocab_size
     try:
-        get_hf_key(WORKDIR)
+        # get_hf_key(WORKDIR)
         config = Qwen3Config()
         vocab_size = min(config.vocab_size, vocab_size)
     except Exception as e:
