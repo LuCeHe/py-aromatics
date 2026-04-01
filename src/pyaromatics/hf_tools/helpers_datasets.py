@@ -303,7 +303,9 @@ def get_rule110(model_id=None, notes='', seed=42, cachedir=None):
     tokenizer = hf_get_tokenizer(model_id, save_dir=cachedir, notes=notes)
     vocab_size = tokenizer.vocab_size
     try:
-        # get_hf_key(WORKDIR)
+        WORKDIR = os.path.abspath(os.path.join(cachedir, '..', '..'))
+        print('WORKDIR', WORKDIR)
+        get_hf_key(WORKDIR)
         config = Qwen3Config()
         vocab_size = min(config.vocab_size, vocab_size)
     except Exception as e:
