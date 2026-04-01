@@ -33,7 +33,10 @@ from pyaromatics.hf_tools.utils import get_pretrained_model
 from pyaromatics.hf_tools.utils import get_tokenizer as hf_get_tokenizer
 from pyaromatics.stay_organized.utils import str2val
 from pyaromatics.hf_tools.dataset_tools.rule110.rule110 import generate_rule110_dataset
-from pyaromatics.hf_tools.dataset_tools.mqar.mqar import build_mqar_dataset_dict
+from pyaromatics.hf_tools.dataset_tools.mqar.mqar import (
+    build_mqar_dataset_dict,
+    mqar_labels_zoology_to_trl_aligned,
+)
 from pyaromatics.stay_organized.utils import NumpyEncoder
 
 winogrande_subsets = [
@@ -191,7 +194,13 @@ def get_dataset_unsafe(
     return dataset, data_config
 
 
-def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
+def get_mqar_dataset(
+        dataset_name,
+        seed=42,
+        notes='',
+        cachedir=None,
+use_trl_aligned_labels=True,
+):
     """
     Synthetic MQAR (Zoology-style) data. Names ``mqar64``, ``mqar128``, … set
     ``input_seq_len`` to the trailing integer. Optional ``notes`` flags (split by
@@ -199,6 +208,14 @@ def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
     3000), ``vocabsize:N``, ``numkvpairs:N``, ``numpasses:N``, ``powera:F``,
     ``trainseed:N``, ``evalseed:N``, ``testseed:N``, ``mqarchunk:N`` (rows per
     chunk when building HF data; smaller uses less RAM, default 2048).
+
+    **Label alignment (TRL / HF causal LM):** On-disk data uses Zoology's slice
+    ``labels = labels_full[:, 1:]``. If you train with TRL SFT (which applies the
+    usual causal shift in the loss), set ``mqarlabelshift:0`` or add ``mqar_noshift``
+    to ``notes`` to remap labels after load with :func:`mqar_labels_zoology_to_trl_aligned`
+    (no re-generation; same ``DatasetDict`` path as the default). New builds can also
+    pass ``zoology_shift_labels=False`` to :func:`build_mqar_dataset_dict` to write the
+    alternate layout directly.
 
     The first time a configuration is requested, the ``DatasetDict`` is written under
     ``cachedir`` (or ``HF_DATASETS_CACHE/pyaromatics_mqar`` / ``~/.cache/pyaromatics/hf_datasets``)
@@ -263,7 +280,21 @@ def get_mqar_dataset(dataset_name, seed=42, notes='', cachedir=None):
             chunk_size=chunk_size,
         )
         dsd.save_to_disk(data_path)
-    return DatasetDict.load_from_disk(data_path)
+    dsd = DatasetDict.load_from_disk(data_path)
+
+    if use_trl_aligned_labels:
+
+
+        def _batched_trl_align(batch):
+            arr = np.asarray(batch["labels"], dtype=np.int64)
+            return {"labels": mqar_labels_zoology_to_trl_aligned(arr).tolist()}
+
+        dsd = dsd.map(
+            _batched_trl_align,
+            batched=True,
+            desc="MQAR TRL-aligned labels",
+        )
+    return dsd
 
 
 def get_rule110(model_id=None, notes='', seed=42, cachedir=None):

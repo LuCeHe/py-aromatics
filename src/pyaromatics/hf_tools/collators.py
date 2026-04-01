@@ -59,6 +59,11 @@ class SimplestLMCollator:
                     new_outputs[k]  = v[..., :self.safe_max_len]
             outputs = new_outputs
 
+        print('outputs')
+        for k, v in outputs.items():
+            print(k, v.shape)
+            print('   ', v)
+        print({k: v.shape for k, v in outputs.items()})
         return outputs
 
 class PackingOnlineCollator:

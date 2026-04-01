@@ -17,6 +17,26 @@ from datasets import Dataset, DatasetDict, concatenate_datasets
 from tqdm import tqdm
 
 
+def mqar_labels_zoology_to_trl_aligned(labels_stored: np.ndarray) -> np.ndarray:
+    """
+    Convert MQAR labels from the on-disk Zoology layout to TRL/HF-friendly layout.
+
+    Generation uses ``labels = labels_full[:, 1:]`` (Zoology). TRL's causal LM loss
+    also applies a one-step shift (``shift_logits`` vs ``shift_labels``), so targets
+    can be misaligned unless the dataset uses the alternate slice
+    ``labels = labels_full[:, :-1]`` instead.
+
+    This maps stored rows **without** re-reading ``labels_full``: it is equivalent to
+    reconstructing ``labels_full = concat(-100, labels_stored)`` (first column all
+    ignore) and then taking ``labels_full[:, :-1]``.
+    """
+    labels_stored = np.asarray(labels_stored, dtype=np.int64)
+    if labels_stored.ndim != 2:
+        raise ValueError(f"expected 2D labels array, got shape {labels_stored.shape}")
+    pad = np.full((labels_stored.shape[0], 1), -100, dtype=np.int64)
+    return np.concatenate([pad, labels_stored[:, :-1]], axis=1)
+
+
 def multiquery_ar_numpy(
     vocab_size: int,
     num_examples: int,
@@ -27,6 +47,7 @@ def multiquery_ar_numpy(
     num_passes: int = 1,
     random_non_queries: bool = True,
     rng: Optional[np.random.RandomState] = None,
+    zoology_shift_labels: bool = True,
 ) -> Tuple[Any, Any, Dict[str, Any]]:
     """
     Generate MQAR inputs and labels (integer token ids).
@@ -34,6 +55,10 @@ def multiquery_ar_numpy(
     If ``rng`` is provided, it is used for all draws (and ``seed`` is ignored); this
     allows chunked generation that matches one full batch when the RNG state is
     advanced in the same order as row-major ``apply_along_axis``.
+
+    ``zoology_shift_labels`` (default True): if True, ``labels = labels_full[:, 1:]``
+    as in Zoology. If False, ``labels = labels_full[:, :-1]`` for alignment with
+    TRL/HF causal LM without applying :func:`mqar_labels_zoology_to_trl_aligned` at load time.
 
     Returns
     -------
@@ -100,7 +125,13 @@ def multiquery_ar_numpy(
     )
 
     inputs = examples[:, :-1].copy()
-    labels = labels_full[:, 1:].copy()
+    # Zoology uses labels_full[:, 1:]. Use labels_full[:, :-1] when training with
+    # TRL/SFT so the HF causal shift matches a single temporal alignment (see doc
+    # on mqar_labels_zoology_to_trl_aligned).
+    if zoology_shift_labels:
+        labels = labels_full[:, 1:].copy()
+    else:
+        labels = labels_full[:, :-1].copy()
 
     if random_non_queries:
         mask = inputs == 0
@@ -129,6 +160,7 @@ def generate_mqar_hf_dataset(
     chunk_size: Optional[int] = 2_048,
     show_progress: bool = True,
     split_desc: str = "",
+    zoology_shift_labels: bool = True,
 ) -> Dataset:
     """Build a :class:`datasets.Dataset` with ``input_ids`` and ``labels`` columns."""
     desc = f"MQAR {split_desc}".strip() if split_desc else "MQAR"
@@ -163,6 +195,7 @@ def generate_mqar_hf_dataset(
                 num_passes=num_passes,
                 random_non_queries=random_non_queries,
                 rng=rng,
+                zoology_shift_labels=zoology_shift_labels,
             )
             ds_parts.append(
                 Dataset.from_dict(
@@ -185,6 +218,7 @@ def generate_mqar_hf_dataset(
         num_kv_pairs=num_kv_pairs,
         num_passes=num_passes,
         random_non_queries=random_non_queries,
+        zoology_shift_labels=zoology_shift_labels,
     )
     return Dataset.from_dict(
         {
@@ -212,6 +246,7 @@ def build_mqar_dataset_dict(
     test_split_name: str = "test",
     chunk_size: Optional[int] = 2_048,
     show_progress: bool = True,
+    zoology_shift_labels: bool = True,
 ) -> DatasetDict:
     """
     Train / validation / test splits with disjoint RNG seeds (same convention as
@@ -240,6 +275,7 @@ def build_mqar_dataset_dict(
             chunk_size=chunk_size,
             show_progress=show_progress,
             split_desc=name,
+            zoology_shift_labels=zoology_shift_labels,
         )
     return DatasetDict(splits)
 
@@ -307,6 +343,12 @@ def _parse_args() -> argparse.Namespace:
         default=2_048,
         help="Max rows per chunk for large splits (0 = one shot). Smaller uses less RAM.",
     )
+    p.add_argument(
+        "--trl-aligned-labels",
+        action="store_true",
+        help="Use labels = labels_full[:, :-1] instead of Zoology's labels_full[:, 1:] "
+        "(better match for TRL/HF causal loss without remapping on load).",
+    )
     return p.parse_args()
 
 
@@ -325,6 +367,7 @@ def main() -> None:
         "random_non_queries": not args.no_random_non_queries,
         "task": "mqar_zoology",
         "source": "https://github.com/HazyResearch/zoology/blob/main/zoology/data/multiquery_ar.py",
+        "zoology_shift_labels": not args.trl_aligned_labels,
     }
 
     chunk_size = None if args.chunk_size <= 0 else args.chunk_size
@@ -346,6 +389,7 @@ def main() -> None:
         test_split_name=args.test_split_name,
         chunk_size=chunk_size,
         show_progress=not args.no_progress,
+        zoology_shift_labels=not args.trl_aligned_labels,
     )
 
     print(dsd)
