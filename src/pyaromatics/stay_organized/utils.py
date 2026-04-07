@@ -171,8 +171,12 @@ def str2val(comments, flag, output_type=float, default=None, split_symbol='_', e
         else:
             output = default
     else:
-        splits = [s for s in comments.split(split_symbol) if not flag in s]
-        output = split_symbol.join(splits) + split_symbol + flag + equality_symbol + str(replace)
+
+        if flag in comments:
+            splits = [s for s in comments.split(split_symbol) if not flag in s]
+            output = split_symbol.join(splits) + split_symbol + flag + equality_symbol + str(replace)
+        else:
+            output = comments + split_symbol + flag + equality_symbol + str(replace)
 
     if return_unflagged:
         unflagged = [
@@ -183,7 +187,6 @@ def str2val(comments, flag, output_type=float, default=None, split_symbol='_', e
             if not condition(s)
         ]
         unflagged = split_symbol.join(unflagged)
-        print('here', unflagged)
         return output, unflagged
     return output
 
