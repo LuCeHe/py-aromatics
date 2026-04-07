@@ -199,7 +199,7 @@ def get_mqar_dataset(
         seed=42,
         notes='',
         cachedir=None,
-use_trl_aligned_labels=True,
+        use_trl_aligned_labels=True,
 ):
     """
     Synthetic MQAR (Zoology-style) data. Names ``mqar64``, ``mqar128``, … set
@@ -295,36 +295,40 @@ use_trl_aligned_labels=True,
     return dsd
 
 
-def get_rule110(model_id=None, notes='', seed=42, cachedir=None):
+def get_rule110(model_id=None, notes='', seed=42, cachedir=None, max_length=2048):
     from thepebbletrail_official.neuron_utils.helpers_models import model_ids
     if model_id in model_ids.keys():
         model_id = model_ids[model_id]
 
     tokenizer = hf_get_tokenizer(model_id, save_dir=cachedir, notes=notes)
     vocab_size = tokenizer.vocab_size
-    try:
-        WORKDIR = os.path.abspath(os.path.join(cachedir, '..', '..'))
-        print('WORKDIR', WORKDIR)
-        get_hf_key(WORKDIR)
-        config = Qwen3Config()
-        vocab_size = min(config.vocab_size, vocab_size)
-    except Exception as e:
-        print(f"Could not get HF key or config: {e}")
-    vocab = list(range(vocab_size))
 
-    max_length = tokenizer.model_max_length
-    max_length = 1024
+    data_path = os.path.join(cachedir, "rule110", f"vocab{vocab_size}_maxlen{max_length}_seed{seed}")
+    if not os.path.exists(data_path):
+        print(f"Generating Rule 110 dataset with vocab size {vocab_size}, max length {max_length}, seed {seed}...")
 
-    ds = {}
-    for k in ['train', 'validation', 'test']:
-        dataset = generate_rule110_dataset(
-            vocab=vocab,
-            num_samples=1000,
-            max_length=max_length,
-            seed=seed
-        )
-        ds[k] = dataset
-    dataset = DatasetDict(ds)
+        try:
+            WORKDIR = os.path.abspath(os.path.join(cachedir, '..', '..'))
+            get_hf_key(WORKDIR)
+            config = Qwen3Config()
+            vocab_size = min(config.vocab_size, vocab_size)
+        except Exception as e:
+            print(f"Could not get HF key or config: {e}")
+        vocab = list(range(vocab_size))
+
+        ds = {}
+        for k in ['train', 'validation', 'test']:
+            dataset = generate_rule110_dataset(
+                vocab=vocab,
+                num_samples=1000,
+                max_length=max_length,
+                seed=seed
+            )
+            ds[k] = dataset
+        dataset = DatasetDict(ds)
+        dataset.save_to_disk(data_path)
+
+    dataset = datasets.load_from_disk(data_path)
     return dataset
 
 
