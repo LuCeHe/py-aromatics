@@ -76,7 +76,7 @@ def get_dataset_unsafe(
     neftune = None if 'foldable' in notes else 5
     label_smoothing_factor = 0.1
     early_stopping_patience = 4
-    lr_scheduler_type = 'linear'
+    lr_scheduler_type = 'constant'
 
     if 'clrs_' in dataset_name:
         dataset = get_dataset_clrs(dataset_name, seed=seed, lengths=lengths, notes=notes)
@@ -733,10 +733,13 @@ def get_openwebtext(cachedir=None):
     subset ``plain_text``, English web documents, ``text`` column. ~8M training rows; first
     download is large (tens of GB on disk per the dataset card).
 
-    Before save, each split is passed through :func:`sanitize_text` (collapse runs of spaces/tabs,
-    cap consecutive newlines at two) and :func:`is_valid` (drop empty strings).
+    Before save, the HF ``train`` split is passed through :func:`sanitize_text` (collapse runs of
+    spaces/tabs, cap consecutive newlines at two) and :func:`is_valid` (drop empty strings).
 
-    Cached under ``cachedir/openwebtext_sanitized`` so subsequent loads skip re-download.
+    OpenWebText is train-only; ``validation`` and ``test`` are taken from WikiText-103 via
+    :func:`get_dataset_wiki103` (same sanitization, shared ``cachedir``).
+
+    OpenWebText train vectors are cached under ``cachedir/openwebtext_sanitized``.
     """
     data_path = os.path.join(cachedir, "openwebtext_sanitized")
     if not os.path.exists(data_path):
@@ -748,11 +751,6 @@ def get_openwebtext(cachedir=None):
         )
         num_proc = min(8, (os.cpu_count() or 1))
         for split in dataset.keys():
-            dataset[split] = dataset[split].filter(
-                is_valid,
-                desc=f"OpenWebText filter {split}",
-                num_proc=num_proc,
-            )
             dataset[split] = dataset[split].map(
                 sanitize_text,
                 desc=f"OpenWebText sanitize {split}",
@@ -765,8 +763,13 @@ def get_openwebtext(cachedir=None):
             )
         dataset.save_to_disk(data_path)
 
-    dataset = datasets.load_from_disk(data_path)
-    return dataset
+    owt = datasets.load_from_disk(data_path)
+    wiki = get_dataset_wiki103(cachedir=cachedir)
+    return DatasetDict({
+        "train": owt["train"],
+        "validation": wiki["validation"],
+        "test": wiki["test"],
+    })
 
 
 def get_dataset_dolma_and_tests(seed=0, notes='', version='v1_6-sample', cachedir=None):
