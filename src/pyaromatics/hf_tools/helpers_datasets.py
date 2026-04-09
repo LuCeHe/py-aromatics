@@ -748,6 +748,11 @@ def get_openwebtext(cachedir=None):
         )
         num_proc = min(8, (os.cpu_count() or 1))
         for split in dataset.keys():
+            dataset[split] = dataset[split].filter(
+                is_valid,
+                desc=f"OpenWebText filter {split}",
+                num_proc=num_proc,
+            )
             dataset[split] = dataset[split].map(
                 sanitize_text,
                 desc=f"OpenWebText sanitize {split}",
