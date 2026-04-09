@@ -105,6 +105,9 @@ def get_dataset_unsafe(
     elif dataset_name == 'fineweb':
         dataset = get_fineweb(notes=notes, cachedir=cachedir)
 
+    elif dataset_name == 'openwebtext':
+        dataset = get_openwebtext(cachedir=cachedir)
+
     elif dataset_name == 'pile':
         dataset = load_dataset("EleutherAI/pile")
 
@@ -567,15 +570,25 @@ def get_dataset_ptb(notes='', extra_evaluation_datasets=False, cachedir=None):
 
 
 def get_dataset_wiki103(cachedir=None):
-    data_path = os.path.join(cachedir, 'wiki103')
+    """
+    WikiText-103-raw-v1. Before save, each split is passed through :func:`sanitize_text`
+    and :func:`is_valid` (same as OpenWebText). Cached under ``cachedir/wiki103_sanitized``.
+    """
+    data_path = os.path.join(cachedir, "wiki103_sanitized")
     if not os.path.exists(data_path):
-        # Salesforce/wikitext
         dataset = load_dataset("wikitext", "wikitext-103-raw-v1")
-
-        # remove empty text
+        num_proc = min(8, (os.cpu_count() or 1))
         for split in dataset.keys():
-            dataset[split] = dataset[split].filter(lambda x: len(x['text'].strip()) > 0)
-
+            dataset[split] = dataset[split].map(
+                sanitize_text,
+                desc=f"Wiki103 sanitize {split}",
+                num_proc=num_proc,
+            )
+            dataset[split] = dataset[split].filter(
+                is_valid,
+                desc=f"Wiki103 filter {split}",
+                num_proc=num_proc,
+            )
         dataset.save_to_disk(data_path)
 
     dataset = datasets.load_from_disk(data_path)
@@ -708,6 +721,43 @@ def get_fineweb(notes='', method='normal', cachedir=None):
             num_proc=max_proc
         )
 
+        dataset.save_to_disk(data_path)
+
+    dataset = datasets.load_from_disk(data_path)
+    return dataset
+
+
+def get_openwebtext(cachedir=None):
+    """
+    Download and load Skylion007/openwebtext (https://huggingface.co/datasets/Skylion007/openwebtext):
+    subset ``plain_text``, English web documents, ``text`` column. ~8M training rows; first
+    download is large (tens of GB on disk per the dataset card).
+
+    Before save, each split is passed through :func:`sanitize_text` (collapse runs of spaces/tabs,
+    cap consecutive newlines at two) and :func:`is_valid` (drop empty strings).
+
+    Cached under ``cachedir/openwebtext_sanitized`` so subsequent loads skip re-download.
+    """
+    data_path = os.path.join(cachedir, "openwebtext_sanitized")
+    if not os.path.exists(data_path):
+        print(data_path)
+        dataset = load_dataset(
+            "Skylion007/openwebtext",
+            "plain_text",
+            trust_remote_code=True,
+        )
+        num_proc = min(8, (os.cpu_count() or 1))
+        for split in dataset.keys():
+            dataset[split] = dataset[split].map(
+                sanitize_text,
+                desc=f"OpenWebText sanitize {split}",
+                num_proc=num_proc,
+            )
+            dataset[split] = dataset[split].filter(
+                is_valid,
+                desc=f"OpenWebText filter {split}",
+                num_proc=num_proc,
+            )
         dataset.save_to_disk(data_path)
 
     dataset = datasets.load_from_disk(data_path)
@@ -947,6 +997,9 @@ def sanitize_text(example):
     if not isinstance(text, str):
         text = str(text)
 
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"[ \t]+", " ", text)
     text = text.strip()
 
     return {"text": text}
@@ -1624,3 +1677,32 @@ def evaluation_lmeval(
         results['lm_eval_error'] = str(e)
 
     return results
+
+def test_sanitize_text():
+    # Example input for :func:`sanitize_text` (messy spaces, tabs, and newlines).
+    _EXAMPLE_SANITIZE_TEXT_RAW = """First line   with    extra   spaces.
+    Second line follows.
+    
+    
+    Fourth paragraph after three blank lines (should become one blank line only).
+    
+    
+    
+    
+    
+    Fifth after two newlines already — capped at two between blocks.
+        Indented-looking    bits	with	tabs  and  spaces."""
+
+
+    _raw = _EXAMPLE_SANITIZE_TEXT_RAW
+    _san = sanitize_text({"text": _raw})["text"]
+    print("sanitize_text demo (repr shows spacing/newlines)\n")
+    print("--- raw ---")
+    print(repr(_raw))
+    print("\n--- sanitized ---")
+    print(repr(_san))
+    print("\n--- sanitized (as printed) ---")
+    print(_san)
+
+if __name__ == "__main__":
+    test_sanitize_text()
