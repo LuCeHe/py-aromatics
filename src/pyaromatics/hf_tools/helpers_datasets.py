@@ -53,7 +53,6 @@ def get_dataset(
         dataset_name, cachedir=None, seed=42, lengths=None, notes='', retries=3, n_samples=-1, no_print=False,
         model_id=None
 ):
-    n_samples = str2val(notes, 'nsamples', default=n_samples, output_type=int)
     # for i in range(retries):
     #     try:
     #         return get_dataset_unsafe(dataset_name, seed=seed, lengths=lengths, notes=notes, n_samples=n_samples,
@@ -71,12 +70,22 @@ def get_dataset_unsafe(
 ):
     # get_hf_key(WORKDIR)
 
+    n_samples = str2val(notes, 'nsamples', default=n_samples, output_type=int)
     eval_steps = 20_000
     eval_strategy = 'epoch'
     neftune = None if 'foldable' in notes else 5
     label_smoothing_factor = 0.1
     early_stopping_patience = 4
     lr_scheduler_type = 'constant'
+
+    max_seq_length = None
+    m_mqar = re.match(r"^mqar(\d+)$", dataset_name.lower())
+    if m_mqar:
+        max_seq_length = int(m_mqar.group(1))
+
+    if "maxlen" in notes or "dolma" in dataset_name:
+        _default = max_seq_length if max_seq_length is not None else 256
+        max_seq_length = str2val(notes, "maxlen", default=_default, output_type=int)
 
     if 'clrs_' in dataset_name:
         dataset = get_dataset_clrs(dataset_name, seed=seed, lengths=lengths, notes=notes)
@@ -107,6 +116,7 @@ def get_dataset_unsafe(
 
     elif dataset_name == 'openwebtext':
         dataset = get_openwebtext(cachedir=cachedir)
+        max_seq_length = 1024
 
     elif dataset_name == 'pile':
         dataset = load_dataset("EleutherAI/pile")
@@ -174,14 +184,6 @@ def get_dataset_unsafe(
                 text = text.replace('\n', ' ').replace('  ', ' ')
                 print(f'    {k}: {text}')
 
-    max_seq_length = None
-    m_mqar = re.match(r"^mqar(\d+)$", dataset_name.lower())
-    if m_mqar:
-        max_seq_length = int(m_mqar.group(1))
-
-    if "maxlen" in notes or "dolma" in dataset_name:
-        _default = max_seq_length if max_seq_length is not None else 256
-        max_seq_length = str2val(notes, "maxlen", default=_default, output_type=int)
 
     data_config = {
         "eval_strategy": eval_strategy,
@@ -1634,7 +1636,7 @@ def evaluation_lmeval(
             if 'perplexity,none' in res:
                 task_highlights = {'perplexity': res['perplexity,none']}
             elif 'acc,none' in res:
-                task_highlights = {'accuracy': res['acc,none']}
+                    task_highlights = {'accuracy': res['acc,none']}
             elif 'word_perplexity,none' in res:
                 task_highlights = {
                     'word_perplexity': res['word_perplexity,none'],
