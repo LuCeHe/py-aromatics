@@ -1568,6 +1568,14 @@ def evaluation(
     return eval_output
 
 
+understanding_metrics = [
+    'perplexity,none',
+    'acc,none',
+    'word_perplexity,none',
+    'byte_perplexity,none',
+]
+
+
 def evaluation_lmeval(
         model, tokenizer, notes='',
         cachepath=None
@@ -1588,7 +1596,7 @@ def evaluation_lmeval(
 
         # Define tasks: wikitext, LAMBADA, knowledge/QA + reading comprehension
         tasks = [
-            # "wikitext",  # wikitext 2 perplexity (lower is better)
+            "wikitext",  # wikitext 2 perplexity (lower is better)
             "lambada_openai",  # LAMBADA
             "boolq",  # BoolQ
             "piqa",  # PIQA
@@ -1628,33 +1636,29 @@ def evaluation_lmeval(
         limit = 2 if 'onlytesting' in notes else None
         lm_eval_results = simple_evaluate(eval_model, tasks=tasks, limit=limit)
 
+
         highlights = {}
         for task, res in lm_eval_results['results'].items():
             print(f'Processing results for {task}...')
             print(f'  Available metrics: {list(res.keys())}')
-            task_highlights = None
-            if 'perplexity,none' in res:
-                task_highlights = {'perplexity': res['perplexity,none']}
-            elif 'acc,none' in res:
-                    task_highlights = {'accuracy': res['acc,none']}
-            elif 'word_perplexity,none' in res:
-                task_highlights = {
-                    'word_perplexity': res['word_perplexity,none'],
-                    'byte_perplexity': res.get('byte_perplexity,none', 'N/A')
-                }
-            else:
-                # QA tasks: exact_match, f1, em (metric keys may use ,none suffix)
-                qa_metrics = {}
-                for em_key in ['exact_match,none', 'exact_match', 'em,none', 'em', 'exact_match,remove_whitespace']:
-                    if em_key in res:
-                        qa_metrics['exact_match'] = res[em_key]
-                        break
-                for f1_key in ['f1,none', 'f1']:
-                    if f1_key in res:
-                        qa_metrics['f1'] = res[f1_key]
-                        break
-                if qa_metrics:
-                    task_highlights = qa_metrics
+            task_highlights = {}
+            for metric in understanding_metrics:
+                if metric in res:
+                    task_highlights[metric.split(',')[0]] = res[metric]
+
+            # QA tasks: exact_match, f1, em (metric keys may use ,none suffix)
+            qa_metrics = {}
+            for em_key in ['exact_match,none', 'exact_match', 'em,none', 'em', 'exact_match,remove_whitespace']:
+                if em_key in res:
+                    qa_metrics['exact_match'] = res[em_key]
+                    break
+            for f1_key in ['f1,none', 'f1']:
+                if f1_key in res:
+                    qa_metrics['f1'] = res[f1_key]
+                    break
+            if qa_metrics:
+                task_highlights.update(qa_metrics)
+
             # Fallback: capture any numeric metrics we didn't match (e.g. task-specific keys)
             if task_highlights is None and res:
                 fallback = {k: v for k, v in res.items()
