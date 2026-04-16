@@ -184,7 +184,6 @@ def get_dataset_unsafe(
                 text = text.replace('\n', ' ').replace('  ', ' ')
                 print(f'    {k}: {text}')
 
-
     data_config = {
         "eval_strategy": eval_strategy,
         "eval_steps": eval_steps,
@@ -1571,8 +1570,19 @@ def evaluation(
 understanding_metrics = [
     'perplexity,none',
     'acc,none',
+    'acc_norm,none',
     'word_perplexity,none',
     'byte_perplexity,none',
+]
+
+retrieval_metrics = [
+    'contains,none',
+    'exact_match,none',
+    'exact,none',
+    # 'exact_match', 'em,none', 'em',
+    'exact_match,remove_whitespace',
+    'em,none',
+    'f1,none',
 ]
 
 
@@ -1615,6 +1625,8 @@ def evaluation_lmeval(
                 "triviaqa",  # TriviaQA
                 "nq_open",  # Natural Questions (open-domain)
                 "drop",  # DROP (discrete reasoning)
+                'fda',
+                'swde'
             ]
 
         print(f'Evaluating on tasks: {tasks}')
@@ -1636,35 +1648,15 @@ def evaluation_lmeval(
         limit = 2 if 'onlytesting' in notes else None
         lm_eval_results = simple_evaluate(eval_model, tasks=tasks, limit=limit)
 
-
         highlights = {}
         for task, res in lm_eval_results['results'].items():
             print(f'Processing results for {task}...')
             print(f'  Available metrics: {list(res.keys())}')
             task_highlights = {}
-            for metric in understanding_metrics:
+            for metric in understanding_metrics + retrieval_metrics:
                 if metric in res:
                     task_highlights[metric.split(',')[0]] = res[metric]
 
-            # QA tasks: exact_match, f1, em (metric keys may use ,none suffix)
-            qa_metrics = {}
-            for em_key in ['exact_match,none', 'exact_match', 'em,none', 'em', 'exact_match,remove_whitespace']:
-                if em_key in res:
-                    qa_metrics['exact_match'] = res[em_key]
-                    break
-            for f1_key in ['f1,none', 'f1']:
-                if f1_key in res:
-                    qa_metrics['f1'] = res[f1_key]
-                    break
-            if qa_metrics:
-                task_highlights.update(qa_metrics)
-
-            # Fallback: capture any numeric metrics we didn't match (e.g. task-specific keys)
-            if task_highlights is None and res:
-                fallback = {k: v for k, v in res.items()
-                            if isinstance(v, (int, float, np.number))}
-                if fallback:
-                    task_highlights = fallback
             if task_highlights is not None:
                 highlights[task] = task_highlights
 
@@ -1692,6 +1684,7 @@ def evaluation_lmeval(
 
     return results
 
+
 def test_sanitize_text():
     # Example input for :func:`sanitize_text` (messy spaces, tabs, and newlines).
     _EXAMPLE_SANITIZE_TEXT_RAW = """First line   with    extra   spaces.
@@ -1707,7 +1700,6 @@ def test_sanitize_text():
     Fifth after two newlines already — capped at two between blocks.
         Indented-looking    bits	with	tabs  and  spaces."""
 
-
     _raw = _EXAMPLE_SANITIZE_TEXT_RAW
     _san = sanitize_text({"text": _raw})["text"]
     print("sanitize_text demo (repr shows spacing/newlines)\n")
@@ -1717,6 +1709,7 @@ def test_sanitize_text():
     print(repr(_san))
     print("\n--- sanitized (as printed) ---")
     print(_san)
+
 
 if __name__ == "__main__":
     test_sanitize_text()
