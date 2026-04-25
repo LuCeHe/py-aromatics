@@ -1,5 +1,7 @@
 import time
 import numpy as np
+import torch
+import torch.distributed as dist
 
 from transformers import TrainerCallback, IntervalStrategy, logging
 from transformers.trainer_callback import ExportableState
@@ -68,19 +70,13 @@ class EarlyStoppingCallback(TrainerCallback, ExportableState):
 
 class TimeStoppingCallback(TrainerCallback, ExportableState):
     """
-    A [`TrainerCallback`] that handles early stopping.
+    Stops training when a wall-time budget is exceeded.
 
-    Args:
-        early_stopping_patience (`int`):
-            Use with `metric_for_best_model` to stop training when the specified metric worsens for
-            `early_stopping_patience` evaluation calls.
-        early_stopping_threshold(`float`, *optional*):
-            Use with TrainingArguments `metric_for_best_model` and `early_stopping_patience` to denote how much the
-            specified metric must improve to satisfy early stopping conditions. `
-
-    This callback depends on [`TrainingArguments`] argument *load_best_model_at_end* functionality to set best_metric
-    in [`TrainerState`]. Note that if the [`TrainingArguments`] argument *save_steps* differs from *eval_steps*, the
-    early stopping will not occur until the next save step.
+    In distributed (DDP/Accelerate) runs, the stop condition is **synchronized** across processes:
+    each process shares the same `initial_time` (broadcast from rank 0 at train start) and uses the
+    **maximum** elapsed time across ranks before comparing to `max_seconds`. Otherwise ranks can
+    disagree by milliseconds (clock skew) or process startup delay and exit the step loop on
+    different steps, which deadlocks NCCL collectives.
     """
 
     def __init__(self, max_seconds: float = 60 * 60 * 10):
@@ -88,37 +84,72 @@ class TimeStoppingCallback(TrainerCallback, ExportableState):
         self.initial_time = time.time()
         self.time_stopped = False
 
-    def time_stop(self, control):
-        if time.time() - self.initial_time > self.max_seconds:
-            print(f"Time limit reached: {time.time() - self.initial_time:.2f} > {self.max_seconds} seconds")
-            control.should_training_stop = True
-            control.should_prediction_stop = True
-            control.should_epoch_stop = True
-            control.should_log = False
-            control.should_save = False
-            control.should_evaluate = False
-            self.time_stopped = True
+    @staticmethod
+    def _device_for_comm(args) -> torch.device:
+        if torch.cuda.is_available():
+            if args is not None and getattr(args, "local_rank", -1) is not None and int(getattr(args, "local_rank", -1)) >= 0:
+                return torch.device(f"cuda:{int(args.local_rank)}")
+            return torch.device(f"cuda:{torch.cuda.current_device()}")
+        return torch.device("cpu")
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        if dist.is_available() and dist.is_initialized() and dist.get_world_size() > 1:
+            d = self._device_for_comm(args)
+            if dist.get_rank() == 0:
+                t0 = time.time()
+            else:
+                t0 = 0.0
+            t_tensor = torch.tensor([t0], device=d, dtype=torch.float64)
+            dist.broadcast(t_tensor, src=0)
+            self.initial_time = float(t_tensor.item())
+
+    def _max_elapsed_seconds(self, args) -> float:
+        local_elapsed = time.time() - self.initial_time
+        if not dist.is_available() or not dist.is_initialized() or dist.get_world_size() <= 1:
+            return local_elapsed
+        d = self._device_for_comm(args)
+        t = torch.tensor([local_elapsed], device=d, dtype=torch.float64)
+        dist.all_reduce(t, op=dist.ReduceOp.MAX)
+        return float(t.item())
+
+    def time_stop(self, args, state, control):
+        if self.time_stopped:
+            return
+        elapsed = self._max_elapsed_seconds(args)
+        if elapsed <= self.max_seconds:
+            return
+        if not dist.is_available() or not dist.is_initialized() or dist.get_rank() == 0:
+            print(
+                f"Time limit reached: {elapsed:.2f} > {self.max_seconds} seconds (distributed sync: max across ranks)"
+            )
+        self.time_stopped = True
+        control.should_training_stop = True
+        control.should_prediction_stop = True
+        control.should_epoch_stop = True
+        control.should_log = False
+        control.should_save = False
+        control.should_evaluate = False
 
     def on_evaluate(self, args, state, control, metrics, **kwargs):
-        self.time_stop(control)
+        self.time_stop(args, state, control)
 
     def on_prediction_step(self, args, state, control, **kwargs):
-        self.time_stop(control)
+        self.time_stop(args, state, control)
 
     def on_step_end(self, args, state, control, **kwargs):
-        self.time_stop(control)
+        self.time_stop(args, state, control)
 
     def on_step_begin(self, args, state, control, **kwargs):
-        self.time_stop(control)
+        self.time_stop(args, state, control)
 
     def on_substep_end(self, args, state, control, **kwargs):
-        self.time_stop(control)
+        self.time_stop(args, state, control)
 
     def on_train_end(self, args, state, control, **kwargs):
-        self.time_stop(control)
+        self.time_stop(args, state, control)
 
     def on_epoch_end(self, args, state, control, **kwargs):
-        self.time_stop(control)
+        self.time_stop(args, state, control)
 
     def state(self) -> dict:
         return {

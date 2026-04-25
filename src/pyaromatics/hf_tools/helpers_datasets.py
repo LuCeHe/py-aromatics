@@ -50,21 +50,6 @@ SAVE_EVERY = 3_000
 
 
 def get_dataset(
-        dataset_name, cachedir=None, seed=42, lengths=None, notes='', retries=3, n_samples=-1, no_print=False,
-        model_id=None
-):
-    # for i in range(retries):
-    #     try:
-    #         return get_dataset_unsafe(dataset_name, seed=seed, lengths=lengths, notes=notes, n_samples=n_samples,
-    #                                   no_print=no_print, model_id=model_id)
-    #     except Exception as e:
-    #         print(f"Error in get_dataset_unsafe: {e}")
-    #         print(f"Retrying {i + 1}/{retries}...")
-    return get_dataset_unsafe(dataset_name, seed=seed, lengths=lengths, notes=notes, n_samples=n_samples,
-                              no_print=no_print, model_id=model_id, cachedir=cachedir)
-
-
-def get_dataset_unsafe(
         dataset_name, seed=42, lengths=None, notes='', n_samples=-1, no_print=False, model_id=None,
         cachedir=None
 ):
@@ -141,7 +126,7 @@ def get_dataset_unsafe(
         neftune = None
         label_smoothing_factor = 0.0
         early_stopping_patience = 20
-        lr_scheduler_type = 'constant'
+
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized.")
 
@@ -155,19 +140,13 @@ def get_dataset_unsafe(
     for split in dataset.keys():
         dataset[split] = dataset[split].shuffle(seed=seed)
 
-    if 'randreduce' in notes and n_samples < 0:
-        # reduce by 21 times
-        dataset['train'] = dataset['train'].select(
-            range(0, len(dataset['train']), 21)
-        )
-
     if n_samples > 0:
         for k, v in dataset.items():
             n = min(n_samples, len(v))
             dataset[k] = v.select(range(n))
 
     if 'onlytesting' in notes:
-        max_samples = 4 if n_samples == -1 else min(4 * 5, n_samples)
+        max_samples = 4 if n_samples == -1 else n_samples
         for k, v in dataset.items():
             dataset[k] = v.select(range(max_samples))
 
