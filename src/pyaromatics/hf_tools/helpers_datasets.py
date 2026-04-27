@@ -1608,18 +1608,47 @@ def evaluation_lmeval(
             hf_model_cls = get_lm_eval_model("hf")
         except Exception:
             hf_model_cls = HFLM
-        # Batched forward passes for loglikelihood / scoring (MC tasks). Default HFLM batch_size=1 is slow.
-        # generate_until still does autoregressive decoding; batching helps less there but can still batch prompts.
-        eval_model = hf_model_cls(
-            pretrained=model,
-            tokenizer=tokenizer,
-            batch_size=8,
-            max_batch_size=64,
-        )
 
         limit = 2 if 'onlytesting' in notes else None
-        lm_eval_results = simple_evaluate(eval_model, tasks=tasks, limit=limit)
+        # wikitext uses loglikelihood_rolling (long-context PPL); a large batch with big models can OOM.
+        # Other tasks benefit from larger batches for MC / standard loglikelihood.
+        wikitext_task = "wikitext"
+        tasks_no_wikitext = [t for t in tasks if t != wikitext_task]
+        lm_eval_results = {'results': {}}
 
+        if tasks_no_wikitext:
+            print(
+                f'LM eval pass 1: {len(tasks_no_wikitext)} tasks '
+                f'(batch_size=8, max_batch_size=64)'
+            )
+            eval_model = hf_model_cls(
+                pretrained=model,
+                tokenizer=tokenizer,
+                batch_size=8,
+                max_batch_size=64,
+            )
+            part = simple_evaluate(
+                eval_model, tasks=tasks_no_wikitext, limit=limit
+            )
+            lm_eval_results['results'].update(part['results'])
+
+        if wikitext_task in tasks:
+            print(
+                'LM eval pass 2: wikitext only '
+                '(batch_size=1 for rolling loglikelihood / VRAM)'
+            )
+            eval_model_wt = hf_model_cls(
+                pretrained=model,
+                tokenizer=tokenizer,
+                batch_size=1,
+                max_batch_size=1,
+            )
+            
+            part_wt = simple_evaluate(
+                eval_model_wt, tasks=[wikitext_task], limit=limit
+            )
+            lm_eval_results['results'].update(part_wt['results'])
+        
         highlights = {}
         for task, res in lm_eval_results['results'].items():
             print(f'Processing results for {task}...')
