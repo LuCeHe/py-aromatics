@@ -1581,24 +1581,24 @@ def evaluation_lmeval(
             "wikitext",  # wikitext 2 perplexity (lower is better)
             "lambada_openai",  # LAMBADA
             "boolq",  # BoolQ
-            "piqa",  # PIQA
-            "hellaswag",  # HellaSwag
-            "winogrande",  # Winogrande
-            "arc_easy",  # ARC-e
-            "arc_challenge",  # ARC-c
-            "openbookqa",  # OBQA
+            # "piqa",  # PIQA
+            # "hellaswag",  # HellaSwag
+            # "winogrande",  # Winogrande
+            # "arc_easy",  # ARC-e
+            # "arc_challenge",  # ARC-c
+            # "openbookqa",  # OBQA
         ]
 
         if 'qaretrieval' in notes:
+            # QA / reading comprehension (lm_eval 0.4.x task keys: squad_completion, squadv2)
             tasks += [
-                # QA / reading comprehension (lm_eval 0.4.x task keys: squad_completion, squadv2)
-                "squad_completion",  # SQuAD-style completion (was "squad" in older harness)
-                "squadv2",  # SQuAD v2.0 (was "squad2" in older harness)
-                "triviaqa",  # TriviaQA
-                "nq_open",  # Natural Questions (open-domain)
-                "drop",  # DROP (discrete reasoning)
-                'fda',
-                'swde'
+                # "squad_completion",  # SQuAD-style completion (was "squad" in older harness)
+                # "squadv2",  # SQuAD v2.0 (was "squad2" in older harness)
+                # "triviaqa",  # TriviaQA
+                # "nq_open",  # Natural Questions (open-domain)
+                # "drop",  # DROP (discrete reasoning)
+                # 'fda',
+                # 'swde'
             ]
 
         print(f'Evaluating on tasks: {tasks}')
