@@ -1578,15 +1578,15 @@ def evaluation_lmeval(
 
         # Define tasks: wikitext, LAMBADA, knowledge/QA + reading comprehension
         tasks = [
-            # "wikitext",  # wikitext 2 perplexity (lower is better)
-            # "lambada_openai",  # LAMBADA
-            # "boolq",  # BoolQ
-            # "piqa",  # PIQA
-            # "hellaswag",  # HellaSwag
-            # "winogrande",  # Winogrande
-            # "arc_easy",  # ARC-e
-            # "arc_challenge",  # ARC-c
-            # "openbookqa",  # OBQA
+            "wikitext",  # wikitext 2 perplexity (lower is better)
+            "lambada_openai",  # LAMBADA
+            "boolq",  # BoolQ
+            "piqa",  # PIQA
+            "hellaswag",  # HellaSwag
+            "winogrande",  # Winogrande
+            "arc_easy",  # ARC-e
+            "arc_challenge",  # ARC-c
+            "openbookqa",  # OBQA
         ]
 
         if 'qaretrieval' in notes:
