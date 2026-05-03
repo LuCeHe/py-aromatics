@@ -219,7 +219,10 @@ def count_llm_parameters_noembs(model: AutoModelForCausalLM, do_print=False) -> 
     for name, param in model.named_parameters():
         if param.requires_grad:
             if not re.match(r'^(model\.embed_tokens|lm_head)\.', name):
-                total_params += param.numel()
+                param_params  = param.numel()
+                total_params += param_params
+                if do_print:
+                    print(f"  Not skipping parameters in {name}: ", param_params)
             else:
                 if do_print:
                     print(f"  Skipping parameters in {name}")
