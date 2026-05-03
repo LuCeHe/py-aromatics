@@ -1573,6 +1573,20 @@ def _release_after_lm_eval_task(eval_model) -> None:
             pass
 
 
+# Long-context PPL, ``generate_until``, and heavy QA tasks: avoid batch>1 spikes (CPU RAM on login
+# nodes / VRAM). Override everything with env ``LM_EVAL_FORCE_BATCH1=1``.
+_LM_EVAL_CONSERVATIVE_BATCH_TASKS = frozenset({
+    "wikitext",
+    "nq_open",
+})
+
+
+def _lm_eval_batch_sizes_for_task(task_name: str) -> tuple[int, int]:
+    if task_name in _LM_EVAL_CONSERVATIVE_BATCH_TASKS:
+        return 1, 1
+    return 8, 64
+
+
 def evaluation_lmeval(
         model, tokenizer, notes='',
         cachepath=None
@@ -1611,8 +1625,8 @@ def evaluation_lmeval(
                 "squadv2",  # SQuAD v2.0 (was "squad2" in older harness)
                 "triviaqa",  # TriviaQA
                 "drop",  # DROP (discrete reasoning)
-                'fda',
-                'swde'
+                "fda",
+                "swde",
                 "nq_open",  # Natural Questions (open-domain)
             ]
 
@@ -1625,19 +1639,18 @@ def evaluation_lmeval(
             hf_model_cls = HFLM
 
         limit = 2 if 'onlytesting' in notes else None
-        # wikitext uses loglikelihood_rolling (long-context PPL); use batch_size=1 for that task only.
+        # wikitext + QA / generate_until tasks: batch 1 to limit RAM spikes (login nodes, large LMs).
         lm_eval_results = {'results': {}}
         task_errors: dict[str, str] = {}
 
         print(
             f'LM eval: {len(tasks)} tasks, one simple_evaluate per task '
-            f'(wikitext → batch 1; others batch 8, max_batch_size 64)'
+            f'(batch 1 for wikitext & generative/QA tasks; MC tasks 8/64; '
         )
 
         for task_name in tasks:
             print(f'\n\nEvaluating task: {task_name}')
-            _wikitext = task_name == "wikitext"
-            _bs, _mbs = (1, 1) if _wikitext else (8, 64)
+            _bs, _mbs = _lm_eval_batch_sizes_for_task(task_name)
             eval_model = None
             try:
                 eval_model = hf_model_cls(
