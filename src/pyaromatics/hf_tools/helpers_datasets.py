@@ -1597,23 +1597,6 @@ def evaluation_lmeval(
     print('Running LM Eval on standard benchmarks')
     print('=' * 50)
     try:
-        # Ensure we use the HF cache directory for datasets / lm_eval task data.
-        if cachepath:
-            if 'HF_DATASETS_CACHE' not in os.environ:
-                os.environ['HF_DATASETS_CACHE'] = cachepath
-            if 'HF_HOME' not in os.environ:
-                os.environ['HF_HOME'] = cachepath
-            # Avoid unreachable Hub HEAD retries when the revision is already in HF_DATASETS_CACHE;
-            # lm_eval tasks still resolve from cache. Override with HF_DATASETS_OFFLINE=0 / HF_HUB_OFFLINE=0
-            # when you need a fresh download in this process.
-            _d_off = os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
-            _h_off = os.environ.setdefault("HF_HUB_OFFLINE", "1")
-            if _d_off == "1" or _h_off == "1":
-                print(
-                    "HF datasets / Hub: offline-first (cache only); "
-                    "set HF_DATASETS_OFFLINE=0 and HF_HUB_OFFLINE=0 to allow network.",
-                )
-
         print(f'Using HF cache directory: {os.environ.get("HF_DATASETS_CACHE", "default")}')
 
         # Define tasks: wikitext, LAMBADA, knowledge/QA + reading comprehension
