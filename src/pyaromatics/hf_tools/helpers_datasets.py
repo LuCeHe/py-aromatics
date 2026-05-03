@@ -1,4 +1,4 @@
-import os, argparse, sys, socket, random, itertools, gc, json, re, hashlib
+import os, argparse, sys, socket, random, itertools, gc, json, re, hashlib, traceback
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
@@ -1610,45 +1610,33 @@ def evaluation_lmeval(
             hf_model_cls = HFLM
 
         limit = 2 if 'onlytesting' in notes else None
-        # wikitext uses loglikelihood_rolling (long-context PPL); a large batch with big models can OOM.
-        # Other tasks benefit from larger batches for MC / standard loglikelihood.
-        wikitext_task = "wikitext"
-        tasks_no_wikitext = [t for t in tasks if t != wikitext_task]
+        # wikitext uses loglikelihood_rolling (long-context PPL); use batch_size=1 for that task only.
         lm_eval_results = {'results': {}}
+        task_errors: dict[str, str] = {}
 
-        if tasks_no_wikitext:
-            print(
-                f'LM eval pass 1: {len(tasks_no_wikitext)} tasks '
-                f'(batch_size=8, max_batch_size=64)'
-            )
-            eval_model = hf_model_cls(
-                pretrained=model,
-                tokenizer=tokenizer,
-                batch_size=8,
-                max_batch_size=64,
-            )
-            part = simple_evaluate(
-                eval_model, tasks=tasks_no_wikitext, limit=limit
-            )
-            lm_eval_results['results'].update(part['results'])
+        print(
+            f'LM eval: {len(tasks)} tasks, one simple_evaluate per task '
+            f'(wikitext → batch 1; others batch 8, max_batch_size 64)'
+        )
 
-        if wikitext_task in tasks:
-            print(
-                'LM eval pass 2: wikitext only '
-                '(batch_size=1 for rolling loglikelihood / VRAM)'
-            )
-            eval_model_wt = hf_model_cls(
-                pretrained=model,
-                tokenizer=tokenizer,
-                batch_size=1,
-                max_batch_size=1,
-            )
-            
-            part_wt = simple_evaluate(
-                eval_model_wt, tasks=[wikitext_task], limit=limit
-            )
-            lm_eval_results['results'].update(part_wt['results'])
-        
+        for task_name in tasks:
+            _wikitext = task_name == "wikitext"
+            _bs, _mbs = (1, 1) if _wikitext else (8, 64)
+            try:
+                eval_model = hf_model_cls(
+                    pretrained=model,
+                    tokenizer=tokenizer,
+                    batch_size=_bs,
+                    max_batch_size=_mbs,
+                )
+                part = simple_evaluate(
+                    eval_model, tasks=[task_name], limit=limit
+                )
+                lm_eval_results["results"].update(part.get("results", {}))
+            except Exception as e:
+                task_errors[task_name] = str(e)
+                print(f"\nlm_eval task {task_name!r} failed: {e}")
+                traceback.print_exc()
         highlights = {}
         for task, res in lm_eval_results['results'].items():
             print(f'Processing results for {task}...')
@@ -1675,10 +1663,17 @@ def evaluation_lmeval(
         print(json.dumps(highlights, indent=2, cls=NumpyEncoder))
         print('=' * 50)
 
+        if task_errors:
+            results["lm_eval_task_errors"] = dict(task_errors)
+        if task_errors and not lm_eval_results["results"]:
+            results["lm_eval_error"] = (
+                "all lm_eval tasks failed: "
+                + json.dumps(task_errors, indent=2)[:8000]
+            )
+
     except Exception as e:
         error_str = str(e)
         print(f'\nError during lm_eval: {e}')
-        import traceback
         traceback.print_exc()
 
         results['lm_eval_error'] = str(e)
