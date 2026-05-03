@@ -1620,6 +1620,7 @@ def evaluation_lmeval(
         )
 
         for task_name in tasks:
+            print(f'\n\nEvaluating task: {task_name}')
             _wikitext = task_name == "wikitext"
             _bs, _mbs = (1, 1) if _wikitext else (8, 64)
             try:
