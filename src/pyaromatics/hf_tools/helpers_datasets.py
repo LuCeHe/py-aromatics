@@ -1610,10 +1610,10 @@ def evaluation_lmeval(
                 "squad_completion",  # SQuAD-style completion (was "squad" in older harness)
                 "squadv2",  # SQuAD v2.0 (was "squad2" in older harness)
                 "triviaqa",  # TriviaQA
-                "nq_open",  # Natural Questions (open-domain)
                 "drop",  # DROP (discrete reasoning)
                 'fda',
                 'swde'
+                "nq_open",  # Natural Questions (open-domain)
             ]
 
         print(f'Evaluating on tasks: {tasks}')
