@@ -1558,6 +1558,21 @@ retrieval_metrics = [
 ]
 
 
+def _release_after_lm_eval_task(eval_model) -> None:
+    """Drop lm_eval HFLM wrapper refs and return cached GPU memory between tasks (best-effort vs OOM)."""
+    if eval_model is not None:
+        try:
+            del eval_model
+        except Exception:
+            pass
+    gc.collect()
+    if torch.cuda.is_available():
+        try:
+            torch.cuda.empty_cache()
+        except Exception:
+            pass
+
+
 def evaluation_lmeval(
         model, tokenizer, notes='',
         cachepath=None
@@ -1623,6 +1638,7 @@ def evaluation_lmeval(
             print(f'\n\nEvaluating task: {task_name}')
             _wikitext = task_name == "wikitext"
             _bs, _mbs = (1, 1) if _wikitext else (8, 64)
+            eval_model = None
             try:
                 eval_model = hf_model_cls(
                     pretrained=model,
@@ -1638,6 +1654,8 @@ def evaluation_lmeval(
                 task_errors[task_name] = str(e)
                 print(f"\nlm_eval task {task_name!r} failed: {e}")
                 traceback.print_exc()
+            finally:
+                _release_after_lm_eval_task(eval_model)
         highlights = {}
         for task, res in lm_eval_results['results'].items():
             print(f'Processing results for {task}...')
