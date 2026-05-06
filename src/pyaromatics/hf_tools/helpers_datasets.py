@@ -151,8 +151,7 @@ def get_dataset(
 
                 if isinstance(v, list):
                     v = 'list - ' + str(v)
-                # text = v if len(v) < 100 else v[:100] + '...'
-                text = v
+                text = v if len(v) < 100 else v[:100] + '...'
                 text = text.replace('\n', ' ').replace('  ', ' ')
                 print(f'    {k}: {text}')
 
