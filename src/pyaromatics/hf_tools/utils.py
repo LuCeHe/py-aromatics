@@ -54,6 +54,15 @@ def get_tokenizer(model_id, notes='', save_dir=None, max_seq_length=None):
     if 'byt5' in notes:
         tokenizer_id = "google/byt5-small"
 
+    if 'll2-7Bemb' in notes:
+        tokenizer_id = "meta-llama/Llama-2-7b"
+
+    if 'qw3-0p6Bemb' in notes:
+        tokenizer_id = "Qwen/Qwen3-0.6B-Base"
+
+    if 'mai-7Bemb' in notes:
+        tokenizer_id = "mistralai/Mistral-7B-v0.1"
+
     tokenizer_path = os.path.join(save_dir, tokenizer_id.replace('/', '-') + '-tokenizer')
     tokenizer_args = {
         # 'padding': 'max_length', 'max_length': 175,
