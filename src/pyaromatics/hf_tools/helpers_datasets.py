@@ -51,7 +51,7 @@ def get_dataset(
     n_samples = str2val(notes, 'nsamples', default=n_samples, output_type=int)
     eval_steps = 20_000
     eval_strategy = 'epoch'
-    neftune = None if 'foldable' in notes else 5
+    neftune = None
     label_smoothing_factor = 0.1
     early_stopping_patience = 4
     lr_scheduler_type = 'constant'
