@@ -8,6 +8,71 @@ from torch.utils.data import DataLoader
 
 from trl import SFTTrainer
 
+
+def _embedding_lm_head_already_tied(model: torch.nn.Module) -> bool:
+    """Check whether the output embedding (lm_head) is the same object as the input embedding."""
+    emb = model.get_input_embeddings()
+    out = model.get_output_embeddings()
+    if emb is None or out is None:
+        return False
+    ew = getattr(emb, "weight", None)
+    ow = getattr(out, "weight", None)
+    if ew is None or ow is None:
+        sm_e = getattr(emb, "small_embed_tokens", None)
+        sm_o = getattr(out, "small_lm_head", None)
+        if sm_e is not None and sm_o is not None:
+            ew = getattr(sm_e, "weight", None)
+            ow = getattr(sm_o, "weight", None)
+    if ew is None or ow is None:
+        return False
+    try:
+        return ew.data_ptr() == ow.data_ptr()
+    except Exception:
+        return False
+
+
+def _ensure_tied_lm_head_after_checkpoint_load(
+        model: torch.nn.Module,
+) -> torch.nn.Module:
+    """
+    When ``tie_word_embeddings`` is set, checkpoints often omit ``lm_head.weight``
+    (shared with ``embed_tokens``). Tie (or re-tie) output weights from the input embedding.
+    """
+    cfg = getattr(model, "config", None)
+    if cfg is None or not getattr(cfg, "tie_word_embeddings", False):
+        return model
+    if _embedding_lm_head_already_tied(model):
+        return model
+    tie = getattr(model, "tie_weights", None)
+    if callable(tie):
+        tie()
+        return model
+    emb = model.get_input_embeddings()
+    out = model.get_output_embeddings()
+    if emb is None or out is None:
+        return model
+    if hasattr(out, "weight") and hasattr(emb, "weight"):
+        out.weight = emb.weight
+    return model
+
+
+def _materialise_meta_buffers(model: torch.nn.Module) -> None:
+    """Replace any buffers that are on the meta device with real (CPU) tensors in-place.
+
+    This iterates buffers, and for any that are meta tensors materialises a
+    zero-filled CPU tensor of the same shape/dtype. The model graph and parameter
+    references are preserved.
+    """
+    for name, buf in list(model.named_buffers(recurse=True)):
+        if buf.is_meta:
+            new_buf = torch.empty(buf.shape, dtype=buf.dtype, device="cpu")
+            parts = name.split(".")
+            module = model
+            for p in parts[:-1]:
+                module = getattr(module, p)
+            module._buffers[parts[-1]] = new_buf
+
+
 from transformers.trainer import (
     nn,
     EvalLoopOutput,
@@ -523,4 +588,17 @@ class OOMSaferTrainer(SFTTrainer):
 # class PlusTrainer(TimeInterruptTrainer):
 class PlusTrainer(TimeInterruptTrainer):
     def __init__(self, *args, **kwargs):
+        # Materialise any meta-tensor buffers before the Trainer calls model.to(device).
+        # When a model is built via _from_config with device_map="auto" (or through certain
+        # transformers codepaths), non-persistent buffers (e.g. inv_freq) can end up on the
+        # meta device. The Trainer then calls model.to(device) which raises:
+        #   NotImplementedError: Cannot copy out of meta tensor; no data!
+        model = kwargs.get("model")
+        if model is not None:
+            _materialise_meta_buffers(model)
         super().__init__(*args, **kwargs)
+
+    def _load_from_checkpoint(self, resume_from_checkpoint):
+        out = super()._load_from_checkpoint(resume_from_checkpoint)
+        _ensure_tied_lm_head_after_checkpoint_load(self.model)
+        return out
