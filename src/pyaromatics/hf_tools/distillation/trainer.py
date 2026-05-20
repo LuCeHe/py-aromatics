@@ -89,6 +89,11 @@ class DistillationTrainer(Trainer):
         self.samples_trained_in_phase = 0
         self.base_model_state = None
 
+    def on_train_begin(self, args, state, control, **kwargs):
+        if self.teacher_model is not None:
+            self.teacher_model.to(self.accelerator.device)
+        return control
+
     def evaluate(self, *args, **kwargs):
         self.compute_loss = self.compute_loss_evaluation
 
