@@ -70,6 +70,7 @@ class DistillationTrainer(Trainer):
 
         self.current_distillation_loss = None
         self.current_task_loss = None
+        self._distill_vocab_mismatch_warned = False
 
         self.peft_type = peft_type
         self.adalora_samples_per_phase = adalora_samples_per_phase
@@ -158,16 +159,25 @@ class DistillationTrainer(Trainer):
         student_outputs = model(**inputs)
         student_logits = student_outputs.logits
 
-        if student_logits.size(-1) != teacher_logits.size(-1):
-            raise ValueError(
-                "Teacher and student logits have different vocabulary sizes "
-                f"(student: {student_logits.size(-1)}, teacher: {teacher_logits.size(-1)}). "
-                "Ensure both models share the tokenizer and the student embeddings are resized."
-            )
+        teacher_vocab = teacher_logits.size(-1)
+        student_vocab = student_logits.size(-1)
+        distill_student_logits = student_logits
+        distill_teacher_logits = teacher_logits
+        if student_vocab != teacher_vocab:
+            if student_vocab > teacher_vocab:
+                distill_student_logits = student_logits[..., :teacher_vocab]
+            else:
+                distill_teacher_logits = teacher_logits[..., :student_vocab]
+            if not self._distill_vocab_mismatch_warned:
+                print(
+                    "Distillation vocab mismatch: aligning logits to "
+                    f"min(student={student_vocab}, teacher={teacher_vocab}) for KL."
+                )
+                self._distill_vocab_mismatch_warned = True
 
         # 1. DISTILLATION LOSS
-        student_log_probs = F.log_softmax(student_logits / self.temperature, dim=-1)
-        teacher_probs = F.softmax(teacher_logits / self.temperature, dim=-1)
+        student_log_probs = F.log_softmax(distill_student_logits / self.temperature, dim=-1)
+        teacher_probs = F.softmax(distill_teacher_logits / self.temperature, dim=-1)
 
         student_lp_flat = student_log_probs.view(-1, student_log_probs.size(-1))
         teacher_p_flat = teacher_probs.view(-1, teacher_probs.size(-1))

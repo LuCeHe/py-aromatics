@@ -1587,19 +1587,14 @@ def _lm_eval_batch_sizes_for_task(task_name: str) -> tuple[int, int]:
 
 
 def evaluation_lmeval(
-        model, tokenizer, notes='',
-        cachepath=None
+    model, tokenizer, notes='',
+    cachepath=None
 ):
-    results = {}
-    # LM Eval evaluation loop
-    print('\n\n' + '=' * 50)
-    print('Running LM Eval on standard benchmarks')
-    print('=' * 50)
-    try:
-        print(f'Using HF cache directory: {os.environ.get("HF_DATASETS_CACHE", "default")}')
 
+    tasks = []
+    if 'lmeval' in notes:
         # Define tasks: wikitext, LAMBADA, knowledge/QA + reading comprehension
-        tasks = [
+        tasks += [
             "wikitext",  # wikitext 2 perplexity (lower is better)
             "lambada_openai",  # LAMBADA
             "boolq",  # BoolQ
@@ -1611,97 +1606,107 @@ def evaluation_lmeval(
             "openbookqa",  # OBQA
         ]
 
-        if 'qaretrieval' in notes:
-            # QA / reading comprehension (lm_eval 0.4.x task keys: squad_completion, squadv2)
-            tasks += [
-                "squad_completion",  # SQuAD-style completion (was "squad" in older harness)
-                "squadv2",  # SQuAD v2.0 (was "squad2" in older harness)
-                "triviaqa",  # TriviaQA
-                "drop",  # DROP (discrete reasoning)
-                "fda",
-                "swde",
-                "nq_open",  # Natural Questions (open-domain)
-            ]
+    if 'qaretrieval' in notes:
+        # QA / reading comprehension (lm_eval 0.4.x task keys: squad_completion, squadv2)
+        tasks += [
+            "squad_completion",  # SQuAD-style completion (was "squad" in older harness)
+            "squadv2",  # SQuAD v2.0 (was "squad2" in older harness)
+            "triviaqa",  # TriviaQA
+            "drop",  # DROP (discrete reasoning)
+            "fda",
+            "swde",
+            "nq_open",  # Natural Questions (open-domain)
+        ]
 
-        print(f'Evaluating on tasks: {tasks}')
-
-        # Wrap model for lm_eval (registry works across lm_eval versions)
+    if len(tasks) > 0:
+        results = {}
         try:
-            hf_model_cls = get_lm_eval_model("hf")
-        except Exception:
-            hf_model_cls = HFLM
+            # LM Eval evaluation loop
+            print('\n\n' + '=' * 50)
+            print('Running LM Eval on standard benchmarks')
+            print('=' * 50)
+            print(f'Using HF cache directory: {os.environ.get("HF_DATASETS_CACHE", "default")}')
+            print(f'Evaluating on tasks: {tasks}')
 
-        limit = 2 if 'onlytesting' in notes else None
-        # wikitext + QA / generate_until tasks: batch 1 to limit RAM spikes (login nodes, large LMs).
-        lm_eval_results = {'results': {}}
-        task_errors: dict[str, str] = {}
-
-        print(
-            f'LM eval: {len(tasks)} tasks, one simple_evaluate per task '
-            f'(batch 1 for wikitext & generative/QA tasks; MC tasks 8/64; '
-        )
-
-        for task_name in tasks:
-            print(f'\n\nEvaluating task: {task_name}')
-            _bs, _mbs = _lm_eval_batch_sizes_for_task(task_name)
-            eval_model = None
+            # Wrap model for lm_eval (registry works across lm_eval versions)
             try:
-                eval_model = hf_model_cls(
-                    pretrained=model,
-                    tokenizer=tokenizer,
-                    batch_size=_bs,
-                    max_batch_size=_mbs,
-                )
-                part = simple_evaluate(
-                    eval_model, tasks=[task_name], limit=limit
-                )
-                lm_eval_results["results"].update(part.get("results", {}))
-            except Exception as e:
-                task_errors[task_name] = str(e)
-                print(f"\nlm_eval task {task_name!r} failed: {e}")
-                traceback.print_exc()
-            finally:
-                _release_after_lm_eval_task(eval_model)
-        highlights = {}
-        for task, res in lm_eval_results['results'].items():
-            print(f'Processing results for {task}...')
-            print(f'  Available metrics: {list(res.keys())}')
-            task_highlights = {}
-            for metric in understanding_metrics + retrieval_metrics:
-                if metric in res:
-                    task_highlights[metric.split(',')[0]] = res[metric]
+                hf_model_cls = get_lm_eval_model("hf")
+            except Exception:
+                hf_model_cls = HFLM
 
-            if task_highlights is not None:
-                highlights[task] = task_highlights
+            limit = 2 if 'onlytesting' in notes else None
+            # wikitext + QA / generate_until tasks: batch 1 to limit RAM spikes (login nodes, large LMs).
+            lm_eval_results = {'results': {}}
+            task_errors: dict[str, str] = {}
 
-        # remove all keys except results from lm_eval_results
-        lm_eval_results = {'results': lm_eval_results['results']}
-        results['lm_eval_results'] = lm_eval_results
-
-        for task, res in highlights.items():
-            for metric, value in res.items():
-                print(f'  {task} - {metric}: {value}')
-                results[f'{task}_{metric}'] = value
-
-        print('\nLM Eval Results:')
-        print('=' * 50)
-        print(json.dumps(highlights, indent=2, cls=NumpyEncoder))
-        print('=' * 50)
-
-        if task_errors:
-            results["lm_eval_task_errors"] = dict(task_errors)
-        if task_errors and not lm_eval_results["results"]:
-            results["lm_eval_error"] = (
-                "all lm_eval tasks failed: "
-                + json.dumps(task_errors, indent=2)[:8000]
+            print(
+                f'LM eval: {len(tasks)} tasks, one simple_evaluate per task '
+                f'(batch 1 for wikitext & generative/QA tasks; MC tasks 8/64; '
             )
 
-    except Exception as e:
-        error_str = str(e)
-        print(f'\nError during lm_eval: {e}')
-        traceback.print_exc()
+            for task_name in tasks:
+                print(f'\n\nEvaluating task: {task_name}')
+                _bs, _mbs = _lm_eval_batch_sizes_for_task(task_name)
+                eval_model = None
+                try:
+                    eval_model = hf_model_cls(
+                        pretrained=model,
+                        tokenizer=tokenizer,
+                        batch_size=_bs,
+                        max_batch_size=_mbs,
+                    )
+                    part = simple_evaluate(
+                        eval_model, tasks=[task_name], limit=limit
+                    )
+                    lm_eval_results["results"].update(part.get("results", {}))
+                except Exception as e:
+                    task_errors[task_name] = str(e)
+                    print(f"\nlm_eval task {task_name!r} failed: {e}")
+                    traceback.print_exc()
+                finally:
+                    _release_after_lm_eval_task(eval_model)
 
-        results['lm_eval_error'] = str(e)
+            highlights = {}
+            for task, res in lm_eval_results['results'].items():
+                print(f'Processing results for {task}...')
+                print(f'  Available metrics: {list(res.keys())}')
+                task_highlights = {}
+                for metric in understanding_metrics + retrieval_metrics:
+                    if metric in res:
+                        task_highlights[metric.split(',')[0]] = res[metric]
+
+                if task_highlights is not None:
+                    highlights[task] = task_highlights
+
+            # remove all keys except results from lm_eval_results
+            lm_eval_results = {'results': lm_eval_results['results']}
+            results['lm_eval_results'] = lm_eval_results
+
+            for task, res in highlights.items():
+                for metric, value in res.items():
+                    print(f'  {task} - {metric}: {value}')
+                    results[f'{task}_{metric}'] = value
+
+            print('\nLM Eval Results:')
+            print('=' * 50)
+            print(json.dumps(highlights, indent=2, cls=NumpyEncoder))
+            print('=' * 50)
+
+            if task_errors:
+                results["lm_eval_task_errors"] = dict(task_errors)
+
+            if task_errors and not lm_eval_results["results"]:
+                results["lm_eval_error"] = (
+                    "all lm_eval tasks failed: "
+                    + json.dumps(task_errors, indent=2)[:8000]
+                )
+
+        except Exception as e:
+            error_str = str(e)
+            print(f'\nError during lm_eval: {e}')
+            traceback.print_exc()
+
+            results['lm_eval_error'] = str(e)
 
     return results
 
