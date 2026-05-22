@@ -59,6 +59,11 @@ class DistillationTrainer(Trainer):
             **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
+        if getattr(self.args, "auto_find_batch_size", False):
+            print(
+                "[DistillationTrainer] auto_find_batch_size=True desyncs DDP; forcing False."
+            )
+            self.args.auto_find_batch_size = False
         self.teacher_model = teacher_model
         if self.teacher_model is not None:
             self.teacher_model.eval()
@@ -97,19 +102,26 @@ class DistillationTrainer(Trainer):
 
     def evaluate(self, *args, **kwargs):
         self.compute_loss = self.compute_loss_evaluation
+        if self.accelerator is not None:
+            self.accelerator.wait_for_everyone()
 
         if self.teacher_model is None:
             metrics = super().evaluate(*args, **kwargs)
             self.compute_loss = self.compute_loss_training
+            if self.accelerator is not None:
+                self.accelerator.wait_for_everyone()
             return metrics
 
         torch.cuda.empty_cache()
-        print("Evaluating student model with gradient checkpointing enabled...")
+        if self.is_world_process_zero():
+            print("Evaluating student model with gradient checkpointing enabled...")
         self.model.gradient_checkpointing_enable()
         metrics = super().evaluate(*args, **kwargs)
         self.model.gradient_checkpointing_disable()
 
         self.compute_loss = self.compute_loss_training
+        if self.accelerator is not None:
+            self.accelerator.wait_for_everyone()
         return metrics
 
     def compute_loss_training(

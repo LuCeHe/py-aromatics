@@ -61,6 +61,46 @@ class SimplestLMCollator:
 
         return outputs
 
+
+class GKDLMCollator:
+    """Causal-LM collator with prompt/completion split for TRL ``GKDTrainer``."""
+
+    def __init__(
+        self,
+        tokenizer,
+        dataset_text_field: str = "text",
+        prompt_length: int = 128,
+        apply_safe_max_len: bool = False,
+    ):
+        self.base = SimplestLMCollator(
+            tokenizer,
+            dataset_text_field=dataset_text_field,
+            apply_safe_max_len=apply_safe_max_len,
+        )
+        self.prompt_length = max(1, int(prompt_length))
+
+    def __call__(self, batch: List[Dict[str, str]]) -> Dict[str, torch.Tensor]:
+        outputs = self.base(batch)
+        input_ids = outputs["input_ids"]
+        attention_mask = outputs["attention_mask"]
+        seq_len = input_ids.shape[1]
+        plen = min(self.prompt_length, max(1, seq_len - 1))
+
+        prompts = input_ids[:, :plen].clone()
+        prompt_attention_mask = attention_mask[:, :plen].clone()
+
+        labels = outputs["labels"].clone()
+        labels[:, :plen] = -100
+
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": labels,
+            "prompts": prompts,
+            "prompt_attention_mask": prompt_attention_mask,
+        }
+
+
 class PackingOnlineCollator:
     def __init__(self, tokenizer, dataset_text_field='text'):
         self.tokenizer = tokenizer
