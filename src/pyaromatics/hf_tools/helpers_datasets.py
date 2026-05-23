@@ -1590,6 +1590,7 @@ def evaluation_lmeval(
     model, tokenizer, notes='',
     cachepath=None
 ):
+    results = {}
 
     tasks = []
     if 'lmeval' in notes:
@@ -1627,7 +1628,6 @@ def evaluation_lmeval(
         ]
 
     if len(tasks) > 0:
-        results = {}
         try:
             # LM Eval evaluation loop
             print('\n\n' + '=' * 50)
