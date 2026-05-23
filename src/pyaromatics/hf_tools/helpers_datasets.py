@@ -1618,6 +1618,14 @@ def evaluation_lmeval(
             "nq_open",  # Natural Questions (open-domain)
         ]
 
+    if 'qaretrievalnodrop' in notes:
+        tasks.remove("drop")
+
+    if 'qaretrievalonlydrop' in notes:
+        tasks = [
+            "drop",  # DROP (discrete reasoning)
+        ]
+
     if len(tasks) > 0:
         results = {}
         try:
