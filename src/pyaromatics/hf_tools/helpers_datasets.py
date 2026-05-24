@@ -1613,19 +1613,27 @@ def evaluation_lmeval(
             "squad_completion",  # SQuAD-style completion (was "squad" in older harness)
             "squadv2",  # SQuAD v2.0 (was "squad2" in older harness)
             "triviaqa",  # TriviaQA
-            "drop",  # DROP (discrete reasoning)
+            "drop",
             "fda",
             "swde",
             "nq_open",  # Natural Questions (open-domain)
         ]
 
-    if 'qaretrievalnodrop' in notes:
-        tasks.remove("drop")
-
-    if 'qaretrievalonlydrop' in notes:
-        tasks = [
-            "drop",  # DROP (discrete reasoning)
+    if 'qaretrievalsmall' in notes:
+        tasks += [
+            "squad_completion",  # SQuAD-style completion (was "squad" in older harness)
+            "squadv2",  # SQuAD v2.0 (was "squad2" in older harness)
+            "triviaqa",  # TriviaQA
         ]
+
+    if 'qaretrievalsmall2' in notes:
+        tasks += [
+            "drop",
+            "fda",
+            "swde",
+            "nq_open",  # Natural Questions (open-domain)
+        ]
+
 
     if len(tasks) > 0:
         try:
