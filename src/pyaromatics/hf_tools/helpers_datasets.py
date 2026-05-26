@@ -1593,6 +1593,13 @@ def evaluation_lmeval(
     results = {}
 
     tasks = []
+
+    if 'quicklueval' in notes:
+        tasks += [
+            "arc_easy",  # ARC-e
+            "arc_challenge",  # ARC-c
+        ]
+
     if 'lmeval' in notes:
         # Define tasks: wikitext, LAMBADA, knowledge/QA + reading comprehension
         tasks += [
@@ -1634,7 +1641,6 @@ def evaluation_lmeval(
             "nq_open",  # Natural Questions (open-domain)
         ]
 
-
     if len(tasks) > 0:
         try:
             # LM Eval evaluation loop
@@ -1654,6 +1660,7 @@ def evaluation_lmeval(
             # wikitext + QA / generate_until tasks: batch 1 to limit RAM spikes (login nodes, large LMs).
             lm_eval_results = {'results': {}}
             task_errors: dict[str, str] = {}
+            tasks = list(set(tasks))
 
             print(
                 f'LM eval: {len(tasks)} tasks, one simple_evaluate per task '

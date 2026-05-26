@@ -1,4 +1,5 @@
 from pyaromatics.hf_tools.distillation.trainer import DistillationTrainer
+from pyaromatics.hf_tools.distillation.self_distillation_trainer import SelfDistillationTrainer
 from pyaromatics.hf_tools.distillation.model_helpers import get_models, get_model_max_length, scaled_config
 from pyaromatics.hf_tools.distillation.dataset_helpers import (
     prepare_dataset,
