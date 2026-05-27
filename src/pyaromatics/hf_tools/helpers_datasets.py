@@ -96,6 +96,10 @@ def get_dataset(
         dataset = get_openwebtext(cachedir=cachedir)
         max_seq_length = 1024
 
+    elif dataset_name == 'finewebedu':
+        dataset = get_dataset_finewebedu(notes=notes, cachedir=cachedir)
+        max_seq_length = 1024
+
     elif dataset_name == 'pile':
         dataset = load_dataset("EleutherAI/pile")
 
@@ -739,6 +743,54 @@ def get_openwebtext(cachedir=None):
     wiki = get_dataset_wiki103(cachedir=cachedir)
     return DatasetDict({
         "train": owt["train"],
+        "validation": wiki["validation"],
+        "test": wiki["test"],
+    })
+
+
+def get_dataset_finewebedu(notes='', cachedir=None):
+    """
+    Download and load HuggingFaceFW/fineweb-edu (https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu):
+    educational web text in the ``text`` column (train split only on HF).
+
+    HF config/subset is chosen via ``finewebeduconfig`` in ``notes`` (default ``sample-10BT``).
+    Other options include ``default`` (full corpus), ``sample-100BT``, ``sample-350BT``, or a
+    per-dump name such as ``CC-MAIN-2024-10``.
+
+    Before save, the train split is passed through :func:`sanitize_text` and :func:`is_valid`
+    (same as OpenWebText). Cached under ``cachedir/fineweb_edu_<config>_sanitized``.
+
+    FineWeb-Edu is train-only; ``validation`` and ``test`` are taken from WikiText-103 via
+    :func:`get_dataset_wiki103`.
+    """
+    config_name = str2val(notes, "finewebeduconfig", default="sample-10BT", output_type=str)
+    safe_name = re.sub(r"[^\w\-.]+", "_", str(config_name))
+    data_path = os.path.join(cachedir, f"fineweb_edu_{safe_name}_sanitized")
+    if not os.path.exists(data_path):
+        print(data_path)
+        dataset = load_dataset(
+            "HuggingFaceFW/fineweb-edu",
+            name=config_name,
+            trust_remote_code=True,
+        )
+        num_proc = min(8, (os.cpu_count() or 1))
+        for split in dataset.keys():
+            dataset[split] = dataset[split].map(
+                sanitize_text,
+                desc=f"FineWeb-Edu sanitize {split}",
+                num_proc=num_proc,
+            )
+            dataset[split] = dataset[split].filter(
+                is_valid,
+                desc=f"FineWeb-Edu filter {split}",
+                num_proc=num_proc,
+            )
+        dataset.save_to_disk(data_path)
+
+    fwe = datasets.load_from_disk(data_path)
+    wiki = get_dataset_wiki103(cachedir=cachedir)
+    return DatasetDict({
+        "train": fwe["train"],
         "validation": wiki["validation"],
         "test": wiki["test"],
     })
