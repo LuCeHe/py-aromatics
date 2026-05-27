@@ -155,8 +155,13 @@ def get_dataset(
 
                 if isinstance(v, list):
                     v = 'list - ' + str(v)
-                text = v if len(v) < 100 else v[:100] + '...'
-                text = text.replace('\n', ' ').replace('  ', ' ')
+                
+                if isinstance(v, str):
+                    text = v if len(v) < 100 else v[:100] + '...'
+                    text = text.replace('\n', ' ').replace('  ', ' ')
+                else:
+                    text = str(v)
+
                 print(f'    {k}: {text}')
 
     data_config = {
