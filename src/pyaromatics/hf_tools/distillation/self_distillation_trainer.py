@@ -76,6 +76,13 @@ class SelfDistillationTrainer(PlusTrainer):
         for param in self.teacher_model.parameters():
             param.requires_grad = False
 
+    def _phase_callbacks_list(self) -> list[TrainerCallback]:
+        """Callbacks registered on this trainer (HF uses ``callback_handler``, not ``callbacks``)."""
+        handler = getattr(self, "callback_handler", None)
+        if handler is not None and hasattr(handler, "callbacks"):
+            return list(handler.callbacks)
+        return []
+
     def _resolve_total_step_budget(self) -> int:
         if self.args.max_steps and self.args.max_steps > 0:
             return int(self.args.max_steps)
@@ -211,7 +218,7 @@ class SelfDistillationTrainer(PlusTrainer):
 
         while steps_completed < total_budget:
             phase_steps = min(self._current_restart_steps, total_budget - steps_completed)
-            phase_callbacks = list(self.callbacks or [])
+            phase_callbacks = self._phase_callbacks_list()
 
             if self._phase_index == 0:
                 phase_output = self._run_task_phase(
