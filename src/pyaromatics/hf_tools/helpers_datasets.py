@@ -99,6 +99,8 @@ def get_dataset(
     elif dataset_name == 'finewebedu':
         dataset = get_dataset_finewebedu(notes=notes, cachedir=cachedir)
         max_seq_length = 1024
+        eval_strategy = 'steps'
+        eval_steps = 10_000
 
     elif dataset_name == 'pile':
         dataset = load_dataset("EleutherAI/pile")
