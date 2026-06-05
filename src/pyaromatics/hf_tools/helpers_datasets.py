@@ -95,12 +95,13 @@ def get_dataset(
     elif dataset_name == 'openwebtext':
         dataset = get_openwebtext(cachedir=cachedir)
         max_seq_length = 1024
-
+        
     elif dataset_name == 'finewebedu':
         dataset = get_dataset_finewebedu(notes=notes, cachedir=cachedir)
         max_seq_length = 1024
         eval_strategy = 'steps'
         eval_steps = 10_000
+        early_stopping_patience = 20
 
     elif dataset_name == 'pile':
         dataset = load_dataset("EleutherAI/pile")
@@ -1532,7 +1533,7 @@ def make_mqar_compute_metrics():
 def evaluation(
         model, tokenizer, dataset, dataset_name, eval_split,
         batch_size=1, seed=42, output_dir=None, notes='',
-        compute_metrics=None, collator=None,
+        compute_metrics=None, collator=None, single_process=False,
 ):
     from trl import SFTConfig
     # from thepebbletrail_official.dataset_utils.helpers_datasets import get_metrics
@@ -1571,6 +1572,9 @@ def evaluation(
 
     if 'packing' in notes:
         config_args['packing'] = True
+
+    if single_process:
+        config_args['local_rank'] = -1
 
     eval_args = SFTConfig(**config_args)
     if not hasattr(eval_args, "past_index"):
