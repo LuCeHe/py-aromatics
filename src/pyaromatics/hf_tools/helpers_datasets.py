@@ -21,7 +21,7 @@ from lm_eval import simple_evaluate
 from lm_eval.api.registry import get_model as get_lm_eval_model
 from lm_eval.models.huggingface import HFLM
 
-from pyaromatics.hf_tools.utils import get_hf_key
+from pyaromatics.hf_tools.utils import ensure_hf_hub_token, get_hf_key
 from pyaromatics.hf_tools.utils import get_pretrained_model
 from pyaromatics.hf_tools.utils import get_tokenizer as hf_get_tokenizer
 from pyaromatics.stay_organized.utils import str2val
@@ -42,11 +42,47 @@ MAX_TOTAL_CHARS = 2_000_000  # safe for 8 GPUs
 SAVE_EVERY = 3_000
 
 
+def _sanitized_disk_cache_ready(data_path: str) -> bool:
+    """True when ``datasets.save_to_disk`` output looks complete (not an empty mkdir)."""
+    return (
+        os.path.isdir(data_path)
+        and os.path.isfile(os.path.join(data_path, "dataset_dict.json"))
+    )
+
+
+def _workdir_from_cachedir(cachedir: str | None) -> str | None:
+    """``cachedir`` is typically ``<WORKDIR>/data/hf_cache``."""
+    if not cachedir:
+        return None
+    return os.path.abspath(os.path.join(cachedir, "..", ".."))
+
+
+def _hub_download_allowed() -> bool:
+    if os.environ.get("HF_DATASETS_OFFLINE") == "1" or os.environ.get("HF_HUB_OFFLINE") == "1":
+        return False
+    return True
+
+
+def _require_local_dataset_cache(data_path: str, *, dataset_label: str, hub_repo: str) -> None:
+    if _sanitized_disk_cache_ready(data_path):
+        return
+    msg = (
+        f"{dataset_label} cache not found at {data_path!r}. "
+        f"This job cannot download {hub_repo} from HuggingFace Hub here "
+        f"(``HF_HUB_OFFLINE=1`` / ``HF_DATASETS_OFFLINE=1`` enforces local-only). "
+        f"Build the sanitized cache once on Leonardo or another Hub-reachable machine, then rsync "
+        f"the folder into $DATADIR/hf_cache/ on Jean Zay. Example (on a machine with Hub access):\n"
+        f"  from pyaromatics.hf_tools.helpers_datasets import {dataset_label}\n"
+        f"  {dataset_label}(cachedir='/path/to/hf_cache')"
+    )
+    raise FileNotFoundError(msg)
+
+
 def get_dataset(
         dataset_name, seed=42, lengths=None, notes='', n_samples=-1, no_print=False, model_id=None,
         cachedir=None
 ):
-    # get_hf_key(WORKDIR)
+    ensure_hf_hub_token(_workdir_from_cachedir(cachedir))
 
     n_samples = str2val(notes, 'nsamples', default=n_samples, output_type=int)
     eval_steps = 20_000
@@ -295,8 +331,7 @@ def get_rule110(model_id=None, notes='', seed=42, cachedir=None, max_length=2048
         print(f"Generating Rule 110 dataset with vocab size {vocab_size}, max length {max_length}, seed {seed}...")
 
         try:
-            WORKDIR = os.path.abspath(os.path.join(cachedir, '..', '..'))
-            get_hf_key(WORKDIR)
+            ensure_hf_hub_token(_workdir_from_cachedir(cachedir))
             config = Qwen3Config()
             vocab_size = min(config.vocab_size, vocab_size)
         except Exception as e:
@@ -559,7 +594,13 @@ def get_dataset_wiki103(cachedir=None):
     and :func:`is_valid` (same as OpenWebText). Cached under ``cachedir/wiki103_sanitized``.
     """
     data_path = os.path.join(cachedir, "wiki103_sanitized")
-    if not os.path.exists(data_path):
+    if not _sanitized_disk_cache_ready(data_path):
+        if not _hub_download_allowed():
+            _require_local_dataset_cache(
+                data_path,
+                dataset_label="get_dataset_wiki103",
+                hub_repo="wikitext/wikitext-103-raw-v1",
+            )
         dataset = load_dataset("wikitext", "wikitext-103-raw-v1")
         num_proc = min(8, (os.cpu_count() or 1))
         for split in dataset.keys():
@@ -774,12 +815,17 @@ def get_dataset_finewebedu(notes='', cachedir=None):
     config_name = str2val(notes, "finewebeduconfig", default="sample-10BT", output_type=str)
     safe_name = re.sub(r"[^\w\-.]+", "_", str(config_name))
     data_path = os.path.join(cachedir, f"fineweb_edu_{safe_name}_sanitized")
-    if not os.path.exists(data_path):
+    if not _sanitized_disk_cache_ready(data_path):
         print(data_path)
+        if not _hub_download_allowed():
+            _require_local_dataset_cache(
+                data_path,
+                dataset_label="get_dataset_finewebedu",
+                hub_repo="HuggingFaceFW/fineweb-edu",
+            )
         dataset = load_dataset(
             "HuggingFaceFW/fineweb-edu",
             name=config_name,
-            trust_remote_code=True,
         )
         num_proc = min(8, (os.cpu_count() or 1))
         for split in dataset.keys():

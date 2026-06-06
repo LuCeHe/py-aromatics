@@ -12,29 +12,76 @@ def connected_to_internet():
         return False
 
 
+_HF_TOKEN_ENV_KEYS = ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HF_AUTH_TOKEN")
+
+
+def _apply_hf_token(token: str) -> str:
+    """Expose the token under every env name huggingface_hub / datasets may read."""
+    token = (token or "").strip()
+    if not token:
+        return token
+    for key in _HF_TOKEN_ENV_KEYS:
+        os.environ[key] = token
+    return token
+
+
+def _load_hf_token_from_file(savekey_dir: str) -> str | None:
+    path_key = os.path.join(savekey_dir, "hfstuff.txt")
+    if not os.path.isfile(path_key):
+        return None
+    with open(path_key, "r", encoding="utf-8") as f:
+        encoded = f.read().strip()
+    if not encoded:
+        return None
+    return base64.b64decode(encoded).decode("utf-8").strip()
+
+
+def ensure_hf_hub_token(savekey_dir: str | None = None, *, interactive: bool = False) -> str | None:
+    """
+    Make Hub requests authenticated (avoids unauthenticated rate limits / some proxy blocks).
+
+    Resolution order: existing ``HF_TOKEN`` / ``HUGGING_FACE_HUB_TOKEN`` / ``HF_AUTH_TOKEN`` env,
+    then ``<savekey_dir>/hfstuff.txt`` (base64, same format as :func:`get_hf_key`).
+    """
+    for key in _HF_TOKEN_ENV_KEYS:
+        token = (os.environ.get(key) or "").strip()
+        if token:
+            return _apply_hf_token(token)
+
+    if savekey_dir:
+        token = _load_hf_token_from_file(savekey_dir)
+        if token:
+            _apply_hf_token(token)
+            try:
+                from huggingface_hub import login
+
+                login(token=token, add_to_git_credential=False)
+            except Exception:
+                pass
+            return token
+
+    if interactive:
+        return get_hf_key(savekey_dir)
+    return None
+
+
 def get_hf_key(savekey_dir):
     path_key = os.path.join(savekey_dir, 'hfstuff.txt')
     if not os.path.exists(path_key):
-        token = input(f"Enter your HF token: ")
+        token = input("Enter your HF token: ")
         encoded = base64.b64encode(token.encode('utf-8')).decode('utf-8')
 
-        with open(path_key, 'w') as f:
+        with open(path_key, 'w', encoding='utf-8') as f:
             f.write(encoded)
+    else:
+        token = _load_hf_token_from_file(savekey_dir)
 
-    with open(path_key, 'r') as f:
-        encoded = f.read()
-    token = base64.b64decode(encoded).decode('utf-8')
+    _apply_hf_token(token)
 
     from huggingface_hub import login
 
-    # detect internet connection
-    # if connected_to_internet():
     print('Logging in to HF...')
-    login(token=token)
-
-    # set the environment variable
-    os.environ['HF_AUTH_TOKEN'] = token
-    os.system(f"export HF_AUTH_TOKEN={token}")
+    login(token=token, add_to_git_credential=False)
     return token
 
 
