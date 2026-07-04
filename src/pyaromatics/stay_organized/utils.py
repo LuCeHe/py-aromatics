@@ -540,6 +540,25 @@ def check_internet(host="8.8.8.8", port=53, timeout=3):
         return False
 
 
+def _is_dict_line(line):
+    s = line.strip()
+    return s.startswith('{') and s.endswith('}') and ':' in s
+
+
+def _is_progress_line(line):
+    return (all(token in line for token in ["%|", "/", " [", "<"])
+            and ("it/s" in line or "s/it" in line)
+            and 'eval_loss' not in line)
+
+
+def _collapsible_line_type(line):
+    if _is_progress_line(line):
+        return 'progress'
+    if _is_dict_line(line):
+        return 'dict'
+    return None
+
+
 repetitive_complaints = [
     # 'Processing chunk starting at',
     # 'Some weights of DebertaV2ForMaskedLM were',
@@ -590,25 +609,30 @@ def clean_outs(path=None):
 
 
         prev = None
+        prev_type = None
         cleaned_lines = []
         for line in lines:
+            line_type = _collapsible_line_type(line)
 
-            # Check if line looks like tqdm progress
-            if (all(token in line for token in ["%|", "/", " [", "<"])
-                    and ("it/s" in line or "s/it" in line)
-                    and not 'eval_loss' in line):  # avoid eval_loss progress bars
-                prev = line  # overwrite until the last one
+            if line_type:
+                if prev_type == line_type:
+                    prev = line
+                else:
+                    if prev:
+                        cleaned_lines.append(prev)
+                    prev = line
+                    prev_type = line_type
 
             elif line.strip() == "":
                 continue
 
             else:
-                # If a non-progress line appears, keep the last progress line (if any)
                 if prev:
                     cleaned_lines.append(prev)
                     prev = None
+                    prev_type = None
                 cleaned_lines.append(line)
-        # At the very end, flush any remaining progress line
+
         if prev:
             cleaned_lines.append(prev)
         lines = cleaned_lines
