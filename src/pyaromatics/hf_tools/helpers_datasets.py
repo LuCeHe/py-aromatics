@@ -139,6 +139,13 @@ def get_dataset(
         eval_steps = 10_000
         early_stopping_patience = 20
 
+    elif dataset_name in ('tulu3sft', 'tulu3'):
+        dataset = get_dataset_tulu3sft(notes=notes, cachedir=cachedir)
+        max_seq_length = str2val(notes, "maxlen", default=2048, output_type=int)
+        eval_strategy = 'steps'
+        eval_steps = 5_000
+        early_stopping_patience = 3
+
     elif dataset_name == 'pile':
         dataset = load_dataset("EleutherAI/pile")
 
@@ -792,6 +799,59 @@ def get_openwebtext(cachedir=None):
     wiki = get_dataset_wiki103(cachedir=cachedir)
     return DatasetDict({
         "train": owt["train"],
+        "validation": wiki["validation"],
+        "test": wiki["test"],
+    })
+
+
+def tulu_messages_to_text(messages) -> str:
+    """Render Tülu ``messages`` (role/content dicts) into a single ``text`` field."""
+    parts = []
+    for msg in messages or []:
+        if not isinstance(msg, dict):
+            continue
+        role = str(msg.get("role") or "user").strip()
+        content = str(msg.get("content") or "").strip()
+        if content:
+            parts.append(f"<|{role}|>\n{content}")
+    return "\n".join(parts)
+
+
+def _map_tulu_messages_to_text(example):
+    return {"text": tulu_messages_to_text(example.get("messages"))}
+
+
+def get_dataset_tulu3sft(notes='', cachedir=None):
+    """
+    ``allenai/tulu-3-sft-mixture`` for instruction SFT (``[loadckpt:…]_instruct`` continuations).
+
+    Maps chat ``messages`` to a plain ``text`` column for TRL ``dataset_text_field='text'``.
+    Validation/test splits come from WikiText-103 (the HF dataset is train-only).
+    """
+    data_path = os.path.join(cachedir, "tulu3_sft_mixture_text")
+    if not _sanitized_disk_cache_ready(data_path):
+        if not _hub_download_allowed():
+            _require_local_dataset_cache(
+                data_path,
+                dataset_label="get_dataset_tulu3sft",
+                hub_repo="allenai/tulu-3-sft-mixture",
+            )
+        raw = load_dataset("allenai/tulu-3-sft-mixture", split="train")
+        num_proc = min(8, (os.cpu_count() or 1))
+        train = raw.map(
+            _map_tulu_messages_to_text,
+            remove_columns=raw.column_names,
+            desc="Tulu-3 SFT messages -> text",
+            num_proc=num_proc,
+        )
+        train = train.map(sanitize_text, desc="Tulu-3 SFT sanitize", num_proc=num_proc)
+        train = train.filter(is_valid, desc="Tulu-3 SFT filter", num_proc=num_proc)
+        train.save_to_disk(data_path)
+
+    train = datasets.load_from_disk(data_path)
+    wiki = get_dataset_wiki103(cachedir=cachedir)
+    return DatasetDict({
+        "train": train,
         "validation": wiki["validation"],
         "test": wiki["test"],
     })
