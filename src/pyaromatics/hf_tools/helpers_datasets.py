@@ -891,6 +891,150 @@ def get_dataset_tulu3sft(notes='', cachedir=None):
     })
 
 
+def _finewebedu_use_low_memory_build(config_name: str) -> bool:
+    """Large configs OOM when ``load_dataset`` materializes the full Arrow split."""
+    return config_name not in ("sample-10BT",) and (
+        config_name in ("sample-100BT", "sample-350BT", "default")
+        or config_name.startswith("sample-")
+        or config_name.startswith("CC-MAIN-")
+    )
+
+
+def _finewebedu_parquet_subdir(config_name: str) -> str:
+    if config_name.startswith("sample-"):
+        return f"sample/{config_name[len('sample-'):]}"
+    return config_name
+
+
+def _finewebedu_parquet_cache_ready(data_path: str) -> bool:
+    marker = os.path.join(data_path, ".finewebedu_parquet_ready")
+    shards = glob(os.path.join(data_path, "shards", "train-*.parquet"))
+    return os.path.isfile(marker) and len(shards) > 0
+
+
+def _finewebedu_train_cache_ready(data_path: str) -> bool:
+    return _sanitized_disk_cache_ready(data_path) or _finewebedu_parquet_cache_ready(data_path)
+
+
+def _finewebedu_resolve_parquet_files(config_name: str, cachedir: str) -> list[str]:
+    """Local Hub snapshot parquets (after download); else ``snapshot_download``."""
+    from huggingface_hub import snapshot_download
+    from huggingface_hub.errors import LocalEntryNotFoundError
+
+    subdir = _finewebedu_parquet_subdir(config_name)
+    patterns = [
+        os.path.join(cachedir, "hub", "datasets--HuggingFaceFW--fineweb-edu", "snapshots", "*", subdir, "*.parquet"),
+        os.path.join(cachedir, "datasets--HuggingFaceFW--fineweb-edu", "snapshots", "*", subdir, "*.parquet"),
+        os.path.join(cachedir, "**", subdir, "*.parquet"),
+    ]
+    found = sorted({p for pat in patterns for p in glob.glob(pat, recursive=True)})
+    if found:
+        return found
+
+    hub_cache = os.path.join(cachedir, "hub")
+    os.makedirs(hub_cache, exist_ok=True)
+    allow = [f"{subdir}/*.parquet"]
+    try:
+        snap = snapshot_download(
+            "HuggingFaceFW/fineweb-edu",
+            repo_type="dataset",
+            allow_patterns=allow,
+            cache_dir=hub_cache,
+            local_files_only=True,
+        )
+    except LocalEntryNotFoundError:
+        if not _hub_download_allowed():
+            raise FileNotFoundError(
+                f"No local parquet files for fineweb-edu {config_name!r} under {cachedir!r} "
+                f"(expected .../{subdir}/*.parquet)."
+            ) from None
+        snap = snapshot_download(
+            "HuggingFaceFW/fineweb-edu",
+            repo_type="dataset",
+            allow_patterns=allow,
+            cache_dir=hub_cache,
+        )
+    found = sorted(glob.glob(os.path.join(snap, subdir, "*.parquet")))
+    if not found:
+        raise FileNotFoundError(f"No parquet files under {snap}/{subdir}")
+    return found
+
+
+def _build_finewebedu_sanitized_parquet(
+        config_name: str,
+        cachedir: str,
+        data_path: str,
+        *,
+        flush_every: int = 8_000,
+) -> None:
+    """
+    Stream each source parquet → sanitize/filter → append small output parquets.
+
+    Resumable via ``_parquet_build_state.json``; avoids materializing ~100M rows at once.
+    """
+    shards_dir = os.path.join(data_path, "shards")
+    os.makedirs(shards_dir, exist_ok=True)
+    state_path = os.path.join(data_path, "_parquet_build_state.json")
+    state = {"completed_sources": [], "next_shard": 0}
+    if os.path.isfile(state_path):
+        with open(state_path, encoding="utf-8") as f:
+            state = json.load(f)
+
+    done = set(state.get("completed_sources", []))
+    shard_idx = int(state.get("next_shard", 0))
+    parquet_files = _finewebedu_resolve_parquet_files(config_name, cachedir)
+    print(
+        f"Low-memory fineweb-edu build: {len(parquet_files)} source parquets, "
+        f"{len(done)} already done, flush_every={flush_every}",
+        flush=True,
+    )
+
+    for src_i, src in enumerate(parquet_files):
+        src_key = os.path.basename(src)
+        if src_key in done:
+            continue
+        print(f"[{src_i + 1}/{len(parquet_files)}] streaming {src_key} …", flush=True)
+        stream = load_dataset("parquet", data_files=src, split="train", streaming=True)
+        buffer: list[dict] = []
+
+        for row in stream:
+            row = sanitize_text(row)
+            if not is_valid(row):
+                continue
+            buffer.append(row)
+            if len(buffer) >= flush_every:
+                out = os.path.join(shards_dir, f"train-{shard_idx:06d}.parquet")
+                Dataset.from_list(buffer).to_parquet(out)
+                shard_idx += 1
+                buffer = []
+                gc.collect()
+
+        if buffer:
+            out = os.path.join(shards_dir, f"train-{shard_idx:06d}.parquet")
+            Dataset.from_list(buffer).to_parquet(out)
+            shard_idx += 1
+            buffer = []
+            gc.collect()
+
+        done.add(src_key)
+        state = {"completed_sources": sorted(done), "next_shard": shard_idx}
+        with open(state_path, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
+        print(f"  finished {src_key} (output shards so far: {shard_idx})", flush=True)
+
+    marker = os.path.join(data_path, ".finewebedu_parquet_ready")
+    with open(marker, "w", encoding="utf-8") as f:
+        json.dump({"config_name": config_name, "n_shards": shard_idx}, f)
+    print(f"Parquet cache ready: {data_path} ({shard_idx} shards)", flush=True)
+
+
+def _load_finewebedu_parquet_train(data_path: str):
+    shards = sorted(glob(os.path.join(data_path, "shards", "train-*.parquet")))
+    if not shards:
+        raise FileNotFoundError(f"No train shards under {data_path}/shards")
+    return load_dataset("parquet", data_files=shards, split="train")
+
+
 def get_dataset_finewebedu(notes='', cachedir=None, config_name=None):
     """
     Download and load HuggingFaceFW/fineweb-edu (https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu):
@@ -911,70 +1055,91 @@ def get_dataset_finewebedu(notes='', cachedir=None, config_name=None):
         config_name = str2val(notes, "finewebeduconfig", default="sample-10BT", output_type=str)
     safe_name = re.sub(r"[^\w\-.]+", "_", str(config_name))
     data_path = os.path.join(cachedir, f"fineweb_edu_{safe_name}_sanitized")
-    if not _sanitized_disk_cache_ready(data_path):
+    if not _finewebedu_train_cache_ready(data_path):
         print(data_path)
         incomplete = _finewebedu_incomplete_hf_cache_dirs(cachedir, config_name)
-        if not _hub_download_allowed():
-            if incomplete:
-                print(
-                    "Broken HF datasets cache (``.incomplete`` dirs). On the login node:\n"
-                    + "\n".join(f"  rm -rf {p}" for p in incomplete)
+        if _finewebedu_use_low_memory_build(config_name):
+            if not _hub_download_allowed():
+                _require_local_dataset_cache(
+                    data_path,
+                    dataset_label="get_dataset_finewebedu",
+                    hub_repo="HuggingFaceFW/fineweb-edu",
+                    config_name=config_name,
                 )
-            _require_local_dataset_cache(
+            _build_finewebedu_sanitized_parquet(
+                config_name,
+                cachedir,
                 data_path,
-                dataset_label="get_dataset_finewebedu",
-                hub_repo="HuggingFaceFW/fineweb-edu",
-                config_name=config_name,
+                flush_every=int(os.environ.get("FINWEBEDU_FLUSH_EVERY", "8000")),
             )
-        try:
-            dataset = load_dataset(
-                "HuggingFaceFW/fineweb-edu",
-                name=config_name,
-                download_mode=datasets.DownloadMode.REUSE_CACHE_IF_EXISTS,
-            )
-        except Exception as exc:
-            proxy_hint = ""
-            err = str(exc).lower()
-            if incomplete:
-                proxy_hint = (
-                    "\nRemove incomplete HF cache dirs on the login node, then rebuild sanitized cache:\n"
-                    + "\n".join(f"  rm -rf {p}" for p in incomplete)
+        else:
+            if not _hub_download_allowed():
+                if incomplete:
+                    print(
+                        "Broken HF datasets cache (``.incomplete`` dirs). On the login node:\n"
+                        + "\n".join(f"  rm -rf {p}" for p in incomplete)
+                    )
+                _require_local_dataset_cache(
+                    data_path,
+                    dataset_label="get_dataset_finewebedu",
+                    hub_repo="HuggingFaceFW/fineweb-edu",
+                    config_name=config_name,
                 )
-            elif "403" in err or "proxy" in err or "forbidden" in err:
-                proxy_hint = (
-                    " Jean Zay often blocks Hub via the compute-node proxy — build this cache on "
-                    "the **login node** (e.g. jean-zay3) with "
-                    "``unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY`` then re-run; "
-                    "downloads resume from the partial HF cache."
+            try:
+                dataset = load_dataset(
+                    "HuggingFaceFW/fineweb-edu",
+                    name=config_name,
+                    download_mode=datasets.DownloadMode.REUSE_CACHE_IF_EXISTS,
                 )
-            elif "network is unreachable" in err or "incomplete" in err:
-                proxy_hint = (
-                    " GPU compute nodes have no Hub access. Build "
-                    f"{data_path!r} on the **login node** (sanitize + save_to_disk), then train offline."
+            except Exception as exc:
+                proxy_hint = ""
+                err = str(exc).lower()
+                if incomplete:
+                    proxy_hint = (
+                        "\nRemove incomplete HF cache dirs on the login node, then rebuild sanitized cache:\n"
+                        + "\n".join(f"  rm -rf {p}" for p in incomplete)
+                    )
+                elif "403" in err or "proxy" in err or "forbidden" in err:
+                    proxy_hint = (
+                        " Jean Zay often blocks Hub via the compute-node proxy — build this cache on "
+                        "the **login node** (e.g. jean-zay3) with "
+                        "``unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY`` then re-run; "
+                        "downloads resume from the partial HF cache."
+                    )
+                elif "network is unreachable" in err or "incomplete" in err:
+                    proxy_hint = (
+                        " This host has no HuggingFace access (Jean Zay: sbatch/salloc compute nodes "
+                        "and iam* GPUs are offline). Build "
+                        f"{data_path!r} on a **login node** (jean-zay3): "
+                        "``python prepare_finewebedu100b_cache.py``"
+                    )
+                raise RuntimeError(
+                    f"Failed to download HuggingFaceFW/fineweb-edu config {config_name!r} "
+                    f"into {data_path!r}.{proxy_hint} "
+                    f"Original error: {exc!r}",
+                ) from exc
+            num_proc = min(8, (os.cpu_count() or 1))
+            for split in dataset.keys():
+                dataset[split] = dataset[split].map(
+                    sanitize_text,
+                    desc=f"FineWeb-Edu sanitize {split}",
+                    num_proc=num_proc,
                 )
-            raise RuntimeError(
-                f"Failed to download HuggingFaceFW/fineweb-edu config {config_name!r} "
-                f"into {data_path!r}.{proxy_hint} "
-                f"Original error: {exc!r}",
-            ) from exc
-        num_proc = min(8, (os.cpu_count() or 1))
-        for split in dataset.keys():
-            dataset[split] = dataset[split].map(
-                sanitize_text,
-                desc=f"FineWeb-Edu sanitize {split}",
-                num_proc=num_proc,
-            )
-            dataset[split] = dataset[split].filter(
-                is_valid,
-                desc=f"FineWeb-Edu filter {split}",
-                num_proc=num_proc,
-            )
-        dataset.save_to_disk(data_path)
+                dataset[split] = dataset[split].filter(
+                    is_valid,
+                    desc=f"FineWeb-Edu filter {split}",
+                    num_proc=num_proc,
+                )
+            dataset.save_to_disk(data_path)
 
-    fwe = datasets.load_from_disk(data_path)
+    if _finewebedu_parquet_cache_ready(data_path):
+        train = _load_finewebedu_parquet_train(data_path)
+    else:
+        fwe = datasets.load_from_disk(data_path)
+        train = fwe["train"]
     wiki = get_dataset_wiki103(cachedir=cachedir)
     return DatasetDict({
-        "train": fwe["train"],
+        "train": train,
         "validation": wiki["validation"],
         "test": wiki["test"],
     })
