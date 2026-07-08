@@ -63,17 +63,24 @@ def _hub_download_allowed() -> bool:
     return True
 
 
-def _require_local_dataset_cache(data_path: str, *, dataset_label: str, hub_repo: str) -> None:
+def _require_local_dataset_cache(
+        data_path: str, *, dataset_label: str, hub_repo: str, config_name: str | None = None,
+) -> None:
     if _sanitized_disk_cache_ready(data_path):
         return
+    cfg_hint = f" config {config_name!r}" if config_name else ""
     msg = (
         f"{dataset_label} cache not found at {data_path!r}. "
-        f"This job cannot download {hub_repo} from HuggingFace Hub here "
-        f"(``HF_HUB_OFFLINE=1`` / ``HF_DATASETS_OFFLINE=1`` enforces local-only). "
-        f"Build the sanitized cache once on Leonardo or another Hub-reachable machine, then rsync "
-        f"the folder into $DATADIR/hf_cache/ on Jean Zay. Example (on a machine with Hub access):\n"
+        f"This job cannot download {hub_repo}{cfg_hint} from HuggingFace Hub here "
+        f"(``HF_HUB_OFFLINE=1`` / ``HF_DATASETS_OFFLINE=1`` enforces local-only, or the "
+        f"download failed partway). "
+        f"Build the sanitized cache on a **login node** with Hub access (Jean Zay: jean-zay3; "
+        f"unset ``http_proxy``/``https_proxy`` if you get 403), or on Leonardo, then rsync "
+        f"the folder into ``$DATADIR/hf_cache/``. Example:\n"
         f"  from pyaromatics.hf_tools.helpers_datasets import {dataset_label}\n"
-        f"  {dataset_label}(cachedir='/path/to/hf_cache')"
+        f"  import thepebbletrail_official.paths as paths\n"
+        f"  {dataset_label}(cachedir=paths.HFCACHE, config_name='sample-100BT')\n"
+        f"Re-runs resume partial Hub downloads when the sanitized folder is still missing."
     )
     raise FileNotFoundError(msg)
 
@@ -885,11 +892,29 @@ def get_dataset_finewebedu(notes='', cachedir=None, config_name=None):
                 data_path,
                 dataset_label="get_dataset_finewebedu",
                 hub_repo="HuggingFaceFW/fineweb-edu",
+                config_name=config_name,
             )
-        dataset = load_dataset(
-            "HuggingFaceFW/fineweb-edu",
-            name=config_name,
-        )
+        try:
+            dataset = load_dataset(
+                "HuggingFaceFW/fineweb-edu",
+                name=config_name,
+                download_mode=datasets.DownloadMode.REUSE_CACHE_IF_EXISTS,
+            )
+        except Exception as exc:
+            proxy_hint = ""
+            err = str(exc).lower()
+            if "403" in err or "proxy" in err or "forbidden" in err:
+                proxy_hint = (
+                    " Jean Zay often blocks Hub via the compute-node proxy — build this cache on "
+                    "the **login node** (e.g. jean-zay3) with "
+                    "``unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY`` then re-run; "
+                    "downloads resume from the partial HF cache."
+                )
+            raise RuntimeError(
+                f"Failed to download HuggingFaceFW/fineweb-edu config {config_name!r} "
+                f"into {data_path!r}.{proxy_hint} "
+                f"Original error: {exc!r}",
+            ) from exc
         num_proc = min(8, (os.cpu_count() or 1))
         for split in dataset.keys():
             dataset[split] = dataset[split].map(
