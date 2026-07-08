@@ -927,7 +927,7 @@ def _finewebedu_resolve_parquet_files(config_name: str, cachedir: str) -> list[s
         os.path.join(cachedir, "datasets--HuggingFaceFW--fineweb-edu", "snapshots", "*", subdir, "*.parquet"),
         os.path.join(cachedir, "**", subdir, "*.parquet"),
     ]
-    found = sorted({p for pat in patterns for p in glob.glob(pat, recursive=True)})
+    found = sorted({p for pat in patterns for p in glob(pat, recursive=True)})
     if found:
         return found
 
@@ -954,7 +954,7 @@ def _finewebedu_resolve_parquet_files(config_name: str, cachedir: str) -> list[s
             allow_patterns=allow,
             cache_dir=hub_cache,
         )
-    found = sorted(glob.glob(os.path.join(snap, subdir, "*.parquet")))
+    found = sorted(glob(os.path.join(snap, subdir, "*.parquet")))
     if not found:
         raise FileNotFoundError(f"No parquet files under {snap}/{subdir}")
     return found
