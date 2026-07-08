@@ -132,8 +132,9 @@ def get_dataset(
         dataset = get_openwebtext(cachedir=cachedir)
         max_seq_length = 1024
         
-    elif dataset_name == 'finewebedu':
-        dataset = get_dataset_finewebedu(notes=notes, cachedir=cachedir)
+    elif dataset_name in ('finewebedu', 'finewebedu100b'):
+        fwe_config = 'sample-100BT' if dataset_name == 'finewebedu100b' else None
+        dataset = get_dataset_finewebedu(notes=notes, cachedir=cachedir, config_name=fwe_config)
         max_seq_length = 1024
         eval_strategy = 'steps'
         eval_steps = 10_000
@@ -857,12 +858,13 @@ def get_dataset_tulu3sft(notes='', cachedir=None):
     })
 
 
-def get_dataset_finewebedu(notes='', cachedir=None):
+def get_dataset_finewebedu(notes='', cachedir=None, config_name=None):
     """
     Download and load HuggingFaceFW/fineweb-edu (https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu):
     educational web text in the ``text`` column (train split only on HF).
 
-    HF config/subset is chosen via ``finewebeduconfig`` in ``notes`` (default ``sample-10BT``).
+    HF config/subset is chosen via ``finewebeduconfig`` in ``notes`` (default ``sample-10BT``),
+    or pass ``config_name`` explicitly (e.g. ``sample-100BT`` for dataset alias ``finewebedu100b``).
     Other options include ``default`` (full corpus), ``sample-100BT``, ``sample-350BT``, or a
     per-dump name such as ``CC-MAIN-2024-10``.
 
@@ -872,7 +874,8 @@ def get_dataset_finewebedu(notes='', cachedir=None):
     FineWeb-Edu is train-only; ``validation`` and ``test`` are taken from WikiText-103 via
     :func:`get_dataset_wiki103`.
     """
-    config_name = str2val(notes, "finewebeduconfig", default="sample-10BT", output_type=str)
+    if config_name is None:
+        config_name = str2val(notes, "finewebeduconfig", default="sample-10BT", output_type=str)
     safe_name = re.sub(r"[^\w\-.]+", "_", str(config_name))
     data_path = os.path.join(cachedir, f"fineweb_edu_{safe_name}_sanitized")
     if not _sanitized_disk_cache_ready(data_path):
