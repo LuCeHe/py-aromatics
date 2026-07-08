@@ -139,8 +139,8 @@ def get_dataset(
         dataset = get_openwebtext(cachedir=cachedir)
         max_seq_length = 1024
         
-    elif dataset_name in ('finewebedu', 'finewebedu100b'):
-        fwe_config = 'sample-100BT' if dataset_name == 'finewebedu100b' else None
+    elif dataset_name in ('finewebedu', 'finewebedu100bt'):
+        fwe_config = 'sample-100BT' if dataset_name == 'finewebedu100bt' else None
         dataset = get_dataset_finewebedu(notes=notes, cachedir=cachedir, config_name=fwe_config)
         max_seq_length = 1024
         eval_strategy = 'steps'
@@ -871,7 +871,7 @@ def get_dataset_finewebedu(notes='', cachedir=None, config_name=None):
     educational web text in the ``text`` column (train split only on HF).
 
     HF config/subset is chosen via ``finewebeduconfig`` in ``notes`` (default ``sample-10BT``),
-    or pass ``config_name`` explicitly (e.g. ``sample-100BT`` for dataset alias ``finewebedu100b``).
+    or pass ``config_name`` explicitly (e.g. ``sample-100BT`` for dataset alias ``finewebedu100bt``).
     Other options include ``default`` (full corpus), ``sample-100BT``, ``sample-350BT``, or a
     per-dump name such as ``CC-MAIN-2024-10``.
 
