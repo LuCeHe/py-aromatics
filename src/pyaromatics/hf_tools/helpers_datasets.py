@@ -57,10 +57,34 @@ def _workdir_from_cachedir(cachedir: str | None) -> str | None:
     return os.path.abspath(os.path.join(cachedir, "..", ".."))
 
 
+def _is_offline_compute_host() -> bool:
+    """Jean Zay / similar: GPU compute nodes (``iam*``) have no Hub access."""
+    host = socket.gethostname().lower()
+    if "jean-zay" in host and "iam" in host:
+        return True
+    return False
+
+
 def _hub_download_allowed() -> bool:
     if os.environ.get("HF_DATASETS_OFFLINE") == "1" or os.environ.get("HF_HUB_OFFLINE") == "1":
         return False
+    if _is_offline_compute_host():
+        return False
     return True
+
+
+def _finewebedu_incomplete_hf_cache_dirs(cachedir: str | None, config_name: str) -> list[str]:
+    """Paths ending in ``.incomplete`` that break offline ``load_dataset`` cache lookup."""
+    if not cachedir:
+        return []
+    root = os.path.join(cachedir, "HuggingFaceFW___fineweb-edu", config_name, "0.0.0")
+    if not os.path.isdir(root):
+        return []
+    return sorted(
+        os.path.join(root, name)
+        for name in os.listdir(root)
+        if name.endswith(".incomplete") and os.path.isdir(os.path.join(root, name))
+    )
 
 
 def _require_local_dataset_cache(
@@ -139,8 +163,10 @@ def get_dataset(
         dataset = get_openwebtext(cachedir=cachedir)
         max_seq_length = 1024
         
-    elif dataset_name in ('finewebedu', 'finewebedu100bt'):
-        fwe_config = 'sample-100BT' if dataset_name == 'finewebedu100bt' else None
+    elif dataset_name in ('finewebedu', 'finewebedu100b', 'finewebedu100bt'):
+        fwe_config = (
+            'sample-100BT' if dataset_name in ('finewebedu100b', 'finewebedu100bt') else None
+        )
         dataset = get_dataset_finewebedu(notes=notes, cachedir=cachedir, config_name=fwe_config)
         max_seq_length = 1024
         eval_strategy = 'steps'
@@ -887,7 +913,13 @@ def get_dataset_finewebedu(notes='', cachedir=None, config_name=None):
     data_path = os.path.join(cachedir, f"fineweb_edu_{safe_name}_sanitized")
     if not _sanitized_disk_cache_ready(data_path):
         print(data_path)
+        incomplete = _finewebedu_incomplete_hf_cache_dirs(cachedir, config_name)
         if not _hub_download_allowed():
+            if incomplete:
+                print(
+                    "Broken HF datasets cache (``.incomplete`` dirs). On the login node:\n"
+                    + "\n".join(f"  rm -rf {p}" for p in incomplete)
+                )
             _require_local_dataset_cache(
                 data_path,
                 dataset_label="get_dataset_finewebedu",
@@ -903,12 +935,22 @@ def get_dataset_finewebedu(notes='', cachedir=None, config_name=None):
         except Exception as exc:
             proxy_hint = ""
             err = str(exc).lower()
-            if "403" in err or "proxy" in err or "forbidden" in err:
+            if incomplete:
+                proxy_hint = (
+                    "\nRemove incomplete HF cache dirs on the login node, then rebuild sanitized cache:\n"
+                    + "\n".join(f"  rm -rf {p}" for p in incomplete)
+                )
+            elif "403" in err or "proxy" in err or "forbidden" in err:
                 proxy_hint = (
                     " Jean Zay often blocks Hub via the compute-node proxy — build this cache on "
                     "the **login node** (e.g. jean-zay3) with "
                     "``unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY`` then re-run; "
                     "downloads resume from the partial HF cache."
+                )
+            elif "network is unreachable" in err or "incomplete" in err:
+                proxy_hint = (
+                    " GPU compute nodes have no Hub access. Build "
+                    f"{data_path!r} on the **login node** (sanitize + save_to_disk), then train offline."
                 )
             raise RuntimeError(
                 f"Failed to download HuggingFaceFW/fineweb-edu config {config_name!r} "
