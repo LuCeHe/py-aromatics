@@ -1,4 +1,4 @@
-import os, argparse, sys, socket, random, itertools, gc, json, re, hashlib, traceback
+import os, argparse, sys, socket, random, itertools, gc, json, re, hashlib, traceback, time
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
@@ -960,6 +960,25 @@ def _finewebedu_resolve_parquet_files(config_name: str, cachedir: str) -> list[s
     return found
 
 
+def _format_duration(seconds: float) -> str:
+    seconds = max(0, int(seconds))
+    hours, rem = divmod(seconds, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f"{hours}h{minutes:02d}m"
+    if minutes:
+        return f"{minutes}m{secs:02d}s"
+    return f"{secs}s"
+
+
+def _finewebedu_write_parquet_shard(rows: list[dict], path: str) -> None:
+    """Write one shard without datasets/pyarrow per-batch tqdm spam."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    pq.write_table(pa.Table.from_pylist(rows), path)
+
+
 def _build_finewebedu_sanitized_parquet(
         config_name: str,
         cachedir: str,
@@ -982,45 +1001,85 @@ def _build_finewebedu_sanitized_parquet(
 
     done = set(state.get("completed_sources", []))
     shard_idx = int(state.get("next_shard", 0))
+    file_times: list[float] = [float(x) for x in state.get("recent_file_seconds", [])]
     parquet_files = _finewebedu_resolve_parquet_files(config_name, cachedir)
+    pending = [src for src in parquet_files if os.path.basename(src) not in done]
     print(
         f"Low-memory fineweb-edu build: {len(parquet_files)} source parquets, "
-        f"{len(done)} already done, flush_every={flush_every}",
+        f"{len(done)} already done, {len(pending)} remaining, flush_every={flush_every}",
         flush=True,
     )
 
-    for src_i, src in enumerate(parquet_files):
-        src_key = os.path.basename(src)
-        if src_key in done:
-            continue
-        print(f"[{src_i + 1}/{len(parquet_files)}] streaming {src_key} …", flush=True)
-        stream = load_dataset("parquet", data_files=src, split="train", streaming=True)
-        buffer: list[dict] = []
+    prev_disable = os.environ.get("HF_DATASETS_DISABLE_PROGRESS_BARS")
+    os.environ["HF_DATASETS_DISABLE_PROGRESS_BARS"] = "1"
+    try:
+        file_bar = tqdm(
+            pending,
+            desc="fineweb-edu sanitize",
+            unit="file",
+            total=len(parquet_files),
+            initial=len(done),
+            bar_format=(
+                "{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} files "
+                "[{elapsed}<{remaining}, {rate_fmt}] {postfix}"
+            ),
+        )
+        for src in file_bar:
+            src_key = os.path.basename(src)
+            t0 = time.perf_counter()
+            stream = load_dataset("parquet", data_files=src, split="train", streaming=True)
+            buffer: list[dict] = []
+            flushes = 0
 
-        for row in stream:
-            row = sanitize_text(row)
-            if not is_valid(row):
-                continue
-            buffer.append(row)
-            if len(buffer) >= flush_every:
+            for row in stream:
+                row = sanitize_text(row)
+                if not is_valid(row):
+                    continue
+                buffer.append(row)
+                if len(buffer) >= flush_every:
+                    out = os.path.join(shards_dir, f"train-{shard_idx:06d}.parquet")
+                    _finewebedu_write_parquet_shard(buffer, out)
+                    shard_idx += 1
+                    flushes += 1
+                    buffer = []
+                    if file_times and flushes % 3 == 0:
+                        avg = sum(file_times[-8:]) / min(8, len(file_times))
+                        files_left = len(parquet_files) - int(file_bar.n)
+                        eta_s = avg * max(files_left, 0)
+                        file_bar.set_postfix_str(
+                            f"shard {shard_idx} ETA ~{_format_duration(eta_s)}",
+                            refresh=False,
+                        )
+                    gc.collect()
+
+            if buffer:
                 out = os.path.join(shards_dir, f"train-{shard_idx:06d}.parquet")
-                Dataset.from_list(buffer).to_parquet(out)
+                _finewebedu_write_parquet_shard(buffer, out)
                 shard_idx += 1
                 buffer = []
                 gc.collect()
 
-        if buffer:
-            out = os.path.join(shards_dir, f"train-{shard_idx:06d}.parquet")
-            Dataset.from_list(buffer).to_parquet(out)
-            shard_idx += 1
-            buffer = []
-            gc.collect()
-
-        done.add(src_key)
-        state = {"completed_sources": sorted(done), "next_shard": shard_idx}
-        with open(state_path, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2)
-        print(f"  finished {src_key} (output shards so far: {shard_idx})", flush=True)
+            elapsed = time.perf_counter() - t0
+            file_times.append(elapsed)
+            done.add(src_key)
+            state = {
+                "completed_sources": sorted(done),
+                "next_shard": shard_idx,
+                "recent_file_seconds": file_times[-20:],
+            }
+            with open(state_path, "w", encoding="utf-8") as f:
+                json.dump(state, f, indent=2)
+            files_left = len(parquet_files) - len(done)
+            eta_s = (sum(file_times[-8:]) / min(8, len(file_times))) * files_left if file_times else 0
+            file_bar.set_postfix_str(
+                f"shard {shard_idx} ETA ~{_format_duration(eta_s)}",
+                refresh=True,
+            )
+    finally:
+        if prev_disable is None:
+            os.environ.pop("HF_DATASETS_DISABLE_PROGRESS_BARS", None)
+        else:
+            os.environ["HF_DATASETS_DISABLE_PROGRESS_BARS"] = prev_disable
 
     marker = os.path.join(data_path, ".finewebedu_parquet_ready")
     with open(marker, "w", encoding="utf-8") as f:
