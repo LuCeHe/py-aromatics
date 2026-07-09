@@ -900,6 +900,26 @@ def _finewebedu_use_low_memory_build(config_name: str) -> bool:
     )
 
 
+def _finewebedu_build_mode(config_name: str) -> str:
+    """
+    ``low_memory`` (default for 100BT) — HF ``load_dataset`` download, then stream/sanitize.
+
+    ``hf_datasets`` — legacy full path: ``load_dataset`` + map/filter/save (may OOM on 100BT).
+    """
+    mode = os.environ.get("FINWEBEDU_BUILD_MODE", "").strip().lower()
+    if mode in ("hf_datasets", "legacy", "hf"):
+        return "hf_datasets"
+    if mode in ("low_memory", "stream", "streaming"):
+        return "low_memory"
+    return "low_memory" if _finewebedu_use_low_memory_build(config_name) else "hf_datasets"
+
+
+def _finewebedu_sanitize_style() -> str:
+    """``classic`` (default) — per-file prints + ``Dataset.to_parquet``; ``tqdm`` — file bar + ETA."""
+    style = os.environ.get("FINWEBEDU_SANITIZE_STYLE", "classic").strip().lower()
+    return "tqdm" if style == "tqdm" else "classic"
+
+
 def _finewebedu_parquet_subdir(config_name: str) -> str:
     if config_name.startswith("sample-"):
         return f"sample/{config_name[len('sample-'):]}"
@@ -916,21 +936,105 @@ def _finewebedu_train_cache_ready(data_path: str) -> bool:
     return _sanitized_disk_cache_ready(data_path) or _finewebedu_parquet_cache_ready(data_path)
 
 
-def _finewebedu_resolve_parquet_files(config_name: str, cachedir: str) -> list[str]:
-    """Local Hub snapshot parquets (after download); else ``snapshot_download``."""
-    from huggingface_hub import snapshot_download
-    from huggingface_hub.errors import LocalEntryNotFoundError
+_FINWEBEDU_EXPECTED_SOURCE_PARQUETS: dict[str, int] = {
+    "sample-100BT": 140,
+}
 
+
+def _finewebedu_glob_source_parquets(config_name: str, cachedir: str) -> list[str]:
+    """Local Hub / HF-datasets parquet shards (no network)."""
     subdir = _finewebedu_parquet_subdir(config_name)
     patterns = [
         os.path.join(cachedir, "hub", "datasets--HuggingFaceFW--fineweb-edu", "snapshots", "*", subdir, "*.parquet"),
         os.path.join(cachedir, "datasets--HuggingFaceFW--fineweb-edu", "snapshots", "*", subdir, "*.parquet"),
-        os.path.join(cachedir, "**", subdir, "*.parquet"),
+        os.path.join(cachedir, "HuggingFaceFW___fineweb-edu", config_name, "0.0.0", "*", subdir, "*.parquet"),
+        os.path.join(cachedir, "HuggingFaceFW___fineweb-edu", config_name, "0.0.0", "*", "*.parquet"),
     ]
-    found = sorted({p for pat in patterns for p in glob(pat, recursive=True)})
+    return sorted({p for pat in patterns for p in glob(pat)})
+
+
+def _finewebedu_source_download_complete(config_name: str, cachedir: str) -> bool:
+    parquets = _finewebedu_glob_source_parquets(config_name, cachedir)
+    expected = _FINWEBEDU_EXPECTED_SOURCE_PARQUETS.get(config_name)
+    if expected is not None:
+        return len(parquets) >= expected
+    return bool(parquets)
+
+
+def _finewebedu_load_hf_dataset(config_name: str, cachedir: str):
+    """Fast Hub download path (same as legacy ``hf_datasets`` build mode)."""
+    return load_dataset(
+        "HuggingFaceFW/fineweb-edu",
+        name=config_name,
+        cache_dir=cachedir,
+        download_mode=datasets.DownloadMode.REUSE_CACHE_IF_EXISTS,
+    )
+
+
+def _finewebedu_hf_download_sources(config_name: str, cachedir: str) -> None:
+    """
+    Download source parquet shards via HF ``load_dataset`` (resume-friendly, Hub progress).
+
+    For 100BT the call may OOM or be killed at ``Generating train split`` after download
+    finishes; re-run and low-memory sanitize will pick up from local parquets.
+    """
+    if not _hub_download_allowed():
+        return
+    parquets = _finewebedu_glob_source_parquets(config_name, cachedir)
+    if _finewebedu_source_download_complete(config_name, cachedir):
+        print(
+            f"HF source parquets already cached ({len(parquets)} files); skipping Hub download.",
+            flush=True,
+        )
+        return
+    if parquets:
+        expected = _FINWEBEDU_EXPECTED_SOURCE_PARQUETS.get(config_name)
+        suffix = f" / {expected}" if expected else ""
+        print(
+            f"Resuming HF download ({len(parquets)}{suffix} source parquets cached) …",
+            flush=True,
+        )
+    else:
+        print(
+            f"Downloading fineweb-edu {config_name!r} via HF datasets …",
+            flush=True,
+        )
+    try:
+        _finewebedu_load_hf_dataset(config_name, cachedir)
+    except MemoryError:
+        parquets = _finewebedu_glob_source_parquets(config_name, cachedir)
+        if parquets:
+            print(
+                f"HF datasets OOM during Arrow split, but {len(parquets)} source parquets are "
+                "cached — continuing with low-memory sanitize on next step.",
+                flush=True,
+            )
+            return
+        raise
+    parquets = _finewebedu_glob_source_parquets(config_name, cachedir)
+    if not parquets:
+        raise FileNotFoundError(
+            f"HF datasets finished but no source parquets found under {cachedir!r} "
+            f"for fineweb-edu {config_name!r}."
+        )
+
+
+def _finewebedu_resolve_parquet_files(config_name: str, cachedir: str) -> list[str]:
+    """Local source parquets after HF download; optional ``snapshot_download`` fallback."""
+    found = _finewebedu_glob_source_parquets(config_name, cachedir)
     if found:
         return found
 
+    if os.environ.get("FINWEBEDU_DOWNLOAD", "").strip().lower() != "hub":
+        raise FileNotFoundError(
+            f"No local parquet files for fineweb-edu {config_name!r} under {cachedir!r}. "
+            f"Run from a login node so HF ``load_dataset`` can download them first."
+        )
+
+    from huggingface_hub import snapshot_download
+    from huggingface_hub.errors import LocalEntryNotFoundError
+
+    subdir = _finewebedu_parquet_subdir(config_name)
     hub_cache = os.path.join(cachedir, "hub")
     os.makedirs(hub_cache, exist_ok=True)
     allow = [f"{subdir}/*.parquet"]
@@ -979,37 +1083,75 @@ def _finewebedu_write_parquet_shard(rows: list[dict], path: str) -> None:
     pq.write_table(pa.Table.from_pylist(rows), path)
 
 
-def _build_finewebedu_sanitized_parquet(
-        config_name: str,
-        cachedir: str,
-        data_path: str,
+def _finewebedu_flush_sanitize_buffer(
+        buffer: list[dict],
+        shards_dir: str,
+        shard_idx: int,
         *,
-        flush_every: int = 8_000,
-) -> None:
-    """
-    Stream each source parquet → sanitize/filter → append small output parquets.
+        style: str,
+) -> tuple[list[dict], int]:
+    if not buffer:
+        return buffer, shard_idx
+    out = os.path.join(shards_dir, f"train-{shard_idx:06d}.parquet")
+    if style == "tqdm":
+        _finewebedu_write_parquet_shard(buffer, out)
+    else:
+        Dataset.from_list(buffer).to_parquet(out)
+    return [], shard_idx + 1
 
-    Resumable via ``_parquet_build_state.json``; avoids materializing ~100M rows at once.
-    """
-    shards_dir = os.path.join(data_path, "shards")
-    os.makedirs(shards_dir, exist_ok=True)
-    state_path = os.path.join(data_path, "_parquet_build_state.json")
-    state = {"completed_sources": [], "next_shard": 0}
-    if os.path.isfile(state_path):
-        with open(state_path, encoding="utf-8") as f:
-            state = json.load(f)
 
-    done = set(state.get("completed_sources", []))
-    shard_idx = int(state.get("next_shard", 0))
-    file_times: list[float] = [float(x) for x in state.get("recent_file_seconds", [])]
-    parquet_files = _finewebedu_resolve_parquet_files(config_name, cachedir)
+def _finewebedu_build_sanitized_parquet_classic(
+        parquet_files: list[str],
+        done: set[str],
+        shard_idx: int,
+        shards_dir: str,
+        state_path: str,
+        *,
+        flush_every: int,
+) -> int:
+    for src_i, src in enumerate(parquet_files):
+        src_key = os.path.basename(src)
+        if src_key in done:
+            continue
+        print(f"[{src_i + 1}/{len(parquet_files)}] streaming {src_key} …", flush=True)
+        stream = load_dataset("parquet", data_files=src, split="train", streaming=True)
+        buffer: list[dict] = []
+
+        for row in stream:
+            row = sanitize_text(row)
+            if not is_valid(row):
+                continue
+            buffer.append(row)
+            if len(buffer) >= flush_every:
+                buffer, shard_idx = _finewebedu_flush_sanitize_buffer(
+                    buffer, shards_dir, shard_idx, style="classic",
+                )
+                gc.collect()
+
+        buffer, shard_idx = _finewebedu_flush_sanitize_buffer(
+            buffer, shards_dir, shard_idx, style="classic",
+        )
+        gc.collect()
+
+        done.add(src_key)
+        state = {"completed_sources": sorted(done), "next_shard": shard_idx}
+        with open(state_path, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
+        print(f"  finished {src_key} (output shards so far: {shard_idx})", flush=True)
+    return shard_idx
+
+
+def _finewebedu_build_sanitized_parquet_tqdm(
+        parquet_files: list[str],
+        done: set[str],
+        shard_idx: int,
+        shards_dir: str,
+        state_path: str,
+        *,
+        flush_every: int,
+        file_times: list[float],
+) -> int:
     pending = [src for src in parquet_files if os.path.basename(src) not in done]
-    print(
-        f"Low-memory fineweb-edu build: {len(parquet_files)} source parquets, "
-        f"{len(done)} already done, {len(pending)} remaining, flush_every={flush_every}",
-        flush=True,
-    )
-
     prev_disable = os.environ.get("HF_DATASETS_DISABLE_PROGRESS_BARS")
     os.environ["HF_DATASETS_DISABLE_PROGRESS_BARS"] = "1"
     try:
@@ -1037,11 +1179,10 @@ def _build_finewebedu_sanitized_parquet(
                     continue
                 buffer.append(row)
                 if len(buffer) >= flush_every:
-                    out = os.path.join(shards_dir, f"train-{shard_idx:06d}.parquet")
-                    _finewebedu_write_parquet_shard(buffer, out)
-                    shard_idx += 1
+                    buffer, shard_idx = _finewebedu_flush_sanitize_buffer(
+                        buffer, shards_dir, shard_idx, style="tqdm",
+                    )
                     flushes += 1
-                    buffer = []
                     if file_times and flushes % 3 == 0:
                         avg = sum(file_times[-8:]) / min(8, len(file_times))
                         files_left = len(parquet_files) - int(file_bar.n)
@@ -1052,12 +1193,10 @@ def _build_finewebedu_sanitized_parquet(
                         )
                     gc.collect()
 
-            if buffer:
-                out = os.path.join(shards_dir, f"train-{shard_idx:06d}.parquet")
-                _finewebedu_write_parquet_shard(buffer, out)
-                shard_idx += 1
-                buffer = []
-                gc.collect()
+            buffer, shard_idx = _finewebedu_flush_sanitize_buffer(
+                buffer, shards_dir, shard_idx, style="tqdm",
+            )
+            gc.collect()
 
             elapsed = time.perf_counter() - t0
             file_times.append(elapsed)
@@ -1080,6 +1219,60 @@ def _build_finewebedu_sanitized_parquet(
             os.environ.pop("HF_DATASETS_DISABLE_PROGRESS_BARS", None)
         else:
             os.environ["HF_DATASETS_DISABLE_PROGRESS_BARS"] = prev_disable
+    return shard_idx
+
+
+def _build_finewebedu_sanitized_parquet(
+        config_name: str,
+        cachedir: str,
+        data_path: str,
+        *,
+        flush_every: int = 8_000,
+) -> None:
+    """
+    Stream each source parquet → sanitize/filter → append small output parquets.
+
+    Resumable via ``_parquet_build_state.json``; avoids materializing ~100M rows at once.
+    """
+    shards_dir = os.path.join(data_path, "shards")
+    os.makedirs(shards_dir, exist_ok=True)
+    state_path = os.path.join(data_path, "_parquet_build_state.json")
+    state = {"completed_sources": [], "next_shard": 0}
+    if os.path.isfile(state_path):
+        with open(state_path, encoding="utf-8") as f:
+            state = json.load(f)
+
+    done = set(state.get("completed_sources", []))
+    shard_idx = int(state.get("next_shard", 0))
+    file_times: list[float] = [float(x) for x in state.get("recent_file_seconds", [])]
+    style = _finewebedu_sanitize_style()
+    parquet_files = _finewebedu_resolve_parquet_files(config_name, cachedir)
+    pending_n = sum(1 for src in parquet_files if os.path.basename(src) not in done)
+    print(
+        f"Low-memory fineweb-edu build ({style}): {len(parquet_files)} source parquets, "
+        f"{len(done)} already done, {pending_n} remaining, flush_every={flush_every}",
+        flush=True,
+    )
+
+    if style == "tqdm":
+        shard_idx = _finewebedu_build_sanitized_parquet_tqdm(
+            parquet_files,
+            done,
+            shard_idx,
+            shards_dir,
+            state_path,
+            flush_every=flush_every,
+            file_times=file_times,
+        )
+    else:
+        shard_idx = _finewebedu_build_sanitized_parquet_classic(
+            parquet_files,
+            done,
+            shard_idx,
+            shards_dir,
+            state_path,
+            flush_every=flush_every,
+        )
 
     marker = os.path.join(data_path, ".finewebedu_parquet_ready")
     with open(marker, "w", encoding="utf-8") as f:
@@ -1117,7 +1310,8 @@ def get_dataset_finewebedu(notes='', cachedir=None, config_name=None):
     if not _finewebedu_train_cache_ready(data_path):
         print(data_path)
         incomplete = _finewebedu_incomplete_hf_cache_dirs(cachedir, config_name)
-        if _finewebedu_use_low_memory_build(config_name):
+        build_mode = _finewebedu_build_mode(config_name)
+        if build_mode == "low_memory":
             if not _hub_download_allowed():
                 _require_local_dataset_cache(
                     data_path,
@@ -1125,6 +1319,8 @@ def get_dataset_finewebedu(notes='', cachedir=None, config_name=None):
                     hub_repo="HuggingFaceFW/fineweb-edu",
                     config_name=config_name,
                 )
+            else:
+                _finewebedu_hf_download_sources(config_name, cachedir)
             _build_finewebedu_sanitized_parquet(
                 config_name,
                 cachedir,
@@ -1145,11 +1341,7 @@ def get_dataset_finewebedu(notes='', cachedir=None, config_name=None):
                     config_name=config_name,
                 )
             try:
-                dataset = load_dataset(
-                    "HuggingFaceFW/fineweb-edu",
-                    name=config_name,
-                    download_mode=datasets.DownloadMode.REUSE_CACHE_IF_EXISTS,
-                )
+                dataset = _finewebedu_load_hf_dataset(config_name, cachedir)
             except Exception as exc:
                 proxy_hint = ""
                 err = str(exc).lower()
