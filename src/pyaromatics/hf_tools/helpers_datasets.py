@@ -279,7 +279,7 @@ def get_mqar_dataset(
     eval_samples = str2val(notes, 'evalsamples', default=3_000, output_type=int)
     test_samples = str2val(notes, 'testsamples', default=3_000, output_type=int)
     vocab_size = str2val(notes, 'vocabsize', default=8_192, output_type=int)
-    num_kv_pairs = str2val(notes, 'numkvpairs', default=8, output_type=int)
+    num_kv_pairs = str2val(notes, 'numkvpairs', default=64, output_type=int)
     num_passes = str2val(notes, 'numpasses', default=1, output_type=int)
     power_a = str2val(notes, 'powera', default=0.1, output_type=float)
     train_seed = str2val(notes, 'trainseed', default=901, output_type=int)

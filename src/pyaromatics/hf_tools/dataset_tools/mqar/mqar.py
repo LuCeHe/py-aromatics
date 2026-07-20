@@ -43,7 +43,7 @@ def multiquery_ar_numpy(
     input_seq_len: int,
     seed: int,
     power_a: float = 0.01,
-    num_kv_pairs: int = 8,
+    num_kv_pairs: int = 64,
     num_passes: int = 1,
     random_non_queries: bool = True,
     rng: Optional[np.random.RandomState] = None,
@@ -154,7 +154,7 @@ def generate_mqar_hf_dataset(
     input_seq_len: int,
     seed: int,
     power_a: float = 0.01,
-    num_kv_pairs: int = 8,
+    num_kv_pairs: int = 64,
     num_passes: int = 1,
     random_non_queries: bool = True,
     chunk_size: Optional[int] = 2_048,
@@ -238,7 +238,7 @@ def build_mqar_dataset_dict(
     vocab_size: int = 8_192,
     input_seq_len: int = 64,
     power_a: float = 0.01,
-    num_kv_pairs: int = 8,
+    num_kv_pairs: int = 64,
     num_passes: int = 1,
     random_non_queries: bool = True,
     train_split_name: str = "train",
@@ -294,7 +294,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--vocab-size", type=int, default=8_192)
     p.add_argument("--input-seq-len", type=int, default=64)
     p.add_argument("--power-a", type=float, default=0.1)
-    p.add_argument("--num-kv-pairs", type=int, default=8)
+    p.add_argument("--num-kv-pairs", type=int, default=64)
     p.add_argument("--num-passes", type=int, default=1)
     p.add_argument(
         "--no-random-non-queries",
