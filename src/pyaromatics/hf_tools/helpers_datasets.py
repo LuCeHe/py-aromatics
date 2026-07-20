@@ -29,6 +29,8 @@ from pyaromatics.hf_tools.dataset_tools.rule110.rule110 import generate_rule110_
 from pyaromatics.hf_tools.dataset_tools.mqar.mqar import (
     build_mqar_dataset_dict,
     mqar_labels_zoology_to_trl_aligned,
+    _default_parallel_workers,
+    _effective_mqar_chunk_size,
 )
 from pyaromatics.stay_organized.utils import NumpyEncoder
 
@@ -257,7 +259,8 @@ def get_mqar_dataset(
     ``_``): ``trainsamples:N``, ``evalsamples:N``, ``testsamples:N`` (default test
     3000), ``vocabsize:N``, ``numkvpairs:N``, ``numpasses:N``, ``powera:F``,
     ``trainseed:N``, ``evalseed:N``, ``testseed:N``, ``mqarchunk:N`` (rows per
-    chunk when building HF data; smaller uses less RAM, default 2048).
+    chunk when building HF data; auto-capped for long seq), ``mqarworkers:N``
+    (CPU workers for parallel chunk generation; 0 = auto for seq>=1024).
 
     **Label alignment (TRL / HF causal LM):** On-disk data uses Zoology's slice
     ``labels = labels_full[:, 1:]``. If you train with TRL SFT (which applies the
@@ -286,8 +289,19 @@ def get_mqar_dataset(
     eval_seed = str2val(notes, 'evalseed', default=9_001, output_type=int)
     test_seed = str2val(notes, 'testseed', default=42_001, output_type=int)
     chunk_size = str2val(notes, 'mqarchunk', default=2_048, output_type=int)
-    if chunk_size <= 0:
-        chunk_size = 2_048
+    parallel_workers = str2val(notes, 'mqarworkers', default=0, output_type=int)
+    if parallel_workers <= 0:
+        parallel_workers = None
+    use_sequential_rng = bool(str2val(notes, 'mqarsequential', default=0, output_type=int))
+    chunk_size = _effective_mqar_chunk_size(input_seq_len, chunk_size)
+    effective_workers = _default_parallel_workers(input_seq_len, parallel_workers)
+    if use_sequential_rng:
+        effective_workers = 1
+    row_seed_mode = (
+        "sequential"
+        if use_sequential_rng or effective_workers <= 1
+        else "independent"
+    )
 
     cache_key = {
         "dataset_name": dataset_name,
@@ -304,6 +318,8 @@ def get_mqar_dataset(
         "num_passes": num_passes,
         "random_non_queries": True,
         "chunk_size": chunk_size,
+        "parallel_workers": effective_workers,
+        "row_seed_mode": row_seed_mode,
     }
     digest = hashlib.sha256(
         json.dumps(cache_key, sort_keys=True, separators=(",", ":")).encode()
@@ -328,6 +344,8 @@ def get_mqar_dataset(
             num_passes=num_passes,
             random_non_queries=True,
             chunk_size=chunk_size,
+            parallel_workers=effective_workers,
+            independent_rows=False if use_sequential_rng else None,
         )
         dsd.save_to_disk(data_path)
     dsd = DatasetDict.load_from_disk(data_path)

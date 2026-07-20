@@ -10,11 +10,73 @@ import argparse
 import gc
 import json
 import os
-from typing import Any, Dict, Optional, Tuple
+import shutil
+import tempfile
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-from datasets import Dataset, DatasetDict, concatenate_datasets
+from datasets import Dataset, DatasetDict, concatenate_datasets, load_from_disk
 from tqdm import tqdm
+
+
+def _effective_mqar_chunk_size(input_seq_len: int, chunk_size: Optional[int]) -> int:
+    """Cap rows per chunk so one chunk's int64 input+labels stay ~under 64 MiB."""
+    if chunk_size is None or chunk_size <= 0:
+        chunk_size = 2048
+    max_rows = max(32, (64 * 1024 * 1024) // (input_seq_len * 16))
+    return min(chunk_size, max_rows)
+
+
+def _default_parallel_workers(
+    input_seq_len: int, parallel_workers: Optional[int]
+) -> int:
+    if parallel_workers is not None and parallel_workers > 0:
+        return parallel_workers
+    if input_seq_len >= 1024:
+        return min(os.cpu_count() or 1, 8)
+    return 1
+
+
+def _numpy_to_mqar_dataset(inputs: np.ndarray, labels: np.ndarray) -> Dataset:
+    return Dataset.from_dict({"input_ids": inputs, "labels": labels})
+
+
+def _merge_datasets_from_disk(chunk_paths: List[str]) -> Dataset:
+    ds = load_from_disk(chunk_paths[0])
+    for path in chunk_paths[1:]:
+        other = load_from_disk(path)
+        ds = concatenate_datasets([ds, other])
+        del other
+        gc.collect()
+        shutil.rmtree(path, ignore_errors=True)
+    if len(chunk_paths) > 1:
+        shutil.rmtree(chunk_paths[0], ignore_errors=True)
+    return ds
+
+
+def _mqar_chunk_worker(task: Dict[str, Any]) -> str:
+    """Generate one MQAR chunk and write it to disk (picklable for ProcessPoolExecutor)."""
+    start = task["start"]
+    bs = task["bs"]
+    chunk_path = task["chunk_path"]
+    inp, lab, _ = multiquery_ar_numpy(
+        vocab_size=task["vocab_size"],
+        num_examples=bs,
+        input_seq_len=task["input_seq_len"],
+        seed=task["seed"],
+        power_a=task["power_a"],
+        num_kv_pairs=task["num_kv_pairs"],
+        num_passes=task["num_passes"],
+        random_non_queries=task["random_non_queries"],
+        zoology_shift_labels=task["zoology_shift_labels"],
+        row_offset=start,
+        independent_rows=task["independent_rows"],
+        rng=task.get("rng"),
+    )
+    _numpy_to_mqar_dataset(inp, lab).save_to_disk(chunk_path)
+    del inp, lab
+    return chunk_path
 
 
 def mqar_labels_zoology_to_trl_aligned(labels_stored: np.ndarray) -> np.ndarray:
@@ -48,6 +110,8 @@ def multiquery_ar_numpy(
     random_non_queries: bool = True,
     rng: Optional[np.random.RandomState] = None,
     zoology_shift_labels: bool = True,
+    row_offset: int = 0,
+    independent_rows: bool = False,
 ) -> Tuple[Any, Any, Dict[str, Any]]:
     """
     Generate MQAR inputs and labels (integer token ids).
@@ -66,6 +130,28 @@ def multiquery_ar_numpy(
     labels : ndarray, same shape; use -100 for positions with no prediction target
     slices : metadata dict (constant across the batch)
     """
+    if independent_rows:
+        inputs = np.empty((num_examples, input_seq_len), dtype=np.int64)
+        labels = np.empty((num_examples, input_seq_len), dtype=np.int64)
+        meta: Dict[str, Any] = {}
+        for i in range(num_examples):
+            inp, lab, meta = multiquery_ar_numpy(
+                vocab_size=vocab_size,
+                num_examples=1,
+                input_seq_len=input_seq_len,
+                seed=seed,
+                power_a=power_a,
+                num_kv_pairs=num_kv_pairs,
+                num_passes=num_passes,
+                random_non_queries=random_non_queries,
+                rng=np.random.RandomState(seed + row_offset + i),
+                zoology_shift_labels=zoology_shift_labels,
+                independent_rows=False,
+            )
+            inputs[i] = inp[0]
+            labels[i] = lab[0]
+        return inputs, labels, meta
+
     assert input_seq_len % 2 == 0, "input_seq_len must be even"
     assert vocab_size > input_seq_len
     min_len = num_kv_pairs * 2 * num_passes + num_kv_pairs * 2  # == 2 * num_kv_pairs * (num_passes + 1)
@@ -161,9 +247,15 @@ def generate_mqar_hf_dataset(
     show_progress: bool = True,
     split_desc: str = "",
     zoology_shift_labels: bool = True,
+    parallel_workers: Optional[int] = None,
+    independent_rows: Optional[bool] = None,
 ) -> Dataset:
     """Build a :class:`datasets.Dataset` with ``input_ids`` and ``labels`` columns."""
     desc = f"MQAR {split_desc}".strip() if split_desc else "MQAR"
+    chunk_size = _effective_mqar_chunk_size(input_seq_len, chunk_size)
+    workers = _default_parallel_workers(input_seq_len, parallel_workers)
+    if independent_rows is None:
+        independent_rows = workers > 1
 
     use_chunks = (
         chunk_size is not None
@@ -171,43 +263,71 @@ def generate_mqar_hf_dataset(
         and num_samples > chunk_size
     )
     if use_chunks:
-        rng = np.random.RandomState(seed)
-        ds_parts = []
+        tmp_dir = tempfile.mkdtemp(prefix="mqar_chunks_")
         n_chunks = (num_samples + chunk_size - 1) // chunk_size
-        it = range(0, num_samples, chunk_size)
-        if show_progress:
-            it = tqdm(
-                it,
-                total=n_chunks,
-                desc=f"{desc} (chunks)",
-                unit="chunk",
-                leave=True,
-            )
-        for start in it:
+        chunk_paths: List[Optional[str]] = [None] * n_chunks
+        chunk_tasks: List[Dict[str, Any]] = []
+        for chunk_idx, start in enumerate(range(0, num_samples, chunk_size)):
             bs = min(chunk_size, num_samples - start)
-            inp, lab, _ = multiquery_ar_numpy(
-                vocab_size=vocab_size,
-                num_examples=bs,
-                input_seq_len=input_seq_len,
-                seed=seed,
-                power_a=power_a,
-                num_kv_pairs=num_kv_pairs,
-                num_passes=num_passes,
-                random_non_queries=random_non_queries,
-                rng=rng,
-                zoology_shift_labels=zoology_shift_labels,
+            chunk_path = os.path.join(tmp_dir, f"chunk_{chunk_idx:05d}")
+            chunk_tasks.append(
+                {
+                    "start": start,
+                    "bs": bs,
+                    "chunk_path": chunk_path,
+                    "chunk_idx": chunk_idx,
+                    "vocab_size": vocab_size,
+                    "input_seq_len": input_seq_len,
+                    "seed": seed,
+                    "power_a": power_a,
+                    "num_kv_pairs": num_kv_pairs,
+                    "num_passes": num_passes,
+                    "random_non_queries": random_non_queries,
+                    "zoology_shift_labels": zoology_shift_labels,
+                    "independent_rows": independent_rows,
+                }
             )
-            ds_parts.append(
-                Dataset.from_dict(
-                    {
-                        "input_ids": inp.tolist(),
-                        "labels": lab.tolist(),
-                    }
+
+        if workers > 1 and independent_rows:
+            with ProcessPoolExecutor(max_workers=workers) as pool:
+                futures = {
+                    pool.submit(_mqar_chunk_worker, task): task["chunk_idx"]
+                    for task in chunk_tasks
+                }
+                it = as_completed(futures)
+                if show_progress:
+                    it = tqdm(
+                        it,
+                        total=n_chunks,
+                        desc=f"{desc} (parallel chunks, {workers} workers)",
+                        unit="chunk",
+                        leave=True,
+                    )
+                for fut in it:
+                    chunk_idx = futures[fut]
+                    chunk_paths[chunk_idx] = fut.result()
+        else:
+            rng = None if independent_rows else np.random.RandomState(seed)
+            it = chunk_tasks
+            if show_progress:
+                it = tqdm(
+                    chunk_tasks,
+                    total=n_chunks,
+                    desc=f"{desc} (chunks)",
+                    unit="chunk",
+                    leave=True,
                 )
-            )
-            del inp, lab
-            gc.collect()
-        return concatenate_datasets(ds_parts)
+            for task in it:
+                task["rng"] = rng
+                chunk_paths[task["chunk_idx"]] = _mqar_chunk_worker(task)
+                gc.collect()
+
+        ordered_paths = [p for p in chunk_paths if p is not None]
+        try:
+            out = _merge_datasets_from_disk(ordered_paths)
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+        return out
 
     inputs, labels, _ = multiquery_ar_numpy(
         vocab_size=vocab_size,
@@ -219,13 +339,9 @@ def generate_mqar_hf_dataset(
         num_passes=num_passes,
         random_non_queries=random_non_queries,
         zoology_shift_labels=zoology_shift_labels,
+        independent_rows=independent_rows,
     )
-    return Dataset.from_dict(
-        {
-            "input_ids": inputs.tolist(),
-            "labels": labels.tolist(),
-        }
-    )
+    return _numpy_to_mqar_dataset(inputs, labels)
 
 
 def build_mqar_dataset_dict(
@@ -247,6 +363,8 @@ def build_mqar_dataset_dict(
     chunk_size: Optional[int] = 2_048,
     show_progress: bool = True,
     zoology_shift_labels: bool = True,
+    parallel_workers: Optional[int] = None,
+    independent_rows: Optional[bool] = None,
 ) -> DatasetDict:
     """
     Train / validation / test splits with disjoint RNG seeds (same convention as
@@ -276,6 +394,8 @@ def build_mqar_dataset_dict(
             show_progress=show_progress,
             split_desc=name,
             zoology_shift_labels=zoology_shift_labels,
+            parallel_workers=parallel_workers,
+            independent_rows=independent_rows,
         )
     return DatasetDict(splits)
 
@@ -344,6 +464,17 @@ def _parse_args() -> argparse.Namespace:
         help="Max rows per chunk for large splits (0 = one shot). Smaller uses less RAM.",
     )
     p.add_argument(
+        "--parallel-workers",
+        type=int,
+        default=0,
+        help="CPU workers for chunk generation (0 = auto: all CPUs for seq>=1024, else 1).",
+    )
+    p.add_argument(
+        "--sequential-row-seeds",
+        action="store_true",
+        help="Use legacy sequential RNG across chunks (not parallel-safe).",
+    )
+    p.add_argument(
         "--trl-aligned-labels",
         action="store_true",
         help="Use labels = labels_full[:, :-1] instead of Zoology's labels_full[:, 1:] "
@@ -371,6 +502,7 @@ def main() -> None:
     }
 
     chunk_size = None if args.chunk_size <= 0 else args.chunk_size
+    parallel_workers = None if args.parallel_workers <= 0 else args.parallel_workers
     dsd = build_mqar_dataset_dict(
         train_samples=args.train_samples,
         eval_samples=args.eval_samples,
@@ -390,6 +522,8 @@ def main() -> None:
         chunk_size=chunk_size,
         show_progress=not args.no_progress,
         zoology_shift_labels=not args.trl_aligned_labels,
+        parallel_workers=parallel_workers,
+        independent_rows=False if args.sequential_row_seeds else None,
     )
 
     print(dsd)
