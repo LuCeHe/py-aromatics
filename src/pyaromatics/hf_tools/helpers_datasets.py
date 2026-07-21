@@ -1571,21 +1571,51 @@ def _mqar_topk_hits_and_total(
     return hits, int(labels_m.size)
 
 
+def _coerce_mqar_eval_logits(logits):
+    """Return ``(batch, seq, vocab)`` logits as a CPU float numpy array."""
+    if logits is None:
+        return None
+    if hasattr(logits, "logits"):
+        logits = logits.logits
+    if isinstance(logits, (tuple, list)):
+        chosen = None
+        for item in logits:
+            if item is None:
+                continue
+            ndim = item.dim() if isinstance(item, torch.Tensor) else getattr(item, "ndim", None)
+            if ndim is not None and ndim >= 3:
+                chosen = item
+                break
+        logits = chosen if chosen is not None else (logits[0] if logits else None)
+    if logits is None:
+        return None
+    if isinstance(logits, torch.Tensor):
+        logits = logits.detach().float().cpu().numpy()
+    else:
+        logits = np.asarray(logits)
+    if logits.ndim != 3:
+        raise ValueError(
+            "MQAR eval expected 3D logits (batch, seq, vocab), "
+            f"got shape {getattr(logits, 'shape', repr(logits))!r}. "
+            "Trainer likely returned loss-only output, argmax predictions, or an empty tuple."
+        )
+    return logits
+
+
 def _eval_tensors_to_numpy_cpu(logits, labels):
     """
     ``Trainer`` / ``PlusTrainer`` may pass CUDA tensors (especially with ``batch_eval_metrics``).
     Metrics use NumPy on CPU (argpartition, etc.).
     """
-    if isinstance(logits, (tuple, list)) and len(logits) > 0:
-        logits = logits[0]
-    if isinstance(logits, torch.Tensor):
-        logits = logits.detach().float().cpu().numpy()
-    else:
-        logits = np.asarray(logits)
+    logits = _coerce_mqar_eval_logits(logits)
     if isinstance(labels, torch.Tensor):
         labels = labels.detach().cpu().numpy()
     else:
         labels = np.asarray(labels)
+    if labels.ndim != 2:
+        raise ValueError(
+            f"MQAR eval expected 2D labels (batch, seq), got shape {labels.shape!r}"
+        )
     return logits, labels
 
 
@@ -1677,7 +1707,7 @@ def evaluation(
 ):
     from trl import SFTConfig
     # from thepebbletrail_official.dataset_utils.helpers_datasets import get_metrics
-    from pyaromatics.hf_tools.trainers import PlusTrainer
+    from pyaromatics.hf_tools.trainers import MqarEvalPlusTrainer, PlusTrainer
 
     m_mqar = re.match(r"^mqar(\d+)$", dataset_name, re.I)
 
@@ -1688,6 +1718,7 @@ def evaluation(
         'logging_strategy': "no",
         'seed': seed,
         'max_steps': len(dataset[eval_split]) // batch_size,
+        'prediction_loss_only': False,
         # MQAR: batch_eval_metrics=True + make_mqar_compute_metrics() avoids concatenating
         # all eval logits (O(seq × vocab × n_examples)) — prevents OOM on mqar256/512.
         'batch_eval_metrics': True,
@@ -1735,7 +1766,8 @@ def evaluation(
         'data_collator': collator,
     }
 
-    validator = PlusTrainer(**trainer_kwargs)
+    trainer_cls = MqarEvalPlusTrainer if m_mqar else PlusTrainer
+    validator = trainer_cls(**trainer_kwargs)
     eval_output = validator.evaluate()
     # print('eval_output', eval_output)
     return eval_output

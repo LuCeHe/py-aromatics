@@ -602,3 +602,43 @@ class PlusTrainer(TimeInterruptTrainer):
         out = super()._load_from_checkpoint(resume_from_checkpoint)
         _ensure_tied_lm_head_after_checkpoint_load(self.model)
         return out
+
+
+class MqarEvalPlusTrainer(PlusTrainer):
+    """
+    MQAR metrics need full ``(batch, seq, vocab)`` logits.
+
+    TRL ``SFTTrainer.compute_loss`` may set ``skip_logits`` or otherwise avoid materializing
+    logits during eval (Liger kernel, memory opts). HF ``prediction_step`` then hands
+    ``compute_metrics`` a scalar/empty prediction → NumPy "0-dimensional, 3 indices" errors.
+    """
+
+    _MQAR_FORWARD_POP_KEYS = (
+        "_prediction_loss_only",
+        "skip_logits",
+        "logits_to_keep",
+        "num_items_in_batch",
+        "return_token_accuracy",
+        "use_token_scaling",
+        "output_router_logits",
+    )
+
+    def prediction_step(self, model, inputs, prediction_loss_only, ignore_keys=None):
+        if prediction_loss_only:
+            return super().prediction_step(
+                model, inputs, prediction_loss_only, ignore_keys=ignore_keys,
+            )
+        inputs = dict(inputs)
+        for key in self._MQAR_FORWARD_POP_KEYS:
+            inputs.pop(key, None)
+        inputs = self._prepare_inputs(inputs)
+        labels = inputs.pop("labels", None)
+        with torch.no_grad():
+            outputs = model(**inputs, labels=labels, use_cache=False)
+            loss = getattr(outputs, "loss", None)
+            if loss is not None:
+                loss = loss.detach().mean()
+            logits = getattr(outputs, "logits", None)
+        if isinstance(labels, torch.Tensor):
+            labels = labels.detach()
+        return loss, logits, labels
