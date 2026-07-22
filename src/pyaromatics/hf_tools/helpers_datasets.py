@@ -1651,6 +1651,37 @@ def compute_mqar_metrics(eval_pred):
     return {"mqar_accuracy": acc, "mqar_top5_accuracy": acc_top5, "mqar_f1": f1}
 
 
+def _mqar_batch_predictions_missing(logits, labels) -> bool:
+    """True when there is no per-batch logits/labels payload (finalize-only call)."""
+    if logits is None or labels is None:
+        return True
+    if isinstance(logits, torch.Tensor):
+        return logits.numel() == 0
+    if isinstance(logits, np.ndarray):
+        return logits.size == 0
+    if isinstance(logits, (tuple, list)):
+        return len(logits) == 0
+    return False
+
+
+def _finalize_mqar_metric_state(state: dict) -> dict:
+    t = state["total"]
+    acc = float(state["correct"]) / float(t) if t else 0.0
+    acc5 = float(state["top5_hits"]) / float(t) if t else 0.0
+    if state["y_true_parts"]:
+        yt = np.concatenate(state["y_true_parts"])
+        yh = np.concatenate(state["y_hat_parts"])
+        f1 = _mqar_token_f1_macro(yt, yh)
+    else:
+        f1 = 0.0
+    state["correct"] = 0
+    state["top5_hits"] = 0
+    state["total"] = 0
+    state["y_true_parts"].clear()
+    state["y_hat_parts"].clear()
+    return {"mqar_accuracy": acc, "mqar_top5_accuracy": acc5, "mqar_f1": f1}
+
+
 def make_mqar_compute_metrics():
     """
     Build ``compute_metrics`` for MQAR with ``batch_eval_metrics=True`` so the Trainer does
@@ -1669,8 +1700,8 @@ def make_mqar_compute_metrics():
     def compute_metrics(eval_pred, compute_result=False):
         logits = eval_pred.predictions
         labels = eval_pred.label_ids
-        if logits is None or labels is None:
-            return {} if compute_result else {}
+        if _mqar_batch_predictions_missing(logits, labels):
+            return _finalize_mqar_metric_state(state) if compute_result else {}
         logits, labels = _eval_tensors_to_numpy_cpu(logits, labels)
         correct, total, top5_hits, y_true, y_hat = _mqar_stats_from_logits_labels(logits, labels)
         state["correct"] += correct
@@ -1680,21 +1711,7 @@ def make_mqar_compute_metrics():
             state["y_true_parts"].append(y_true)
             state["y_hat_parts"].append(y_hat)
         if compute_result:
-            t = state["total"]
-            acc = float(state["correct"]) / float(t) if t else 0.0
-            acc5 = float(state["top5_hits"]) / float(t) if t else 0.0
-            if state["y_true_parts"]:
-                yt = np.concatenate(state["y_true_parts"])
-                yh = np.concatenate(state["y_hat_parts"])
-                f1 = _mqar_token_f1_macro(yt, yh)
-            else:
-                f1 = 0.0
-            state["correct"] = 0
-            state["top5_hits"] = 0
-            state["total"] = 0
-            state["y_true_parts"].clear()
-            state["y_hat_parts"].clear()
-            return {"mqar_accuracy": acc, "mqar_top5_accuracy": acc5, "mqar_f1": f1}
+            return _finalize_mqar_metric_state(state)
         return {}
 
     return compute_metrics
@@ -1726,7 +1743,7 @@ def evaluation(
         'auto_find_batch_size': False,
         'dataset_text_field': "text",
         'max_length': 60_000,
-        'fp16': True,
+        'fp16': torch.cuda.is_available(),
     }
 
     assert config_args['auto_find_batch_size'] is False, "auto_find_batch_size has to be set to False to avoid noise."

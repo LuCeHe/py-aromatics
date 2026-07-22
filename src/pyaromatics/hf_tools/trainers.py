@@ -300,7 +300,7 @@ class TimeInterruptTrainer(SFTTrainer):
         if self.args.batch_eval_metrics and self.compute_metrics is not None:
             if metrics is None or metrics == {}:
                 finalized = self.compute_metrics(
-                    EvalPrediction(predictions=np.array([]), label_ids=np.array([])),
+                    EvalPrediction(predictions=None, label_ids=None),
                     compute_result=True,
                 )
                 if finalized:
@@ -654,6 +654,10 @@ class MqarEvalPlusTrainer(PlusTrainer):
             if loss is not None:
                 loss = loss.detach().mean()
             logits = getattr(outputs, "logits", None)
+            if logits is None:
+                # Some TRL / model paths omit logits when labels are present.
+                outputs = model(**inputs, use_cache=False)
+                logits = getattr(outputs, "logits", None)
         if isinstance(labels, torch.Tensor):
             labels = labels.detach()
         return loss, logits, labels
