@@ -190,6 +190,7 @@ class TimeInterruptTrainer(SFTTrainer):
 
         # Will be useful when we have an iterable dataset so don't know its length.
         observed_num_examples = 0
+        dataloader_len = len(dataloader) if has_length(dataloader) else None
 
         # Main evaluation loop
         for step, inputs in enumerate(dataloader):
@@ -239,7 +240,10 @@ class TimeInterruptTrainer(SFTTrainer):
 
             if self.args.batch_eval_metrics:
                 if self.compute_metrics is not None and logits is not None and labels is not None:
-                    is_last_step = self.accelerator.gradient_state.end_of_dataloader
+                    is_last_step = (
+                        (dataloader_len is not None and step + 1 >= dataloader_len)
+                        or self.accelerator.gradient_state.end_of_dataloader
+                    )
                     batch_kwargs = {}
                     batch_kwargs["losses"] = losses if "loss" in args.include_for_metrics else None
                     batch_kwargs["inputs"] = inputs if "inputs" in args.include_for_metrics else None
@@ -290,6 +294,17 @@ class TimeInterruptTrainer(SFTTrainer):
                 num_samples = observed_num_examples
         if num_samples == 0 and observed_num_examples > 0:
             num_samples = observed_num_examples
+
+        # batch_eval_metrics: finalize accumulated metrics if the last batch was not detected
+        # (``gradient_state.end_of_dataloader`` is often false during standalone ``evaluate()``).
+        if self.args.batch_eval_metrics and self.compute_metrics is not None:
+            if metrics is None or metrics == {}:
+                finalized = self.compute_metrics(
+                    EvalPrediction(predictions=np.array([]), label_ids=np.array([])),
+                    compute_result=True,
+                )
+                if finalized:
+                    metrics = finalized
 
         # Metrics!
         if (
