@@ -1728,6 +1728,10 @@ def evaluation(
 
     m_mqar = re.match(r"^mqar(\d+)$", dataset_name, re.I)
 
+    use_cuda = torch.cuda.is_available()
+    use_bf16 = use_cuda and torch.cuda.is_bf16_supported()
+    use_fp16 = use_cuda and not use_bf16
+
     config_args = {
         'output_dir': output_dir,
         'per_device_train_batch_size': batch_size,
@@ -1743,7 +1747,10 @@ def evaluation(
         'auto_find_batch_size': False,
         'dataset_text_field': "text",
         'max_length': 60_000,
-        'fp16': torch.cuda.is_available(),
+        # Match train.py: SFTConfig defaults bf16=True when fp16=False unless both are explicit.
+        'fp16': use_fp16,
+        'bf16': use_bf16,
+        'use_cpu': not use_cuda,
     }
 
     assert config_args['auto_find_batch_size'] is False, "auto_find_batch_size has to be set to False to avoid noise."
