@@ -32,6 +32,16 @@ from pyaromatics.hf_tools.dataset_tools.mqar.mqar import (
     _default_parallel_workers,
     _effective_mqar_chunk_size,
 )
+from pyaromatics.hf_tools.dataset_tools.mad.mad import (
+    MAD_TASK_DEFAULTS,
+    build_mad_dataset_dict,
+    mad_cache_digest,
+    parse_mad_dataset_name,
+)
+from pyaromatics.hf_tools.dataset_tools.regbench.regbench import (
+    build_regbench_dataset_dict,
+    regbench_cache_digest,
+)
 from pyaromatics.stay_organized.utils import NumpyEncoder
 
 winogrande_subsets = [
@@ -112,6 +122,7 @@ def get_dataset(
     lr_scheduler_type = 'constant'
 
     max_seq_length = None
+    data_synthvocab = None
     m_mqar = re.match(r"^mqar(\d+)$", dataset_name.lower())
     if m_mqar:
         max_seq_length = int(m_mqar.group(1))
@@ -192,6 +203,26 @@ def get_dataset(
         label_smoothing_factor = 0.0
         early_stopping_patience = 20
 
+    elif _is_mad_dataset_name(dataset_name):
+        dataset, mad_meta = get_mad_dataset(dataset_name, seed=seed, notes=notes, cachedir=cachedir)
+        max_seq_length = mad_meta["seq_len"]
+        data_synthvocab = mad_meta["vocab_size"]
+        eval_steps = 1
+        eval_strategy = 'epoch'
+        neftune = None
+        label_smoothing_factor = 0.0
+        early_stopping_patience = 20
+
+    elif str(dataset_name).lower().startswith("regbench"):
+        dataset, rb_meta = get_regbench_dataset(dataset_name, seed=seed, notes=notes, cachedir=cachedir)
+        max_seq_length = rb_meta["seq_len"]
+        data_synthvocab = rb_meta["vocab_size"]
+        eval_steps = 1
+        eval_strategy = 'epoch'
+        neftune = None
+        label_smoothing_factor = 0.0
+        early_stopping_patience = 20
+
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized.")
 
@@ -240,6 +271,7 @@ def get_dataset(
         "early_stopping_patience": early_stopping_patience,
         "lr_scheduler_type": lr_scheduler_type,
         "max_seq_length": max_seq_length,
+        "synthvocab": data_synthvocab,
     }
     print(dataset)
     print(json.dumps(data_config, indent=4, cls=NumpyEncoder))
@@ -361,6 +393,139 @@ def get_mqar_dataset(
             desc="MQAR TRL-aligned labels",
         )
     return dsd
+
+
+def _is_mad_dataset_name(dataset_name: str) -> bool:
+    try:
+        parse_mad_dataset_name(dataset_name)
+        return True
+    except ValueError:
+        return False
+
+
+def _is_synth_token_dataset(dataset_name: str) -> bool:
+    n = str(dataset_name).lower()
+    return bool(re.match(r"^mqar\d+$", n) or _is_mad_dataset_name(n) or n.startswith("regbench"))
+
+
+def get_mad_dataset(dataset_name, seed=42, notes='', cachedir=None):
+    """MAD task dataset. Names like ``mad_in_context_recall`` or ``mad_fuzzy_recall256``."""
+    task, seq_suffix = parse_mad_dataset_name(dataset_name)
+    defaults = dict(MAD_TASK_DEFAULTS[task])
+    seq_len = seq_suffix or str2val(notes, "maxlen", default=defaults["seq_len"], output_type=int)
+    vocab_size = str2val(notes, "vocabsize", default=defaults["vocab_size"], output_type=int)
+    train_samples = str2val(notes, "trainsamples", default=12_800, output_type=int)
+    eval_samples = str2val(notes, "evalsamples", default=1_280, output_type=int)
+    test_samples = str2val(notes, "testsamples", default=1_280, output_type=int)
+    train_seed = str2val(notes, "trainseed", default=int(seed) + 901, output_type=int)
+    eval_seed = str2val(notes, "evalseed", default=int(seed) + 9_001, output_type=int)
+    test_seed = str2val(notes, "testseed", default=int(seed) + 42_001, output_type=int)
+    if cachedir is None:
+        raise ValueError("get_mad_dataset requires cachedir")
+    task_kwargs = {
+        k: v for k, v in defaults.items()
+        if k not in ("vocab_size", "seq_len")
+    }
+    if "fracnoise" in notes:
+        task_kwargs["frac_noise"] = str2val(notes, "fracnoise", default=0.2, output_type=float)
+    if "noisevocab" in notes:
+        task_kwargs["noise_vocab_size"] = str2val(notes, "noisevocab", default=16, output_type=int)
+    if "numcopy" in notes:
+        task_kwargs["num_tokens_to_copy"] = str2val(notes, "numcopy", default=16, output_type=int)
+    cache_key = {
+        "task": task,
+        "seq_len": seq_len,
+        "vocab_size": vocab_size,
+        "train_samples": train_samples,
+        "eval_samples": eval_samples,
+        "test_samples": test_samples,
+        "train_seed": train_seed,
+        "eval_seed": eval_seed,
+        "test_seed": test_seed,
+        **task_kwargs,
+    }
+    data_path = os.path.join(cachedir, "mad", f"{dataset_name}_{mad_cache_digest(cache_key)}")
+    if not os.path.exists(data_path):
+        print("Building MAD dataset with config", cache_key)
+        os.makedirs(os.path.dirname(data_path), exist_ok=True)
+        dsd = build_mad_dataset_dict(
+            task,
+            train_samples=train_samples,
+            eval_samples=eval_samples,
+            test_samples=test_samples,
+            train_seed=train_seed,
+            eval_seed=eval_seed,
+            test_seed=test_seed,
+            vocab_size=vocab_size,
+            seq_len=seq_len,
+            **task_kwargs,
+        )
+        dsd.save_to_disk(data_path)
+    dsd = DatasetDict.load_from_disk(data_path)
+    dsd = dsd.map(
+        lambda batch: {
+            "labels": mqar_labels_zoology_to_trl_aligned(
+                np.asarray(batch["labels"], dtype=np.int64)
+            ).tolist()
+        },
+        batched=True,
+        desc="MAD TRL-aligned labels",
+    )
+    return dsd, {"seq_len": seq_len, "vocab_size": vocab_size, "task": task}
+
+
+def get_regbench_dataset(dataset_name, seed=42, notes='', cachedir=None):
+    """RegBench ICLL (PFA strings in context). ``regbench`` or ``regbench256``."""
+    m = re.match(r"^regbench(\d+)?$", str(dataset_name).lower())
+    if not m:
+        raise ValueError(f"Expected regbench or regbench<seq_len>; got {dataset_name!r}")
+    seq_len = int(m.group(1)) if m.group(1) else str2val(notes, "maxlen", default=256, output_type=int)
+    vocab_size = str2val(notes, "vocabsize", default=16, output_type=int)
+    train_samples = str2val(notes, "trainsamples", default=12_800, output_type=int)
+    eval_samples = str2val(notes, "evalsamples", default=1_280, output_type=int)
+    test_samples = str2val(notes, "testsamples", default=1_280, output_type=int)
+    train_seed = str2val(notes, "trainseed", default=int(seed), output_type=int)
+    eval_seed = str2val(notes, "evalseed", default=int(seed) + 1, output_type=int)
+    test_seed = str2val(notes, "testseed", default=int(seed) + 2, output_type=int)
+    if cachedir is None:
+        raise ValueError("get_regbench_dataset requires cachedir")
+    cache_key = {
+        "dataset_name": dataset_name,
+        "seq_len": seq_len,
+        "vocab_size": vocab_size,
+        "train_samples": train_samples,
+        "eval_samples": eval_samples,
+        "test_samples": test_samples,
+        "train_seed": train_seed,
+        "eval_seed": eval_seed,
+        "test_seed": test_seed,
+    }
+    data_path = os.path.join(cachedir, "regbench", f"{dataset_name}_{regbench_cache_digest(cache_key)}")
+    if not os.path.exists(data_path):
+        print("Building RegBench dataset with config", cache_key)
+        os.makedirs(os.path.dirname(data_path), exist_ok=True)
+        dsd = build_regbench_dataset_dict(
+            train_samples=train_samples,
+            eval_samples=eval_samples,
+            test_samples=test_samples,
+            train_seed=train_seed,
+            eval_seed=eval_seed,
+            test_seed=test_seed,
+            vocab_size=vocab_size,
+            seq_len=seq_len,
+        )
+        dsd.save_to_disk(data_path)
+    dsd = DatasetDict.load_from_disk(data_path)
+    dsd = dsd.map(
+        lambda batch: {
+            "labels": mqar_labels_zoology_to_trl_aligned(
+                np.asarray(batch["labels"], dtype=np.int64)
+            ).tolist()
+        },
+        batched=True,
+        desc="RegBench TRL-aligned labels",
+    )
+    return dsd, {"seq_len": seq_len, "vocab_size": vocab_size}
 
 
 def get_rule110(model_id=None, notes='', seed=42, cachedir=None, max_length=2048):
@@ -1726,6 +1891,7 @@ def evaluation(
     # from thepebbletrail_official.dataset_utils.helpers_datasets import get_metrics
     from pyaromatics.hf_tools.trainers import MqarEvalPlusTrainer, PlusTrainer
 
+    synth_tokens = _is_synth_token_dataset(dataset_name)
     m_mqar = re.match(r"^mqar(\d+)$", dataset_name, re.I)
 
     use_cuda = torch.cuda.is_available()
@@ -1762,6 +1928,12 @@ def evaluation(
 
     if m_mqar:
         config_args["max_length"] = int(m_mqar.group(1))
+    elif _is_mad_dataset_name(dataset_name):
+        _, seq_suffix = parse_mad_dataset_name(dataset_name)
+        config_args["max_length"] = int(seq_suffix or str2val(notes, "maxlen", default=256, output_type=int))
+    elif str(dataset_name).lower().startswith("regbench"):
+        m_rb = re.match(r"^regbench(\d+)?$", str(dataset_name).lower())
+        config_args["max_length"] = int(m_rb.group(1) if m_rb and m_rb.group(1) else str2val(notes, "maxlen", default=256, output_type=int))
     elif 'maxlen' in notes or 'dolma' in dataset_name:
         config_args['max_length'] = str2val(notes, 'maxlen', default=256, output_type=int)
 
@@ -1776,7 +1948,7 @@ def evaluation(
         eval_args.past_index = -1
 
     metrics_fn = compute_metrics
-    if m_mqar and metrics_fn is None:
+    if synth_tokens and metrics_fn is None:
         metrics_fn = make_mqar_compute_metrics()
 
     model.eval()
@@ -1790,7 +1962,7 @@ def evaluation(
         'data_collator': collator,
     }
 
-    trainer_cls = MqarEvalPlusTrainer if m_mqar else PlusTrainer
+    trainer_cls = MqarEvalPlusTrainer if synth_tokens else PlusTrainer
     validator = trainer_cls(**trainer_kwargs)
     eval_output = validator.evaluate()
     # print('eval_output', eval_output)

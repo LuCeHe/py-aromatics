@@ -11,6 +11,15 @@ from typing import Any, Optional, Tuple
 LOADCKPT_PREFIX = "loadckpt:"
 INSTRUCT_FINETUNE_DATASET = "tulu3sft"
 INSTRUCT_LR_SCALE = 0.01
+# CLI / ``run_experiments`` values kept when merging checkpoint ``args.txt`` on continuation.
+LOADCKPT_CLI_PRESERVE_KEYS = (
+    "output_dir",
+    "epochs",
+    "stop_time",
+    "batch_size",
+    "learning_rate",
+    "gradient_accumulation_steps",
+)
 
 _testckpt_BRACKET = re.compile(r"^\[testckpt:([^\]]+)\]\s*(.*)$", re.DOTALL)
 _loadckpt_BRACKET = re.compile(r"^\[loadckpt:([^\]]+)\]\s*(.*)$", re.DOTALL)
@@ -90,7 +99,7 @@ def notes_request_instruct_finetune(notes: str) -> bool:
 def _merge_args_txt_into_namespace(
     resolved_dir: Optional[str],
     args,
-    preserve_keys: Tuple[str, ...] = ("output_dir", "epochs", "stop_time"),
+    preserve_keys: Tuple[str, ...] = LOADCKPT_CLI_PRESERVE_KEYS,
 ) -> Optional[dict]:
     if not resolved_dir or not os.path.isdir(resolved_dir):
         return None
@@ -152,7 +161,7 @@ def _apply_loadckpt_from_checkpoint(
     if resolved is None:
         resolved = os.path.join(roots.exps_dir, ckpt_id)
     saved = _merge_args_txt_into_namespace(
-        resolved, args, ("output_dir", "epochs", "stop_time"),
+        resolved, args, LOADCKPT_CLI_PRESERVE_KEYS,
     )
     if saved is None:
         return False
@@ -192,7 +201,7 @@ def is_resume_ckpt(args, *, roots: CheckpointSearchRoots) -> dict[str, Any]:
         if resolved_load_dir is None:
             resolved_load_dir = os.path.join(roots.exps_dir, ckpt_id)
         saved = _merge_args_txt_into_namespace(
-            resolved_load_dir, args, ("output_dir", "epochs", "stop_time"),
+            resolved_load_dir, args, LOADCKPT_CLI_PRESERVE_KEYS,
         )
         saved_train_notes = ""
         if isinstance(saved, dict):
