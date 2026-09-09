@@ -809,9 +809,9 @@ def get_dataset_wiki103(cachedir=None):
             _require_local_dataset_cache(
                 data_path,
                 dataset_label="get_dataset_wiki103",
-                hub_repo="wikitext/wikitext-103-raw-v1",
+                hub_repo="Salesforce/wikitext",
             )
-        dataset = load_dataset("wikitext", "wikitext-103-raw-v1")
+        dataset = load_dataset("Salesforce/wikitext", "wikitext-103-raw-v1")
         num_proc = min(8, (os.cpu_count() or 1))
         for split in dataset.keys():
             dataset[split] = dataset[split].map(
