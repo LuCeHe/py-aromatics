@@ -42,6 +42,10 @@ from pyaromatics.hf_tools.dataset_tools.regbench.regbench import (
     build_regbench_dataset_dict,
     regbench_cache_digest,
 )
+from pyaromatics.hf_tools.dataset_tools.timeseries.timeseries import (
+    get_timeseries_dataset,
+    is_timeseries_dataset_name,
+)
 from pyaromatics.stay_organized.utils import NumpyEncoder
 
 winogrande_subsets = [
@@ -123,6 +127,7 @@ def get_dataset(
 
     max_seq_length = None
     data_synthvocab = None
+    extra_data_config = {}
     m_mqar = re.match(r"^mqar(\d+)$", dataset_name.lower())
     if m_mqar:
         max_seq_length = int(m_mqar.group(1))
@@ -223,6 +228,18 @@ def get_dataset(
         label_smoothing_factor = 0.0
         early_stopping_patience = 20
 
+    elif is_timeseries_dataset_name(dataset_name):
+        dataset, ts_config = get_timeseries_dataset(
+            dataset_name, seed=seed, notes=notes, cachedir=cachedir,
+        )
+        max_seq_length = ts_config["max_seq_length"]
+        eval_steps = ts_config["eval_steps"]
+        eval_strategy = ts_config["eval_strategy"]
+        neftune = ts_config["neftune"]
+        label_smoothing_factor = ts_config["label_smoothing_factor"]
+        early_stopping_patience = ts_config["early_stopping_patience"]
+        extra_data_config = ts_config
+
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized.")
 
@@ -253,7 +270,10 @@ def get_dataset(
             for k, v in sample.items():
 
                 if isinstance(v, list):
-                    v = 'list - ' + str(v)
+                    if len(v) > 12:
+                        v = f'list[{len(v)}] {v[:8]}...'
+                    else:
+                        v = 'list - ' + str(v)
                 
                 if isinstance(v, str):
                     text = v if len(v) < 100 else v[:100] + '...'
@@ -273,6 +293,7 @@ def get_dataset(
         "max_seq_length": max_seq_length,
         "synthvocab": data_synthvocab,
     }
+    data_config.update(extra_data_config)
     print(dataset)
     print(json.dumps(data_config, indent=4, cls=NumpyEncoder))
     return dataset, data_config
@@ -1943,7 +1964,22 @@ def evaluation(
     if single_process:
         config_args['local_rank'] = -1
 
-    eval_args = SFTConfig(**config_args)
+    ts_cols = dataset[eval_split].column_names if eval_split in dataset else []
+    is_timeseries = "inputs" in ts_cols or "audio_path" in ts_cols
+
+    if is_timeseries:
+        from transformers import Trainer, TrainingArguments
+        plain_cfg = {
+            k: v for k, v in config_args.items()
+            if k not in (
+                "dataset_text_field", "dataset_kwargs", "max_length", "packing",
+            )
+        }
+        eval_args = TrainingArguments(**plain_cfg)
+        trainer_cls = Trainer
+    else:
+        eval_args = SFTConfig(**config_args)
+        trainer_cls = MqarEvalPlusTrainer if synth_tokens else PlusTrainer
     if not hasattr(eval_args, "past_index"):
         eval_args.past_index = -1
 
@@ -1961,8 +1997,6 @@ def evaluation(
         'compute_metrics': metrics_fn,
         'data_collator': collator,
     }
-
-    trainer_cls = MqarEvalPlusTrainer if synth_tokens else PlusTrainer
     validator = trainer_cls(**trainer_kwargs)
     eval_output = validator.evaluate()
     # print('eval_output', eval_output)
