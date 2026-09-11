@@ -485,23 +485,60 @@ def _load_list(path: str) -> set:
         return {ln.strip().replace("\\", "/") for ln in f if ln.strip()}
 
 
-def download_speech_commands(root: str, force: bool = False) -> str:
+def _sc_tar_members(tar: tarfile.TarFile, labels: Sequence[str]):
+    keep_top = set(labels) | {"validation_list.txt", "testing_list.txt", "LICENSE"}
+    for member in tar.getmembers():
+        name = member.name.replace("\\", "/").lstrip("./")
+        if not name:
+            continue
+        if name.split("/")[0] in keep_top:
+            yield member
+
+
+def download_speech_commands(
+    root: str,
+    force: bool = False,
+    labels: Optional[Sequence[str]] = None,
+) -> str:
+    """Extract Speech Commands under ``DATADIR/timeseries``. Default: SC10 keywords only."""
+    labels = list(labels) if labels is not None else list(SC10_LABELS)
     raw_dir = _sc_raw_dir(root)
+    home = os.path.join(root, "speech_commands")
     marker = os.path.join(raw_dir, ".extracted")
     if os.path.isfile(marker) and not force:
         print(f"[skip] Speech Commands already extracted at {raw_dir}")
         return raw_dir
-    os.makedirs(os.path.dirname(raw_dir), exist_ok=True)
-    tar_path = os.path.join(root, "speech_commands", "speech_commands_v0.02.tar.gz")
+    os.makedirs(home, exist_ok=True)
+    tar_path = os.path.join(home, "speech_commands_v0.02.tar.gz")
     _download_first(_SPEECH_COMMANDS_URLS, tar_path)
     if os.path.isdir(raw_dir) and force:
         shutil.rmtree(raw_dir)
     os.makedirs(raw_dir, exist_ok=True)
-    print("  extracting Speech Commands (this can take a few minutes)...")
-    with tarfile.open(tar_path, "r:gz") as tar:
-        tar.extractall(raw_dir)
+    print(
+        f"  extracting Speech Commands SC10 only ({len(labels)} keywords, not 35-class) "
+        f"into {raw_dir}"
+    )
+    try:
+        with tarfile.open(tar_path, "r:gz") as tar:
+            members = list(_sc_tar_members(tar, labels))
+            tar.extractall(raw_dir, members=members)
+    except OSError as exc:
+        if getattr(exc, "errno", None) == 122:
+            raise RuntimeError(
+                "Disk quota exceeded extracting Speech Commands. "
+                "Delete the 2.3 GB tar and the partial v0.02 tree, then re-run "
+                "(SC10-only extract, tar is removed afterwards):\n"
+                f"  rm -rf {home}\n"
+                "  python prepare_timeseries.py --only sc10"
+            ) from exc
+        raise
+    try:
+        os.remove(tar_path)
+        print(f"  removed {tar_path} after extract")
+    except OSError as exc:
+        print(f"  warning: could not remove tar ({exc})")
     with open(marker, "w", encoding="utf-8") as f:
-        f.write("ok\n")
+        f.write("sc10\n")
     print(f"[ok] Speech Commands extracted to {raw_dir}")
     return raw_dir
 
@@ -570,6 +607,7 @@ def download_timeseries_datasets(
     datadir: str,
     names: Optional[Sequence[str]] = None,
     force: bool = False,
+    skip_speech: bool = False,
 ) -> Dict[str, str]:
     """Download Table A + Table B + Speech Commands into ``$DATADIR/timeseries``."""
     root = timeseries_root(datadir=datadir)
@@ -597,17 +635,37 @@ def download_timeseries_datasets(
     for fc in FORECAST_TABLE_B:
         if want("forecast", fc):
             _try(fc, lambda n=fc: download_forecast(root, n, force=force))
-    if want("speech", "speech_commands") or want("speech", "speech_commands10") or wanted is None:
+    want_sc10 = (not skip_speech) and (
+        wanted is None
+        or want("speech", "speech_commands10")
+        or want("speech", "speech_commands")
+    )
+    want_sc35 = (
+        not skip_speech
+        and wanted is not None
+        and (
+            "speechcommands" in {n.lower() for n in wanted}
+            or "speechcommands35" in {n.lower() for n in wanted}
+        )
+    )
+    if want_sc10:
         def _speech() -> str:
-            download_speech_commands(root, force=force)
-            done["speech_commands"] = _build_speech_index(root, "speech_commands", force=force)
+            labs = None if want_sc35 else list(SC10_LABELS)
+            download_speech_commands(root, force=force, labels=labs)
+            if want_sc35:
+                done["speech_commands"] = _build_speech_index(
+                    root, "speech_commands", force=force,
+                )
             return _build_speech_index(root, "speech_commands10", force=force)
 
         _try("speech_commands10", _speech)
 
     ready_path = os.path.join(root, ".ready.json")
-    with open(ready_path, "w", encoding="utf-8") as f:
-        json.dump({"root": root, "datasets": sorted(done), "errors": errors}, f, indent=2)
+    try:
+        with open(ready_path, "w", encoding="utf-8") as f:
+            json.dump({"root": root, "datasets": sorted(done), "errors": errors}, f, indent=2)
+    except OSError as exc:
+        print(f"[warn] could not write {ready_path}: {exc}")
     print(f"timeseries root: {root}")
     if errors:
         raise RuntimeError(
