@@ -854,6 +854,36 @@ def timeseries_compute_metrics(data_config: Dict[str, Any]):
     return _cls if task == "classification" else _fc
 
 
+def _tensor_storage_id(tensor):
+    """Identity of a tensor's storage so tied / aliased weights can be de-duplicated."""
+    try:
+        storage = tensor.untyped_storage()
+        return (
+            storage.data_ptr(),
+            tensor.storage_offset(),
+            tensor.numel(),
+            tuple(tensor.shape),
+            str(tensor.dtype),
+        )
+    except Exception:
+        return id(tensor)
+
+
+def _unique_storage_state_dict(state_dict):
+    """Drop later keys that share storage with an earlier one (safetensors-safe)."""
+    if not state_dict:
+        return state_dict
+    seen = set()
+    unique = state_dict.__class__()
+    for key, tensor in state_dict.items():
+        ident = _tensor_storage_id(tensor)
+        if ident in seen:
+            continue
+        seen.add(ident)
+        unique[key] = tensor
+    return unique if len(unique) != len(state_dict) else state_dict
+
+
 def wrap_causal_lm_for_timeseries(model, data_config: Dict[str, Any]):
     """Linear ``C -> d`` then the causal-LM backbone via ``inputs_embeds``."""
     import torch.nn as nn
@@ -888,7 +918,46 @@ def wrap_causal_lm_for_timeseries(model, data_config: Dict[str, Any]):
                 self.head = nn.Linear(hidden_size, n_outputs)
             else:
                 self.head = nn.Linear(hidden_size, self.horizon * self.n_target_channels)
-            self._inner = inner_seq_model(backbone)
+
+        @property
+        def _inner(self):
+            # Alias of ``backbone.model`` / ``transformer``. A registered child
+            # would duplicate every weight in ``state_dict`` and crash safetensors.
+            return inner_seq_model(self.backbone)
+
+        def state_dict(self, *args, **kwargs):
+            sd = super().state_dict(*args, **kwargs)
+            unique = _unique_storage_state_dict(sd)
+            if unique is sd:
+                return sd
+            dest = kwargs.get("destination")
+            if dest is None and args and isinstance(args[0], dict):
+                dest = args[0]
+            if dest is sd:
+                sd.clear()
+                sd.update(unique)
+                return sd
+            return unique
+
+        def save_pretrained(self, save_directory, state_dict=None, safe_serialization=True, **kwargs):
+            os.makedirs(save_directory, exist_ok=True)
+            if state_dict is None:
+                state_dict = self.state_dict()
+            else:
+                state_dict = _unique_storage_state_dict(state_dict)
+            if safe_serialization:
+                from safetensors.torch import save_file
+                save_file(
+                    state_dict,
+                    os.path.join(save_directory, "model.safetensors"),
+                    metadata={"format": "pt"},
+                )
+            else:
+                import torch
+                torch.save(state_dict, os.path.join(save_directory, "pytorch_model.bin"))
+            cfg = getattr(self, "config", None)
+            if cfg is not None and hasattr(cfg, "save_pretrained"):
+                cfg.save_pretrained(save_directory)
 
         def gradient_checkpointing_enable(self, **kwargs):
             fn = getattr(self.backbone, "gradient_checkpointing_enable", None)
