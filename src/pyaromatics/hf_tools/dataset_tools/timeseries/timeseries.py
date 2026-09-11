@@ -897,6 +897,11 @@ def wrap_causal_lm_for_timeseries(model, data_config: Dict[str, Any]):
         return backbone
 
     class TimeSeriesWrapper(nn.Module):
+        # HF Trainer ``_load_best_model`` / ``_issue_warnings_after_load`` assume PreTrainedModel.
+        _keys_to_ignore_on_save = None
+        _keys_to_ignore_on_load_missing = None
+        _keys_to_ignore_on_load_unexpected = None
+
         def __init__(
             self,
             backbone,
@@ -913,11 +918,16 @@ def wrap_causal_lm_for_timeseries(model, data_config: Dict[str, Any]):
             self.task = task
             self.horizon = int(horizon)
             self.n_target_channels = int(n_target_channels) or n_outputs
-            self.in_proj = nn.Linear(n_channels, hidden_size)
+            try:
+                bb_dtype = next(backbone.parameters()).dtype
+            except StopIteration:
+                bb_dtype = None
+            linear_kw = {"dtype": bb_dtype} if bb_dtype is not None else {}
+            self.in_proj = nn.Linear(n_channels, hidden_size, **linear_kw)
             if task == "classification":
-                self.head = nn.Linear(hidden_size, n_outputs)
+                self.head = nn.Linear(hidden_size, n_outputs, **linear_kw)
             else:
-                self.head = nn.Linear(hidden_size, self.horizon * self.n_target_channels)
+                self.head = nn.Linear(hidden_size, self.horizon * self.n_target_channels, **linear_kw)
 
         @property
         def _inner(self):
@@ -972,12 +982,25 @@ def wrap_causal_lm_for_timeseries(model, data_config: Dict[str, Any]):
         def num_parameters(self, only_trainable: bool = False, **kwargs) -> int:
             return sum(p.numel() for p in self.parameters() if (p.requires_grad or not only_trainable))
 
+        def tie_weights(self):
+            fn = getattr(self.backbone, "tie_weights", None)
+            if callable(fn):
+                fn()
+
         def forward(self, inputs=None, labels=None, attention_mask=None, input_ids=None, **kwargs):
             if inputs is None:
                 raise ValueError("TimeSeriesWrapper expects float ``inputs`` of shape (B, T, C)")
             if inputs.ndim == 2:
                 inputs = inputs.unsqueeze(-1)
+            if inputs.dtype != self.in_proj.weight.dtype:
+                inputs = inputs.to(dtype=self.in_proj.weight.dtype)
             hidden = self.in_proj(inputs)
+            try:
+                inner_dtype = next(self._inner.parameters()).dtype
+            except StopIteration:
+                inner_dtype = hidden.dtype
+            if hidden.dtype != inner_dtype:
+                hidden = hidden.to(dtype=inner_dtype)
             inner_kwargs = {"inputs_embeds": hidden, "use_cache": False}
             if attention_mask is not None:
                 inner_kwargs["attention_mask"] = attention_mask
@@ -987,6 +1010,8 @@ def wrap_causal_lm_for_timeseries(model, data_config: Dict[str, Any]):
                 inner_kwargs.pop("use_cache", None)
                 out = self._inner(**inner_kwargs)
             h = out.last_hidden_state if hasattr(out, "last_hidden_state") else out[0]
+            if h.dtype != self.head.weight.dtype:
+                h = h.to(dtype=self.head.weight.dtype)
             if attention_mask is None:
                 pooled = h.mean(dim=1)
             else:
