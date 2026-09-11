@@ -69,14 +69,30 @@ _UEA_ZIP_URLS = {
     ),
 }
 
-_LAIGUOKUN = "https://github.com/laiguokun/multivariate-time-series-datasets/raw/master/datasets"
+# LSTNet / Informer files live in ``multivariate-time-series-data`` (not ``-datasets``).
+_LAIGUOKUN = (
+    "https://raw.githubusercontent.com/laiguokun/"
+    "multivariate-time-series-data/master"
+)
+_LAIGUOKUN_MIRROR = (
+    "https://raw.githubusercontent.com/TorchSpatiotemporal/"
+    "multivariate-time-series-data/master"
+)
+_TSLIB_HF = "https://huggingface.co/datasets/thuml/Time-Series-Library/resolve/main"
 _FORECAST_URLS = {
-    "electricity": (f"{_LAIGUOKUN}/electricity.txt.gz",),
-    "traffic": (f"{_LAIGUOKUN}/traffic.txt.gz",),
+    "electricity": (
+        f"{_LAIGUOKUN}/electricity/electricity.txt.gz",
+        f"{_LAIGUOKUN_MIRROR}/electricity/electricity.txt.gz",
+        f"{_TSLIB_HF}/electricity/electricity.csv",
+    ),
+    "traffic": (
+        f"{_LAIGUOKUN}/traffic/traffic.txt.gz",
+        f"{_LAIGUOKUN_MIRROR}/traffic/traffic.txt.gz",
+        f"{_TSLIB_HF}/traffic/traffic.csv",
+    ),
     "weather": (
-        # Informer/Autoformer 21-var weather, then Jena climate as a public fallback.
-        "https://raw.githubusercontent.com/nlinhvu/Informer-tutorial/master/data/weather.csv",
-        "https://github.com/nlinhvu/Informer-tutorial/raw/master/data/weather.csv",
+        # Autoformer / Time-Series-Library 21-var weather, then Jena climate.
+        f"{_TSLIB_HF}/weather/weather.csv",
         "https://storage.googleapis.com/tensorflow/tf-keras-datasets/jena_climate_2009_2016.csv.zip",
     ),
 }
@@ -119,7 +135,7 @@ def timeseries_root(datadir: Optional[str] = None, cachedir: Optional[str] = Non
 # HTTP helpers
 # ---------------------------------------------------------------------------
 
-def _download(url: str, dest: str, timeout: float = 120.0) -> None:
+def _download(url: str, dest: str, timeout: float = 300.0) -> None:
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     tmp = dest + ".part"
     req = Request(url, headers={"User-Agent": _UA})
@@ -277,7 +293,7 @@ def _load_numeric_table(path: str, gzipped: Optional[bool] = None) -> np.ndarray
     use_gz = path.endswith(".gz") if gzipped is None else gzipped
     if use_gz:
         with gzip.open(path, "rt") as f:
-            arr = np.loadtxt(f, ndmin=2)
+            arr = np.loadtxt(f, delimiter=",", ndmin=2)
         arr = np.asarray(arr, dtype=np.float32)
         if arr.ndim == 1:
             arr = arr[:, None]
@@ -344,7 +360,9 @@ def download_forecast(root: str, name: str, force: bool = False) -> str:
         os.remove(tmp)
         print(f"[ok] weather from Jena climate fallback: {arr.shape} (not Autoformer 21-var)")
         return dest
-    arr = _load_numeric_table(tmp, gzipped=url_used.endswith(".gz"))
+    with open(tmp, "rb") as _fh:
+        gzipped = _fh.read(2) == b"\x1f\x8b"
+    arr = _load_numeric_table(tmp, gzipped=gzipped)
     _save_numeric_csv(dest, arr)
     if os.path.isfile(tmp):
         os.remove(tmp)
@@ -558,6 +576,7 @@ def download_timeseries_datasets(
     os.makedirs(root, exist_ok=True)
     wanted = set(names) if names else None
     done: Dict[str, str] = {}
+    errors: List[str] = []
 
     def want(kind: str, name: str) -> bool:
         if wanted is None:
@@ -565,21 +584,35 @@ def download_timeseries_datasets(
         aliases = [k for k, (g, n) in DATASET_ALIASES.items() if g == kind and n == name]
         return name in wanted or any(a in wanted for a in aliases)
 
+    def _try(label: str, fn) -> None:
+        try:
+            done[label] = fn()
+        except Exception as exc:
+            errors.append(f"{label}: {exc}")
+            print(f"[error] {label}: {exc}")
+
     for uea in UEA_TABLE_A:
         if want("uea", uea):
-            done[uea] = download_uea(root, uea, force=force)
+            _try(uea, lambda n=uea: download_uea(root, n, force=force))
     for fc in FORECAST_TABLE_B:
         if want("forecast", fc):
-            done[fc] = download_forecast(root, fc, force=force)
+            _try(fc, lambda n=fc: download_forecast(root, n, force=force))
     if want("speech", "speech_commands") or want("speech", "speech_commands10") or wanted is None:
-        download_speech_commands(root, force=force)
-        done["speech_commands"] = _build_speech_index(root, "speech_commands", force=force)
-        done["speech_commands10"] = _build_speech_index(root, "speech_commands10", force=force)
+        def _speech() -> str:
+            download_speech_commands(root, force=force)
+            done["speech_commands"] = _build_speech_index(root, "speech_commands", force=force)
+            return _build_speech_index(root, "speech_commands10", force=force)
+
+        _try("speech_commands10", _speech)
 
     ready_path = os.path.join(root, ".ready.json")
     with open(ready_path, "w", encoding="utf-8") as f:
-        json.dump({"root": root, "datasets": sorted(done)}, f, indent=2)
+        json.dump({"root": root, "datasets": sorted(done), "errors": errors}, f, indent=2)
     print(f"timeseries root: {root}")
+    if errors:
+        raise RuntimeError(
+            "some timeseries downloads failed:\n  " + "\n  ".join(errors)
+        )
     return done
 
 
