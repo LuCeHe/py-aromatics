@@ -1,11 +1,15 @@
 """TimeSeriesWrapper must be safetensors / HF-Trainer checkpoint safe."""
 from __future__ import annotations
 
+import inspect
+
+import numpy as np
 import pytest
 import torch
 import torch.nn as nn
 
 from pyaromatics.hf_tools.dataset_tools.timeseries.timeseries import (
+    timeseries_compute_metrics,
     wrap_causal_lm_for_timeseries,
 )
 
@@ -99,3 +103,29 @@ def test_forward_casts_float_inputs_to_bf16_backbone():
     assert out["logits"].shape == (2, 3)
     assert out["loss"] is not None
     assert out["logits"].dtype == torch.bfloat16
+
+
+def test_compute_metrics_accepts_compute_result():
+    fn = timeseries_compute_metrics({"task": "classification"})
+    assert "compute_result" in inspect.signature(fn).parameters
+    logits = np.array([[10.0, 0.0], [0.0, 10.0]])
+    labels = np.array([0, 1])
+    assert fn((logits, labels))["accuracy"] == 1.0
+
+
+def test_compute_metrics_batches_then_finalize():
+    fn = timeseries_compute_metrics({"task": "classification"})
+    # batch 1: 1/1 correct; batch 2: 0/1 correct → 0.5
+    assert fn((np.array([[10.0, 0.0]]), np.array([0])), compute_result=False) == {}
+    out = fn((np.array([[10.0, 0.0]]), np.array([1])), compute_result=True)
+    assert out["accuracy"] == 0.5
+    # next eval is independent
+    assert fn((np.array([[0.0, 10.0]]), np.array([1])))["accuracy"] == 1.0
+
+
+def test_compute_metrics_forecast_accumulates():
+    fn = timeseries_compute_metrics({"task": "forecasting"})
+    assert fn((np.array([1.0, 3.0]), np.array([0.0, 0.0])), compute_result=False) == {}
+    out = fn((np.array([5.0]), np.array([2.0])), compute_result=True)
+    assert out["mse"] == pytest.approx((1.0 + 9.0 + 9.0) / 3.0)
+    assert out["mae"] == pytest.approx((1.0 + 3.0 + 3.0) / 3.0)

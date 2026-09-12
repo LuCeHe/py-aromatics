@@ -1975,6 +1975,10 @@ def evaluation(
                 "dataset_text_field", "dataset_kwargs", "max_length", "packing",
             )
         }
+        # MQAR needs batch_eval_metrics to avoid concatenating vocab logits.
+        # Timeseries logits are tiny; vanilla Trainer also often never sets
+        # compute_result=True on standalone evaluate() (end_of_dataloader).
+        plain_cfg["batch_eval_metrics"] = False
         eval_args = TrainingArguments(**plain_cfg)
         trainer_cls = Trainer
     else:

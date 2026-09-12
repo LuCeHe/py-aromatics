@@ -834,22 +834,71 @@ class TimeSeriesCollator:
         }
 
 
-def timeseries_compute_metrics(data_config: Dict[str, Any]):
-    task = data_config.get("task")
-
-    def _cls(eval_pred):
-        logits, labels = eval_pred
-        preds = np.argmax(logits, axis=-1)
-        labels = np.asarray(labels)
-        return {"accuracy": float((preds == labels).mean())}
-
-    def _fc(eval_pred):
+def _eval_pred_to_numpy_pair(eval_pred):
+    """Unpack ``EvalPrediction`` or ``(preds, labels)`` to CPU NumPy (or ``None``)."""
+    if eval_pred is None:
+        preds = labels = None
+    elif hasattr(eval_pred, "predictions"):
+        preds, labels = eval_pred.predictions, eval_pred.label_ids
+    else:
         preds, labels = eval_pred
-        preds = np.asarray(preds, dtype=np.float64)
-        labels = np.asarray(labels, dtype=np.float64)
-        mse = float(np.mean((preds - labels) ** 2))
-        mae = float(np.mean(np.abs(preds - labels)))
-        return {"mse": mse, "mae": mae}
+
+    def _to_numpy(x):
+        if x is None:
+            return None
+        if hasattr(x, "detach"):
+            x = x.detach().cpu().numpy()
+        return np.asarray(x)
+
+    return _to_numpy(preds), _to_numpy(labels)
+
+
+def timeseries_compute_metrics(data_config: Dict[str, Any]):
+    """HF ``compute_metrics`` for timeseries.
+
+    Signature is ``(eval_pred, compute_result=True)`` so it works with
+    ``batch_eval_metrics`` (post-train ``evaluation()``) and without it
+    (training ``Trainer``, which does not pass ``compute_result``).
+    Default ``True`` keeps the full-eval path returning metrics in one call.
+    """
+    task = data_config.get("task")
+    state = {"n": 0, "correct": 0, "sse": 0.0, "sae": 0.0}
+
+    def _reset():
+        state["n"] = 0
+        state["correct"] = 0
+        state["sse"] = 0.0
+        state["sae"] = 0.0
+
+    def _cls(eval_pred, compute_result=True):
+        logits, labels = _eval_pred_to_numpy_pair(eval_pred)
+        if logits is not None and labels is not None:
+            match = np.argmax(logits, axis=-1) == labels
+            state["correct"] += int(np.sum(match))
+            state["n"] += int(match.size)
+        if not compute_result:
+            return {}
+        n = state["n"]
+        acc = float(state["correct"] / n) if n else 0.0
+        _reset()
+        return {"accuracy": acc}
+
+    def _fc(eval_pred, compute_result=True):
+        preds, labels = _eval_pred_to_numpy_pair(eval_pred)
+        if preds is not None and labels is not None:
+            err = np.asarray(preds, dtype=np.float64) - np.asarray(labels, dtype=np.float64)
+            state["sse"] += float(np.sum(err ** 2))
+            state["sae"] += float(np.sum(np.abs(err)))
+            state["n"] += int(err.size)
+        if not compute_result:
+            return {}
+        n = state["n"]
+        out = (
+            {"mse": float(state["sse"] / n), "mae": float(state["sae"] / n)}
+            if n else {"mse": 0.0, "mae": 0.0}
+        )
+        _reset()
+        return out
 
     return _cls if task == "classification" else _fc
 
