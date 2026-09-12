@@ -44,6 +44,7 @@ from pyaromatics.hf_tools.dataset_tools.regbench.regbench import (
 )
 from pyaromatics.hf_tools.dataset_tools.timeseries.timeseries import (
     get_timeseries_dataset,
+    reapply_timeseries_lazy_transform,
     is_timeseries_dataset_name,
 )
 from pyaromatics.stay_organized.utils import NumpyEncoder
@@ -252,16 +253,19 @@ def get_dataset(
     # shuffle with seed
     for split in dataset.keys():
         dataset[split] = dataset[split].shuffle(seed=seed)
+    reapply_timeseries_lazy_transform(dataset)
 
     if n_samples > 0:
         for k, v in dataset.items():
             n = min(n_samples, len(v))
             dataset[k] = v.select(range(n))
+        reapply_timeseries_lazy_transform(dataset)
 
     if 'onlytesting' in notes:
         max_samples = 4 if n_samples == -1 else n_samples
         for k, v in dataset.items():
             dataset[k] = v.select(range(max_samples))
+        reapply_timeseries_lazy_transform(dataset)
 
     if not no_print:
         for i in range(min(4, len(dataset['train']))):

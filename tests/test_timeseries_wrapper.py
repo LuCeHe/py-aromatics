@@ -9,6 +9,11 @@ import torch
 import torch.nn as nn
 
 from pyaromatics.hf_tools.dataset_tools.timeseries.timeseries import (
+    TimeSeriesCollator,
+    _forecast_window_starts,
+    _lazy_forecast_dataset,
+    _window_forecast,
+    reapply_timeseries_lazy_transform,
     timeseries_compute_metrics,
     wrap_causal_lm_for_timeseries,
 )
@@ -129,3 +134,31 @@ def test_compute_metrics_forecast_accumulates():
     out = fn((np.array([5.0]), np.array([2.0])), compute_result=True)
     assert out["mse"] == pytest.approx((1.0 + 9.0 + 9.0) / 3.0)
     assert out["mae"] == pytest.approx((1.0 + 3.0 + 3.0) / 3.0)
+
+
+def test_forecast_windows_stay_lazy_after_shuffle():
+    lookback, horizon, n_ch = 8, 12, 5
+    series = np.arange(400 * n_ch, dtype=np.float32).reshape(400, n_ch)
+    series_n, starts, meta = _window_forecast(series, lookback, horizon, seed=0)
+    assert meta["n_train"] == int(starts["train"].shape[0])
+    assert series_n.nbytes < 10_000
+    ds = _lazy_forecast_dataset(series_n, starts, lookback, horizon)
+    assert ds["train"].column_names == ["t"]
+    t0 = int(starts["train"][0])
+    ex = ds["train"][0]
+    np.testing.assert_allclose(ex["inputs"], series_n[t0 - lookback: t0])
+    np.testing.assert_allclose(ex["labels"], series_n[t0: t0 + horizon])
+    ds["train"] = ds["train"].shuffle(seed=1)
+    reapply_timeseries_lazy_transform(ds)
+    ex1 = ds["train"][0]
+    assert np.asarray(ex1["inputs"]).shape == (lookback, n_ch)
+    assert np.asarray(ex1["labels"]).shape == (horizon, n_ch)
+    batch = TimeSeriesCollator()([ds["train"][i] for i in range(3)])
+    assert batch["inputs"].shape == (3, lookback, n_ch)
+    assert batch["labels"].shape == (3, horizon, n_ch)
+
+
+def test_forecast_window_starts_skip_pre_split_context():
+    starts = _forecast_window_starts(lo=20, hi=50, lookback=8, horizon=10)
+    assert int(starts[0]) == 20
+    assert int(starts[-1]) == 40

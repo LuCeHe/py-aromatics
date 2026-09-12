@@ -370,14 +370,57 @@ def download_forecast(root: str, name: str, force: bool = False) -> str:
     return dest
 
 
+def _forecast_window_starts(lo: int, hi: int, lookback: int, horizon: int) -> np.ndarray:
+    """Target times ``t`` for Informer windows in ``[lo, hi)`` (context may start before ``lo``)."""
+    start = max(0, lo - lookback)
+    last = hi - horizon
+    t = start + lookback
+    starts: List[int] = []
+    while t <= last:
+        if t >= lo:
+            starts.append(int(t))
+        t += 1
+    if not starts:
+        raise ValueError(
+            f"no forecasting windows in [{lo}, {hi}) with lookback={lookback} horizon={horizon}"
+        )
+    return np.asarray(starts, dtype=np.int32)
+
+
+class _ForecastWindowTransform:
+    """Slice ``(lookback, C)`` / ``(horizon, C)`` windows on access; do not materialize them."""
+
+    def __init__(self, series: np.ndarray, lookback: int, horizon: int):
+        self.series = np.ascontiguousarray(series, dtype=np.float32)
+        self.lookback = int(lookback)
+        self.horizon = int(horizon)
+
+    def __call__(self, batch: Dict[str, Any]) -> Dict[str, Any]:
+        ts = batch["t"]
+        if not isinstance(ts, (list, tuple, np.ndarray)):
+            ts = [ts]
+        lb, hz, series = self.lookback, self.horizon, self.series
+        inputs = []
+        labels = []
+        for t in ts:
+            t_i = int(t)
+            inputs.append(series[t_i - lb: t_i])
+            labels.append(series[t_i: t_i + hz])
+        return {"inputs": inputs, "labels": labels}
+
+
 def _window_forecast(
     series: np.ndarray,
     lookback: int,
     horizon: int,
     seed: int,
     val_frac_of_holdout: float = 0.5,
-) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
-    """Informer 70/10/20 chronological split, then sliding windows."""
+) -> Tuple[np.ndarray, Dict[str, np.ndarray], Dict[str, Any]]:
+    """Informer 70/10/20 split. Returns normalized series + per-split start indices.
+
+    Callers must not stack every window: electricity × horizon 720 is tens of GB if
+    materialized, and ``.tolist()`` then OOMs the Slurm CPU cgroup.
+    """
     n = int(series.shape[0])
     n_train = int(n * 0.7)
     n_test = int(n * 0.2)
@@ -390,46 +433,52 @@ def _window_forecast(
     mean = series[:n_train].mean(axis=0, keepdims=True)
     std = series[:n_train].std(axis=0, keepdims=True)
     std = np.where(std < 1e-6, 1.0, std)
-    series_n = (series - mean) / std
+    series_n = ((series - mean) / std).astype(np.float32, copy=False)
 
-    def windows(lo: int, hi: int) -> Tuple[np.ndarray, np.ndarray]:
-        # include lookback context from before the split start when possible
-        start = max(0, lo - lookback)
-        xs, ys = [], []
-        last = hi - horizon
-        t = start + lookback
-        while t <= last:
-            if t < lo:
-                t += 1
-                continue
-            xs.append(series_n[t - lookback: t])
-            ys.append(series_n[t: t + horizon])
-            t += 1
-        if not xs:
-            raise ValueError(
-                f"no forecasting windows in [{lo}, {hi}) with lookback={lookback} horizon={horizon}"
-            )
-        return np.stack(xs), np.stack(ys)
-
-    splits = {}
-    counts = {}
-    for split, (lo, hi) in borders.items():
-        x, y = windows(lo, hi)
-        splits[split] = (x, y)
-        counts[split] = int(x.shape[0])
-    _ = seed  # kept for API stability with get_dataset shuffle
+    starts = {
+        split: _forecast_window_starts(lo, hi, lookback, horizon)
+        for split, (lo, hi) in borders.items()
+    }
+    _ = seed
     _ = val_frac_of_holdout
     meta = {
         "n_channels": int(series.shape[1]),
         "lookback": int(lookback),
         "horizon": int(horizon),
         "seq_len": int(lookback),
-        "n_train": counts["train"],
-        "n_validation": counts["validation"],
-        "n_test": counts["test"],
+        "n_train": int(starts["train"].shape[0]),
+        "n_validation": int(starts["validation"].shape[0]),
+        "n_test": int(starts["test"].shape[0]),
         "task": "forecasting",
     }
-    return splits, meta
+    return series_n, starts, meta
+
+
+def _lazy_forecast_dataset(
+    series_n: np.ndarray,
+    starts: Dict[str, np.ndarray],
+    lookback: int,
+    horizon: int,
+) -> DatasetDict:
+    xform = _ForecastWindowTransform(series_n, lookback, horizon)
+    out = DatasetDict()
+    for split, ts in starts.items():
+        ds = Dataset.from_dict({"t": np.asarray(ts, dtype=np.int32)})
+        ds.set_transform(xform)
+        out[split] = ds
+    out._timeseries_lazy_transform = xform
+    return out
+
+
+def reapply_timeseries_lazy_transform(dataset: DatasetDict) -> DatasetDict:
+    """``Dataset.shuffle`` / ``select`` drop ``set_transform``; put the slicer back."""
+    xform = getattr(dataset, "_timeseries_lazy_transform", None)
+    if xform is None:
+        return dataset
+    for split in dataset.keys():
+        dataset[split].set_transform(xform)
+    dataset._timeseries_lazy_transform = xform
+    return dataset
 
 
 # ---------------------------------------------------------------------------
@@ -740,14 +789,10 @@ def get_timeseries_dataset(
         if not _looks_complete(csv_path):
             raise FileNotFoundError(_missing_msg(kind, name, csv_path))
         series = _load_numeric_table(csv_path)
-        splits, meta = _window_forecast(series, lookback=lookback, horizon=horizon, seed=seed)
-        dataset = DatasetDict({
-            split: Dataset.from_dict({
-                "inputs": x.tolist(),
-                "labels": y.tolist(),
-            })
-            for split, (x, y) in splits.items()
-        })
+        series_n, starts, meta = _window_forecast(
+            series, lookback=lookback, horizon=horizon, seed=seed,
+        )
+        dataset = _lazy_forecast_dataset(series_n, starts, lookback, horizon)
         n_channels = int(meta["n_channels"])
         seq_len = int(lookback)
         n_outputs = int(horizon * n_channels)
