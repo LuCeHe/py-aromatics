@@ -1907,10 +1907,35 @@ def make_mqar_compute_metrics():
     return compute_metrics
 
 
+def _eval_split_is_timeseries(
+        dataset, eval_split, *, collator=None, is_timeseries=None,
+) -> bool:
+    """Choose vanilla ``Trainer`` vs TRL ``PlusTrainer`` for post-train eval.
+
+    Lazy forecast datasets only store window index ``t``; ``column_names`` is
+    ``['t']``, not ``['inputs', 'labels']``. Detecting only ``inputs`` /
+    ``audio_path`` then builds ``PlusTrainer``, which calls
+    ``get_output_embeddings`` and crashes ``TimeSeriesWrapper``.
+    """
+    if is_timeseries is not None:
+        return bool(is_timeseries)
+    cols = []
+    if dataset is not None and eval_split in dataset:
+        cols = list(getattr(dataset[eval_split], "column_names", None) or [])
+    if "inputs" in cols or "audio_path" in cols:
+        return True
+    if collator is not None and type(collator).__name__ == "TimeSeriesCollator":
+        return True
+    if "t" in cols and "text" not in cols and "input_ids" not in cols:
+        return True
+    return False
+
+
 def evaluation(
         model, tokenizer, dataset, dataset_name, eval_split,
         batch_size=1, seed=42, output_dir=None, notes='',
         compute_metrics=None, collator=None, single_process=False,
+        is_timeseries=None,
 ):
     from trl import SFTConfig
     # from thepebbletrail_official.dataset_utils.helpers_datasets import get_metrics
@@ -1968,10 +1993,11 @@ def evaluation(
     if single_process:
         config_args['local_rank'] = -1
 
-    ts_cols = dataset[eval_split].column_names if eval_split in dataset else []
-    is_timeseries = "inputs" in ts_cols or "audio_path" in ts_cols
+    use_timeseries_trainer = _eval_split_is_timeseries(
+        dataset, eval_split, collator=collator, is_timeseries=is_timeseries,
+    )
 
-    if is_timeseries:
+    if use_timeseries_trainer:
         from transformers import Trainer, TrainingArguments
         plain_cfg = {
             k: v for k, v in config_args.items()

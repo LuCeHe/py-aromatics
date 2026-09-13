@@ -136,6 +136,20 @@ def test_compute_metrics_forecast_accumulates():
     assert out["mae"] == pytest.approx((1.0 + 3.0 + 3.0) / 3.0)
 
 
+def test_lazy_forecast_eval_is_detected_as_timeseries():
+    from pyaromatics.hf_tools.helpers_datasets import _eval_split_is_timeseries
+
+    lookback, horizon, n_ch = 8, 12, 5
+    series = np.arange(400 * n_ch, dtype=np.float32).reshape(400, n_ch)
+    series_n, starts, _ = _window_forecast(series, lookback, horizon, seed=0)
+    ds = _lazy_forecast_dataset(series_n, starts, lookback, horizon)
+    assert ds["test"].column_names == ["t"]
+    assert "inputs" not in ds["test"].column_names
+    assert _eval_split_is_timeseries(ds, "test") is True
+    assert _eval_split_is_timeseries(ds, "test", collator=TimeSeriesCollator()) is True
+    assert _eval_split_is_timeseries(ds, "test", is_timeseries=True) is True
+
+
 def test_forecast_windows_stay_lazy_after_shuffle():
     lookback, horizon, n_ch = 8, 12, 5
     series = np.arange(400 * n_ch, dtype=np.float32).reshape(400, n_ch)
