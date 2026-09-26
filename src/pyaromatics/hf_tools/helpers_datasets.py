@@ -1998,19 +1998,19 @@ def evaluation(
     )
 
     if use_timeseries_trainer:
-        from transformers import Trainer, TrainingArguments
+        from transformers import TrainingArguments
+        from pyaromatics.hf_tools.trainers import TimeseriesEvalTrainer
         plain_cfg = {
             k: v for k, v in config_args.items()
             if k not in (
                 "dataset_text_field", "dataset_kwargs", "max_length", "packing",
             )
         }
-        # MQAR needs batch_eval_metrics to avoid concatenating vocab logits.
-        # Timeseries logits are tiny; vanilla Trainer also often never sets
-        # compute_result=True on standalone evaluate() (end_of_dataloader).
-        plain_cfg["batch_eval_metrics"] = False
+        # Traffic 720×862: concatenating every forecast OOMs Jean Zay CPU RAM
+        # (SIGKILL after the last test batch). Keep per-batch mse/mae.
+        plain_cfg["batch_eval_metrics"] = True
         eval_args = TrainingArguments(**plain_cfg)
-        trainer_cls = Trainer
+        trainer_cls = TimeseriesEvalTrainer
     else:
         eval_args = SFTConfig(**config_args)
         trainer_cls = MqarEvalPlusTrainer if synth_tokens else PlusTrainer

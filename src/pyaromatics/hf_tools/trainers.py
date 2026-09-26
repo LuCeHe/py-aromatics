@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
+from transformers import Trainer
 from trl import SFTTrainer
 
 
@@ -661,3 +662,106 @@ class MqarEvalPlusTrainer(PlusTrainer):
         if isinstance(labels, torch.Tensor):
             labels = labels.detach()
         return loss, logits, labels
+
+
+class TimeseriesEvalTrainer(Trainer):
+    """Plain HF ``Trainer`` that never concatenates eval forecasts.
+
+    Traffic / electricity horizon-720 labels are ``(B, H, C)`` with C up to 862.
+    Vanilla ``evaluation_loop`` keeps every pred+label until ``compute_metrics``,
+    then Jean Zay's CPU cgroup SIGKILLs after the last test batch. MQAR already
+    uses ``batch_eval_metrics``; timeseries eval was turned off because logits
+    were assumed tiny. Accumulate mse/mae/accuracy per gathered batch instead.
+    """
+
+    def evaluation_loop(
+            self,
+            dataloader: DataLoader,
+            description: str,
+            prediction_loss_only: Optional[bool] = None,
+            ignore_keys: Optional[list[str]] = None,
+            metric_key_prefix: str = "eval",
+    ) -> EvalLoopOutput:
+        args = self.args
+        try:
+            model = self._wrap_model(self.model, training=False, dataloader=dataloader)
+        except TypeError:
+            model = self._wrap_model(self.model, training=False)
+        if hasattr(model, "eval") and callable(model.eval):
+            model.eval()
+
+        self.callback_handler.eval_dataloader = dataloader
+        eval_dataset = getattr(dataloader, "dataset", None)
+        dataloader_len = len(dataloader) if has_length(dataloader) else None
+        batch_size = args.eval_batch_size
+        observed_num_examples = 0
+        loss_weighted = 0.0
+        loss_n = 0
+        metrics = {}
+
+        for step, inputs in enumerate(dataloader):
+            observed_batch_size = find_batch_size(inputs)
+            if observed_batch_size is not None:
+                observed_num_examples += observed_batch_size
+                if batch_size is None:
+                    batch_size = observed_batch_size
+
+            losses, logits, labels = self.prediction_step(
+                model, inputs, False, ignore_keys=ignore_keys,
+            )
+            if isinstance(logits, (tuple, list)):
+                logits = logits[0] if logits else None
+
+            if losses is not None:
+                gathered_loss = self.gather_function(losses.detach().reshape(1))
+                loss_val = float(np.mean(np.asarray(
+                    gathered_loss.detach().cpu() if hasattr(gathered_loss, "detach")
+                    else gathered_loss
+                )))
+                n = int(observed_batch_size or batch_size or 1)
+                loss_weighted += loss_val * n
+                loss_n += n
+
+            if logits is not None:
+                logits = self.accelerator.pad_across_processes(logits, dim=1, pad_index=-100)
+                logits = self.gather_function(logits)
+            if labels is not None:
+                labels = self.accelerator.pad_across_processes(labels, dim=1, pad_index=-100)
+                labels = self.gather_function(labels)
+
+            if self.compute_metrics is not None and logits is not None and labels is not None:
+                is_last_step = (
+                    (dataloader_len is not None and step + 1 >= dataloader_len)
+                    or getattr(self.accelerator.gradient_state, "end_of_dataloader", False)
+                )
+                metrics = self.compute_metrics(
+                    EvalPrediction(predictions=logits, label_ids=labels),
+                    compute_result=is_last_step,
+                )
+            del losses, logits, labels, inputs
+            self.control = self.callback_handler.on_prediction_step(args, self.state, self.control)
+
+        self.gather_function = self.accelerator.gather_for_metrics
+        if has_length(eval_dataset):
+            num_samples = len(eval_dataset)
+        else:
+            num_samples = observed_num_examples
+
+        if self.compute_metrics is not None and (metrics is None or metrics == {}):
+            finalized = self.compute_metrics(
+                EvalPrediction(predictions=None, label_ids=None),
+                compute_result=True,
+            )
+            if finalized:
+                metrics = finalized
+        if metrics is None:
+            metrics = {}
+        metrics = denumpify_detensorize(metrics)
+        if loss_n:
+            metrics[f"{metric_key_prefix}_loss"] = loss_weighted / loss_n
+        for key in list(metrics.keys()):
+            if not key.startswith(f"{metric_key_prefix}_"):
+                metrics[f"{metric_key_prefix}_{key}"] = metrics.pop(key)
+        return EvalLoopOutput(
+            predictions=None, label_ids=None, metrics=metrics, num_samples=num_samples,
+        )

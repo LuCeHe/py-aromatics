@@ -136,6 +136,15 @@ def test_compute_metrics_forecast_accumulates():
     assert out["mae"] == pytest.approx((1.0 + 3.0 + 3.0) / 3.0)
 
 
+def test_compute_metrics_finalize_without_last_batch_flag():
+    fn = timeseries_compute_metrics({"task": "forecasting"})
+    assert fn((np.array([1.0]), np.array([0.0])), compute_result=False) == {}
+    assert fn((np.array([3.0]), np.array([0.0])), compute_result=False) == {}
+    out = fn((None, None), compute_result=True)
+    assert out["mse"] == pytest.approx(5.0)
+    assert out["mae"] == pytest.approx(2.0)
+
+
 def test_lazy_forecast_eval_is_detected_as_timeseries():
     from pyaromatics.hf_tools.helpers_datasets import _eval_split_is_timeseries
 
@@ -176,3 +185,53 @@ def test_forecast_window_starts_skip_pre_split_context():
     starts = _forecast_window_starts(lo=20, hi=50, lookback=8, horizon=10)
     assert int(starts[0]) == 20
     assert int(starts[-1]) == 40
+
+
+def test_timeseries_eval_trainer_accumulates_without_keeping_preds(tmp_path):
+    pytest.importorskip("transformers")
+    from datasets import Dataset
+    from transformers import TrainingArguments
+    from pyaromatics.hf_tools.trainers import TimeseriesEvalTrainer
+
+    class _TinyForecast(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.scale = nn.Parameter(torch.ones(1))
+
+        def forward(self, inputs=None, labels=None, **kwargs):
+            pred = inputs.mean(dim=1, keepdim=True).expand(-1, 2, 2) * self.scale
+            loss = ((pred - labels) ** 2).mean() if labels is not None else pred.sum() * 0
+            return {"loss": loss, "logits": pred}
+
+    rows = [
+        {"inputs": [[float(i), float(i + 1)], [float(i + 2), float(i + 3)]],
+         "labels": [[0.0, 0.0], [0.0, 0.0]]}
+        for i in range(6)
+    ]
+    ds = Dataset.from_list(rows)
+    fn = timeseries_compute_metrics({"task": "forecasting"})
+    args = TrainingArguments(
+        output_dir=str(tmp_path / "ts-eval"),
+        per_device_eval_batch_size=2,
+        per_device_train_batch_size=2,
+        report_to="none",
+        batch_eval_metrics=True,
+        use_cpu=True,
+    )
+    trainer = TimeseriesEvalTrainer(
+        model=_TinyForecast(),
+        args=args,
+        train_dataset=ds.select(range(1)),
+        eval_dataset=ds,
+        compute_metrics=fn,
+        data_collator=TimeSeriesCollator(),
+    )
+    metrics = trainer.evaluate()
+    assert "eval_mse" in metrics
+    assert "eval_mae" in metrics
+    assert metrics["eval_mse"] >= 0.0
+    loop = trainer.evaluation_loop(
+        trainer.get_eval_dataloader(), description="Evaluation",
+    )
+    assert loop.predictions is None
+    assert loop.label_ids is None

@@ -902,9 +902,10 @@ def timeseries_compute_metrics(data_config: Dict[str, Any]):
     """HF ``compute_metrics`` for timeseries.
 
     Signature is ``(eval_pred, compute_result=True)`` so it works with
-    ``batch_eval_metrics`` (post-train ``evaluation()``) and without it
-    (training ``Trainer``, which does not pass ``compute_result``).
-    Default ``True`` keeps the full-eval path returning metrics in one call.
+    ``batch_eval_metrics`` / ``TimeseriesEvalTrainer`` (per-batch, then
+    finalize) and without it (a single full-eval call). Default ``True``
+    keeps the full-eval path returning metrics in one call. Finalize may
+    pass empty preds after the last batch was not marked ``end_of_dataloader``.
     """
     task = data_config.get("task")
     state = {"n": 0, "correct": 0, "sse": 0.0, "sae": 0.0}
