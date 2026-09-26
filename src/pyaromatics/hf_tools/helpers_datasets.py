@@ -2022,18 +2022,27 @@ def evaluation(
         metrics_fn = make_mqar_compute_metrics()
 
     model.eval()
+    eval_ds = dataset[eval_split]
+    # Standalone post-train eval does not need the full train split; holding it on the
+    # Trainer duplicates dataset refs and increases peak RAM on long eval loops.
+    stub_train = eval_ds.select(range(min(1, len(eval_ds))))
     trainer_kwargs = {
         'model': model,
         'processing_class': tokenizer,
         'args': eval_args,
-        'train_dataset': dataset["train"],
-        'eval_dataset': dataset[eval_split],
+        'train_dataset': stub_train,
+        'eval_dataset': eval_ds,
         'compute_metrics': metrics_fn,
         'data_collator': collator,
     }
     validator = trainer_cls(**trainer_kwargs)
-    eval_output = validator.evaluate()
-    # print('eval_output', eval_output)
+    try:
+        eval_output = validator.evaluate()
+    finally:
+        del validator
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
     return eval_output
 
 
