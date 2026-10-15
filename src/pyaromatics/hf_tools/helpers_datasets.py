@@ -319,6 +319,10 @@ def get_mqar_dataset(
     chunk when building HF data; auto-capped for long seq), ``mqarworkers:N``
     (CPU workers for parallel chunk generation; 0 = auto for seq>=1024).
 
+    If ``numkvpairs`` is omitted, default is **64** (Zoology / Longhorn-style fixed
+    pair count). For short ``mqar*`` names where 64 pairs do not fit, set
+    ``numkvpairs`` explicitly (must satisfy ``num_kv_pairs * 2 * (numpasses + 1) <= input_seq_len``).
+
     **Label alignment (TRL / HF causal LM):** On-disk data uses Zoology's slice
     ``labels = labels_full[:, 1:]``. If you train with TRL SFT (which applies the
     usual causal shift in the loss), set ``mqarlabelshift:0`` or add ``mqar_noshift``
@@ -339,8 +343,8 @@ def get_mqar_dataset(
     eval_samples = str2val(notes, 'evalsamples', default=3_000, output_type=int)
     test_samples = str2val(notes, 'testsamples', default=3_000, output_type=int)
     vocab_size = str2val(notes, 'vocabsize', default=8_192, output_type=int)
-    num_kv_pairs = str2val(notes, 'numkvpairs', default=64, output_type=int)
     num_passes = str2val(notes, 'numpasses', default=1, output_type=int)
+    num_kv_pairs = str2val(notes, 'numkvpairs', default=64, output_type=int)
     power_a = str2val(notes, 'powera', default=0.1, output_type=float)
     train_seed = str2val(notes, 'trainseed', default=901, output_type=int)
     eval_seed = str2val(notes, 'evalseed', default=9_001, output_type=int)
